@@ -24,6 +24,8 @@ class _CustomerRegistrationScreenState
 
   bool _isLoading = false;
 
+  static const Color navy = Color(0xFF0F1B4C);
+
   @override
   void dispose() {
     _firstNameController.dispose();
@@ -45,17 +47,14 @@ class _CustomerRegistrationScreenState
     });
 
     try {
-      // Step 1: Create the account with Firebase Authentication
       final UserCredential userCredential =
           await FirebaseAuth.instance.createUserWithEmailAndPassword(
         email: _emailController.text.trim(),
         password: _passwordController.text,
       );
 
-      // Step 2: Send the verification email
       await userCredential.user!.sendEmailVerification();
 
-      // Step 3: Save extra customer data in Firestore
       await FirebaseFirestore.instance
           .collection('customers')
           .doc(userCredential.user!.uid)
@@ -71,19 +70,17 @@ class _CustomerRegistrationScreenState
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text(
-            'Account created! Please check your email to verify your account.',
-          ),
+          content: Text('تم إنشاء الحساب! الرجاء التحقق من بريدك الإلكتروني.'),
         ),
       );
     } on FirebaseAuthException catch (e) {
-      String message = 'An error occurred. Please try again.';
+      String message = 'حدث خطأ ما. الرجاء المحاولة مرة أخرى.';
       if (e.code == 'email-already-in-use') {
-        message = 'This email is already registered.';
+        message = 'هذا البريد الإلكتروني مسجل مسبقًا.';
       } else if (e.code == 'weak-password') {
-        message = 'The password is too weak.';
+        message = 'كلمة المرور ضعيفة جدًا.';
       } else if (e.code == 'invalid-email') {
-        message = 'Please enter a valid email address.';
+        message = 'الرجاء إدخال بريد إلكتروني صحيح.';
       }
 
       if (!mounted) return;
@@ -93,7 +90,7 @@ class _CustomerRegistrationScreenState
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Something went wrong. Please try again.')),
+        const SnackBar(content: Text('حدث خطأ ما. الرجاء المحاولة مرة أخرى.')),
       );
     } finally {
       if (mounted) {
@@ -104,11 +101,67 @@ class _CustomerRegistrationScreenState
     }
   }
 
+  InputDecoration _fieldDecoration(String label) {
+    return InputDecoration(
+      labelText: label,
+      filled: true,
+      fillColor: Colors.grey.shade50,
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(10),
+        borderSide: BorderSide(color: Colors.grey.shade300),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(10),
+        borderSide: BorderSide(color: Colors.grey.shade300),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(10),
+        borderSide: const BorderSide(color: navy, width: 1.5),
+      ),
+    );
+  }
+
+  Widget _sectionCard({required String title, required List<Widget> children}) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            title,
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: navy,
+            ),
+          ),
+          const SizedBox(height: 16),
+          ...children,
+        ],
+      ),
+    );
+  }
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color(0xFFF5F5FA),
       appBar: AppBar(
-        title: const Text('Create Account'),
+        backgroundColor: navy,
+        foregroundColor: Colors.white,
+        title: const Text('إنشاء حساب جديد'),
+        centerTitle: true,
       ),
       body: Form(
         key: _formKey,
@@ -117,120 +170,121 @@ class _CustomerRegistrationScreenState
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              TextFormField(
-                controller: _firstNameController,
-                decoration: const InputDecoration(
-                  labelText: 'First Name',
-                  border: OutlineInputBorder(),
-                ),
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return 'Please enter your first name';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _lastNameController,
-                decoration: const InputDecoration(
-                  labelText: 'Last Name',
-                  border: OutlineInputBorder(),
-                ),
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return 'Please enter your last name';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _emailController,
-                keyboardType: TextInputType.emailAddress,
-                decoration: const InputDecoration(
-                  labelText: 'Email',
-                  border: OutlineInputBorder(),
-                ),
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return 'Please enter your email';
-                  }
-                  final emailRegex = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
-                  if (!emailRegex.hasMatch(value.trim())) {
-                    return 'Please enter a valid email';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _phoneController,
-                keyboardType: TextInputType.phone,
-                decoration: const InputDecoration(
-                  labelText: 'Phone Number',
-                  border: OutlineInputBorder(),
-                ),
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return 'Please enter your phone number';
-                  }
-                  if (value.trim().length < 9) {
-                    return 'Please enter a valid phone number';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _passwordController,
-                obscureText: true,
-                decoration: const InputDecoration(
-                  labelText: 'Password',
-                  border: OutlineInputBorder(),
-                ),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter a password';
-                  }
-                  if (value.length < 8) {
-                    return 'Password must be at least 8 characters';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _confirmPasswordController,
-                obscureText: true,
-                decoration: const InputDecoration(
-                  labelText: 'Confirm Password',
-                  border: OutlineInputBorder(),
-                ),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please confirm your password';
-                  }
-                  if (value != _passwordController.text) {
-                    return 'Passwords do not match';
-                  }
-                  return null;
-                },
+              _sectionCard(
+                title: 'معلومات الحساب',
+                children: [
+                  TextFormField(
+                    controller: _firstNameController,
+                    decoration: _fieldDecoration('الاسم الأول'),
+                    validator: (value) {
+                      if (value == null || value.trim().isEmpty) {
+                        return 'الرجاء إدخال الاسم الأول';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: _lastNameController,
+                    decoration: _fieldDecoration('اسم العائلة'),
+                    validator: (value) {
+                      if (value == null || value.trim().isEmpty) {
+                        return 'الرجاء إدخال اسم العائلة';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: _phoneController,
+                    keyboardType: TextInputType.phone,
+                    decoration: _fieldDecoration('رقم الجوال'),
+                    validator: (value) {
+                      if (value == null || value.trim().isEmpty) {
+                        return 'الرجاء إدخال رقم الجوال';
+                      }
+                      if (value.trim().length < 9) {
+                        return 'الرجاء إدخال رقم جوال صحيح';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: _emailController,
+                    keyboardType: TextInputType.emailAddress,
+                    decoration: _fieldDecoration('البريد الإلكتروني'),
+                    validator: (value) {
+                      if (value == null || value.trim().isEmpty) {
+                        return 'الرجاء إدخال البريد الإلكتروني';
+                      }
+                      final emailRegex = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
+                      if (!emailRegex.hasMatch(value.trim())) {
+                        return 'الرجاء إدخال بريد إلكتروني صحيح';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: _passwordController,
+                    obscureText: true,
+                    decoration: _fieldDecoration('كلمة المرور'),
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'الرجاء إدخال كلمة المرور';
+                      }
+                      if (value.length < 8) {
+                        return 'يجب أن تكون كلمة المرور 8 أحرف على الأقل';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: _confirmPasswordController,
+                    obscureText: true,
+                    decoration: _fieldDecoration('تأكيد كلمة المرور'),
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'الرجاء تأكيد كلمة المرور';
+                      }
+                      if (value != _passwordController.text) {
+                        return 'كلمتا المرور غير متطابقتين';
+                      }
+                      return null;
+                    },
+                  ),
+                ],
               ),
               const SizedBox(height: 24),
-              ElevatedButton(
-                onPressed: _isLoading ? null : _submitForm,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 12.0),
+              SizedBox(
+                height: 52,
+                child: ElevatedButton(
+                  onPressed: _isLoading ? null : _submitForm,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: navy,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
                   child: _isLoading
                       ? const SizedBox(
                           height: 20,
                           width: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2),
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
                         )
-                      : const Text('Create Account'),
+                      : const Text(
+                          'إنشاء حساب',
+                          style: TextStyle(fontSize: 16),
+                        ),
                 ),
               ),
+              const SizedBox(height: 16),
             ],
           ),
         ),
