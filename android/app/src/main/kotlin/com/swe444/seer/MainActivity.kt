@@ -1,4 +1,4 @@
-package com.example.seer
+package com.swe444.seer
 
 import io.flutter.embedding.android.FlutterActivity
 
