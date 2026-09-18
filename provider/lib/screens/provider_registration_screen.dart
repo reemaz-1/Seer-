@@ -3,6 +3,7 @@ import 'package:flutter/gestures.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_material_design_icons/flutter_material_design_icons.dart';
+import 'provider_success_screen.dart';
 
 class ProviderRegistrationScreen extends StatefulWidget {
   const ProviderRegistrationScreen({super.key});
@@ -394,11 +395,9 @@ class _ProviderRegistrationScreenState
 
       if (!mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'تم إرسال طلب التسجيل! سيتم مراجعته من قبل الإدارة.',
-          ),
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          builder: (context) => const ProviderSuccessScreen(),
         ),
       );
     } on FirebaseAuthException catch (e) {
