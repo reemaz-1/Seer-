@@ -4,6 +4,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_material_design_icons/flutter_material_design_icons.dart';
 import 'provider_success_screen.dart';
+import 'plate_number_input.dart';
+
 
 class ProviderRegistrationScreen extends StatefulWidget {
   const ProviderRegistrationScreen({super.key});
@@ -24,13 +26,12 @@ class _ProviderRegistrationScreenState
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
   final _nationalIdController = TextEditingController();
-  final _plateNumberController = TextEditingController();
   final _licenseNumberController = TextEditingController();
   final _modelController = TextEditingController();
   final _yearController = TextEditingController();
   final _otherVehicleTypeController = TextEditingController();
   final _otherBrandController = TextEditingController();
-  final _otherServiceController = TextEditingController();
+  final _otherColorController = TextEditingController();
 
   final ScrollController _scrollController = ScrollController();
 
@@ -40,8 +41,13 @@ class _ProviderRegistrationScreenState
 
   Map<String, dynamic>? _selectedVehicleType;
   String? _selectedBrand;
+  String? _selectedColor;
   String? _vehicleTypeError;
   String? _brandError;
+  String? _colorError;
+  final GlobalKey<PlateNumberFieldState> _plateFieldKey =
+    GlobalKey<PlateNumberFieldState>();
+  bool _plateError = false;
 
   final List<Map<String, dynamic>> _vehicleTypesWithIcons = [
     {
@@ -88,13 +94,33 @@ class _ProviderRegistrationScreenState
     'أخرى',
   ];
 
-  final List<String> _availableServices = [
-    'خدمة البطارية',
-    'التزويد بالوقود',
-    'خدمة الإطارات',
-    'سطحة نقل',
+  final List<String> _vehicleColors = [
+    'أبيض',
+    'أسود',
+    'فضي',
+    'رمادي',
+    'برتقالي',
+    'أحمر',
+    'أزرق',
+    'بني',
+    'ذهبي',
+    'بيج',
+    'أخضر',
     'أخرى',
   ];
+
+  // كل خدمة رئيسية مرتبطة بقائمة خياراتها الفرعية.
+  final Map<String, List<String>> _servicesWithOptions = {
+    'خدمة البطارية': ['تشغيل البطارية (اشتراك)', 'تغيير البطارية'],
+    'التزويد بالوقود': ['بنزين 91 (أخضر)', 'بنزين 95 (أحمر)'],
+    'خدمة الإطارات': [
+      'نفخ الإطار بالهواء',
+      'ترقيع الإطار',
+      'تغيير الإطار الاحتياطي',
+      'تغيير الإطار بإطار جديد',
+    ],
+    'خدمة السطحة': ['سطحة عادية', 'سطحة هيدروليكية'],
+  };
 
   final Set<String> _selectedServices = {};
 
@@ -107,21 +133,18 @@ class _ProviderRegistrationScreenState
     _passwordController.dispose();
     _confirmPasswordController.dispose();
     _nationalIdController.dispose();
-    _plateNumberController.dispose();
     _licenseNumberController.dispose();
     _modelController.dispose();
     _yearController.dispose();
     _otherVehicleTypeController.dispose();
     _otherBrandController.dispose();
-    _otherServiceController.dispose();
+    _otherColorController.dispose();
     _scrollController.dispose();
 
     super.dispose();
   }
 
-  // ============================================================
   // Input Decoration
-  // ============================================================
 
   InputDecoration _fieldDecoration(String label) {
     return InputDecoration(
@@ -173,9 +196,7 @@ class _ProviderRegistrationScreenState
     );
   }
 
-  // ============================================================
   // Section Card
-  // ============================================================
 
   Widget _sectionCard({
     required String title,
@@ -199,9 +220,8 @@ class _ProviderRegistrationScreenState
       ),
 
       // Material(type: MaterialType.transparency) يعطي أقرب Material
-      // ancestor للـ CheckboxListTile داخل هالكرت، عشان تأثير اللمس
-      // (ripple) والخلفية يرسمهم صح، ويشيل تحذير:
-      // "ListTile background color or ink splashes may be invisible."
+      // ancestor للعناصر التفاعلية (InkWell/CheckboxListTile) داخل
+      // هالكرت، عشان تأثير اللمس (ripple) والخلفية يرسمهم صح.
       child: Material(
         type: MaterialType.transparency,
         child: Column(
@@ -225,9 +245,9 @@ class _ProviderRegistrationScreenState
     );
   }
 
-  // ============================================================
+  
   // Vehicle Type Dropdown
-  // ============================================================
+  
 
   Widget _vehicleTypeDropdown() {
     return LayoutBuilder(
@@ -268,9 +288,7 @@ class _ProviderRegistrationScreenState
     );
   }
 
-  // ============================================================
   // Brand Dropdown
-  // ============================================================
 
   Widget _brandDropdown() {
     return LayoutBuilder(
@@ -307,9 +325,79 @@ class _ProviderRegistrationScreenState
     );
   }
 
-  // ============================================================
+  // Color Dropdown
+
+  Widget _colorDropdown() {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return DropdownMenu<String>(
+          width: constraints.maxWidth,
+          initialSelection: _selectedColor,
+          label: const Text('اللون'),
+          errorText: _colorError,
+          inputDecorationTheme: InputDecorationTheme(
+            filled: true,
+            fillColor: Colors.grey.shade50,
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 14, vertical: 15),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: BorderSide(color: Colors.grey.shade300),
+            ),
+          ),
+          dropdownMenuEntries: _vehicleColors.map((color) {
+            return DropdownMenuEntry<String>(value: color, label: color);
+          }).toList(),
+          onSelected: (value) {
+            setState(() {
+              _selectedColor = value;
+              _colorError = null;
+              if (value != 'أخرى') {
+                _otherColorController.clear();
+              }
+            });
+          },
+        );
+      },
+    );
+  }
+
+  // Service option chip — uses InkWell (not GestureDetector) so it
+  // integrates correctly with the ancestor Scrollable's gesture
+  // arena. A raw GestureDetector here was the cause of scrolling
+  // getting stuck: it competed with the ListView's drag recognizer,
+  // especially with mouse input (Android emulator on desktop).
+  Widget _serviceChip(String label, bool isSelected, VoidCallback onTap) {
+    return Material(
+      type: MaterialType.transparency,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(30),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          decoration: BoxDecoration(
+            color: isSelected ? navy.withOpacity(0.08) : Colors.white,
+            borderRadius: BorderRadius.circular(30),
+            border: Border.all(
+              color: isSelected ? navy.withOpacity(0.35) : Colors.grey.shade300,
+              width: 1,
+            ),
+          ),
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+              color: isSelected ? navy : Colors.grey.shade600,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   // Submit
-  // ============================================================
 
   Future<void> _submitForm() async {
     FocusScope.of(context).unfocus();
@@ -318,11 +406,21 @@ class _ProviderRegistrationScreenState
       _vehicleTypeError =
           _selectedVehicleType == null ? 'الرجاء اختيار نوع المركبة' : null;
       _brandError = _selectedBrand == null ? 'الرجاء اختيار الماركة' : null;
+      _colorError = _selectedColor == null ? 'الرجاء اختيار اللون' : null;
     });
 
     final bool formValid = _formKey.currentState!.validate();
 
-    if (!formValid || _selectedVehicleType == null || _selectedBrand == null) {
+    if (!formValid ||
+        _selectedVehicleType == null ||
+        _selectedBrand == null ||
+        _selectedColor == null) {
+      return;
+    }
+
+    final plate = _plateFieldKey.currentState!.value;
+    setState(() => _plateError = !plate.isValid);
+    if (!plate.isValid) {
       return;
     }
 
@@ -359,13 +457,11 @@ class _ProviderRegistrationScreenState
           ? _otherBrandController.text.trim()
           : (_selectedBrand ?? '');
 
-      final List<String> servicesToSave = _selectedServices.map((service) {
-        if (service == 'أخرى') {
-          return _otherServiceController.text.trim();
-        }
+      final String color = _selectedColor == 'أخرى'
+          ? _otherColorController.text.trim()
+          : (_selectedColor ?? '');
 
-        return service;
-      }).toList();
+      final List<String> servicesToSave = _selectedServices.toList();
 
       await FirebaseFirestore.instance
           .collection('providers')
@@ -379,11 +475,12 @@ class _ProviderRegistrationScreenState
 
         'vehicleType': vehicleType,
         'vehicleBrand': brand,
+        'vehicleColor': color,
         'vehicleModel': _modelController.text.trim(),
         'vehicleYear': _yearController.text.trim(),
 
-        'plateNumber': _plateNumberController.text.trim(),
-
+        'plateNumberLatin': '${plate.digits} ${plate.englishLetters}',
+        'plateNumberArabic': '${plate.digits} ${plate.arabicLetters}',
         'licenseNumber': _licenseNumberController.text.trim(),
 
         'servicesOffered': servicesToSave,
@@ -437,9 +534,7 @@ class _ProviderRegistrationScreenState
     }
   }
 
-  // ============================================================
   // BUILD
-  // ============================================================
 
   @override
   Widget build(BuildContext context) {
@@ -484,7 +579,7 @@ class _ProviderRegistrationScreenState
 
               children: [
                 // ======================================================
-                // المعلومات الشخصية
+                // Personal Information
                 // ======================================================
 
                 _sectionCard(
@@ -623,7 +718,7 @@ class _ProviderRegistrationScreenState
                 const SizedBox(height: 16),
 
                 // ======================================================
-                // بيانات المركبة
+                // Vehicle Details
                 // ======================================================
 
                 _sectionCard(
@@ -673,6 +768,28 @@ class _ProviderRegistrationScreenState
 
                     const SizedBox(height: 12),
 
+                    _colorDropdown(),
+
+                    if (_selectedColor == 'أخرى') ...[
+                      const SizedBox(height: 12),
+
+                      TextFormField(
+                        controller: _otherColorController,
+                        decoration: _fieldDecoration('حدد اللون'),
+                        textInputAction: TextInputAction.next,
+                        validator: (value) {
+                          if (_selectedColor == 'أخرى' &&
+                              (value == null || value.trim().isEmpty)) {
+                            return 'الرجاء تحديد اللون';
+                          }
+
+                          return null;
+                        },
+                      ),
+                    ],
+
+                    const SizedBox(height: 12),
+
                     TextFormField(
                       controller: _modelController,
                       decoration: _fieldDecoration('الموديل (مثال: كامري)'),
@@ -710,18 +827,25 @@ class _ProviderRegistrationScreenState
 
                     const SizedBox(height: 12),
 
-                    TextFormField(
-                      controller: _plateNumberController,
-                      decoration: _fieldDecoration('رقم اللوحة'),
-                      textInputAction: TextInputAction.next,
-                      validator: (value) {
-                        if (value == null || value.trim().isEmpty) {
-                          return 'الرجاء إدخال رقم اللوحة';
-                        }
-
-                        return null;
-                      },
+                    Text(
+                      'رقم اللوحة',
+                      style: TextStyle(fontWeight: FontWeight.bold, color: navy),
                     ),
+                    const SizedBox(height: 6),
+                    Text(
+                      'الرجاء إدخال رقم اللوحة بنفس ترتيبه على لوحتك',
+                      style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                    ),
+                    const SizedBox(height: 10),
+                    PlateNumberField(navy: navy, key: _plateFieldKey),
+                    if (_plateError)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 6),
+                        child: Text(
+                          'الرجاء إدخال رقم وحرف واحد على الأقل',
+                          style: TextStyle(color: Colors.red, fontSize: 12),
+                        ),
+                      ),
 
                     const SizedBox(height: 12),
 
@@ -743,65 +867,58 @@ class _ProviderRegistrationScreenState
                 const SizedBox(height: 16),
 
                 // ======================================================
-                // الخدمات المقدمة
+                // Services Offered — A heading for each category, with selectable options underneath.
                 // ======================================================
 
                 _sectionCard(
                   title: 'الخدمات المقدمة',
-                  children: [
-                    ..._availableServices.map(
-                      (service) {
-                        final bool isSelected =
-                            _selectedServices.contains(service);
+                  children: _servicesWithOptions.entries.map((entry) {
+                    final String category = entry.key;
+                    final List<String> options = entry.value;
 
-                        return CheckboxListTile(
-                          value: isSelected,
-                          title: Text(service),
-                          activeColor: navy,
-                          controlAffinity: ListTileControlAffinity.leading,
-                          contentPadding: EdgeInsets.zero,
-                          onChanged: (checked) {
-                            setState(() {
-                              if (checked == true) {
-                                _selectedServices.add(service);
-                              } else {
-                                _selectedServices.remove(service);
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            category,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: navy,
+                              fontSize: 14,
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          Wrap(
+                            spacing: 10,
+                            runSpacing: 10,
+                            children: options.map((option) {
+                              final bool isSelected =
+                                  _selectedServices.contains(option);
 
-                                if (service == 'أخرى') {
-                                  _otherServiceController.clear();
-                                }
-                              }
-                            });
-                          },
-                        );
-                      },
-                    ),
-
-                    if (_selectedServices.contains('أخرى')) ...[
-                      const SizedBox(height: 4),
-
-                      TextFormField(
-                        controller: _otherServiceController,
-                        decoration: _fieldDecoration('حدد الخدمة الأخرى'),
-                        textInputAction: TextInputAction.done,
-                        validator: (value) {
-                          if (_selectedServices.contains('أخرى') &&
-                              (value == null || value.trim().isEmpty)) {
-                            return 'الرجاء تحديد الخدمة';
-                          }
-
-                          return null;
-                        },
+                              return _serviceChip(option, isSelected, () {
+                                setState(() {
+                                  if (isSelected) {
+                                    _selectedServices.remove(option);
+                                  } else {
+                                    _selectedServices.add(option);
+                                  }
+                                });
+                              });
+                            }).toList(),
+                          ),
+                        ],
                       ),
-                    ],
-                  ],
+                    );
+                  }).toList(),
                 ),
 
                 const SizedBox(height: 24),
 
-                // ======================================================
-                // زر التسجيل
-                // ======================================================
+              // ======================================================
+              // Registration button
+              // ======================================================
 
                 SizedBox(
                   height: 52,
@@ -842,9 +959,7 @@ class _ProviderRegistrationScreenState
   }
 }
 
-// ============================================================
 // Scroll Behavior
-// ============================================================
 
 class _AppScrollBehavior extends MaterialScrollBehavior {
   const _AppScrollBehavior();
