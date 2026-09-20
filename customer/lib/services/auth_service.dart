@@ -14,7 +14,7 @@ class AuthException implements Exception {
 /// email" and item #70: "Firebase password reset using link via email").
 class AuthService {
   AuthService({FirebaseAuth? firebaseAuth})
-      : _auth = firebaseAuth ?? FirebaseAuth.instance;
+    : _auth = firebaseAuth ?? FirebaseAuth.instance;
 
   final FirebaseAuth _auth;
 
@@ -25,10 +25,7 @@ class AuthService {
   Stream<User?> get authStateChanges => _auth.authStateChanges();
 
   /// اللوق ان — تسجيل الدخول بالإيميل وكلمة المرور.
-  Future<User> logIn({
-    required String email,
-    required String password,
-  }) async {
+  Future<User> logIn({required String email, required String password}) async {
     try {
       final credential = await _auth.signInWithEmailAndPassword(
         email: email.trim(),
@@ -90,7 +87,7 @@ class AuthService {
       case 'network-request-failed':
         return 'تحقق من اتصالك بالإنترنت وحاول مرة أخرى.';
       default:
-        return 'حدث خطأ غير متوقع (${code}). حاول مرة أخرى.';
+        return 'حدث خطأ غير متوقع ($code). حاول مرة أخرى.';
     }
   }
 }
