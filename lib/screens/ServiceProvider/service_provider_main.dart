@@ -1,32 +1,33 @@
 import 'package:flutter/material.dart';
 import 'package:google_nav_bar/google_nav_bar.dart';
 import 'home.dart';
+import 'history.dart';
 import 'notifications.dart';
-import 'tracking.dart';
 
-
-class CustomerMain extends StatefulWidget {
-  const CustomerMain({Key? key}) : super(key: key);
+class ServiceProviderMain extends StatefulWidget {
+  const ServiceProviderMain({Key? key}) : super(key: key);
 
   @override
-  State<CustomerMain> createState() => _CustomerMainState();
+  State<ServiceProviderMain> createState() =>
+      _ServiceProviderMainState();
 }
 
-class _CustomerMainState extends State<CustomerMain> {
+class _ServiceProviderMainState extends State<ServiceProviderMain> {
   int selectedIndex = 0;
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFFFFFFF),
-      
-      body: selectedIndex == 2
-    ? const TrackingPage()
-    : const Home(),
+      // Provider background
+      backgroundColor: const Color(0xFFF1F4FA),
+
+    body: selectedIndex == 2
+    ? ProviderHistory()
+    : const ProviderHome(),
 
       // Upper Bar
       appBar: AppBar(
-        backgroundColor: const Color(0xFF0E1B33),
+        backgroundColor: const Color(0xFFF1F4FA),
         elevation: 0,
         centerTitle: true,
 
@@ -39,7 +40,7 @@ class _CustomerMainState extends State<CustomerMain> {
             child: Text(
               'مرحباً، نورة',
               style: TextStyle(
-                color: Colors.white,
+                color: Color(0xFF0E1B33),
                 fontSize: 14,
                 fontWeight: FontWeight.w500,
               ),
@@ -51,7 +52,7 @@ class _CustomerMainState extends State<CustomerMain> {
         title: const Text(
           'سَيْر',
           style: TextStyle(
-            color: Colors.white,
+            color: Color(0xFF0E1B33),
             fontSize: 30,
             fontWeight: FontWeight.w700,
             letterSpacing: 2.0,
@@ -72,10 +73,10 @@ class _CustomerMainState extends State<CustomerMain> {
   Navigator.push(
     context,
     MaterialPageRoute(
-      builder: (context) => const NotificationsPage(),
+      builder: (context) => const ProviderNotifications(),
     ),
   );
-                },
+},
                 icon: const Icon(
                   Icons.notifications_none,
                   color: Colors.white,
@@ -88,7 +89,7 @@ class _CustomerMainState extends State<CustomerMain> {
 
       // Bottom Bar
       bottomNavigationBar: Container(
-        color: const Color(0xFFFFFFFF),
+        color: const Color(0xFFF1F4FA),
         child: Padding(
           padding: const EdgeInsets.symmetric(
             horizontal: 15.0,
@@ -96,9 +97,9 @@ class _CustomerMainState extends State<CustomerMain> {
           ),
           child: GNav(
             backgroundColor: Colors.transparent,
-            color: const Color(0xFF6B7385),
+            color: const Color(0xFF69728C),
             activeColor: const Color(0xFF1C63D6),
-            tabBackgroundColor: const Color(0xFFEAF1FC),
+            tabBackgroundColor: const Color(0xFFDCE6F5),
             padding: const EdgeInsets.all(16),
             gap: 8,
 
@@ -111,15 +112,15 @@ class _CustomerMainState extends State<CustomerMain> {
             tabs: const [
   GButton(
     icon: Icons.home_rounded,
-    text: 'الصفحة الرئيسية',
+    text: 'الرئيسية',
   ),
+ GButton(
+  icon: Icons.receipt_long_rounded,
+  text: 'الطلب الحالي',
+),
   GButton(
-    icon: Icons.receipt_long_rounded,
-    text: 'الطلبات',
-  ),
-  GButton(
-    icon: Icons.near_me_rounded,
-    text: 'التتبع',
+    icon: Icons.history_rounded,
+    text: 'السجل',
   ),
   GButton(
     icon: Icons.person_rounded,

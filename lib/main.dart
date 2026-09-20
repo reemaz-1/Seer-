@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'screens/Customer/customer_main.dart';
+
+import 'screens/ServiceProvider/service_provider_main.dart';
 
 void main() {
   runApp(const MyApp());
@@ -12,7 +13,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      home: const CustomerMain(),
+      home: const ServiceProviderMain(),
     );
   }
 }
