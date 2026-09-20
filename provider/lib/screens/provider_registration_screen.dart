@@ -109,20 +109,59 @@ class _ProviderRegistrationScreenState
     'أخرى',
   ];
 
-  // كل خدمة رئيسية مرتبطة بقائمة خياراتها الفرعية.
-  final Map<String, List<String>> _servicesWithOptions = {
-    'خدمة البطارية': ['تشغيل البطارية (اشتراك)', 'تغيير البطارية'],
-    'التزويد بالوقود': ['بنزين 91 (أخضر)', 'بنزين 95 (أحمر)'],
-    'خدمة الإطارات': [
-      'نفخ الإطار بالهواء',
-      'ترقيع الإطار',
-      'تغيير الإطار الاحتياطي',
-      'تغيير الإطار بإطار جديد',
-    ],
-    'خدمة السطحة': ['سطحة عادية', 'سطحة هيدروليكية'],
+  // ============================================================
+  // Services Offered — nested structure.
+  //
+  // كل فئة رئيسية لها id ثابت (يُستخدم بالكود وبقاعدة البيانات)
+  // ولها label (النص المعروض للمستخدم)، وتحتها خيارات فرعية،
+  // كل خيار له id ثابت و label معروض.
+  //
+  // فصل id عن label يخلي تغيير النص المعروض لاحقًا (ترجمة، تعديل
+  // صياغة...) لا يكسر أي منطق أو بيانات محفوظة سابقًا في Firestore،
+  // لأن الـ id هو المرجع الثابت وليس النص نفسه.
+  // ============================================================
+
+  final Map<String, Map<String, dynamic>> _serviceCategories = {
+    'battery': {
+      'label': 'خدمة البطارية',
+      'options': {
+        'activation': 'تشغيل البطارية (اشتراك)',
+        'replace': 'تغيير البطارية',
+      },
+    },
+    'fuel': {
+      'label': 'التزويد بالوقود',
+      'options': {
+        'petrol91': 'بنزين 91 (أخضر)',
+        'petrol95': 'بنزين 95 (أحمر)',
+      },
+    },
+    'tires': {
+      'label': 'خدمة الإطارات',
+      'options': {
+        'airInflate': 'نفخ الإطار بالهواء',
+        'patch': 'ترقيع الإطار',
+        'spareChange': 'تغيير الإطار الاحتياطي',
+        'newTire': 'تغيير الإطار بإطار جديد',
+      },
+    },
+    'towing': {
+      'label': 'خدمة السطحة',
+      'options': {
+        'regular': 'سطحة عادية',
+        'hydraulic': 'سطحة هيدروليكية',
+      },
+    },
   };
 
+  // مفاتيح مركّبة بصيغة "categoryId.optionId" (مثال: "battery.activation")
+  // بدل تخزين النص العربي نفسه، عشان:
+  // 1) ما يصير تصادم لو تكرر نفس النص بفئتين مختلفتين.
+  // 2) ثبات المرجع حتى لو تغيّر النص المعروض لاحقًا.
   final Set<String> _selectedServices = {};
+
+  String _optionKey(String categoryId, String optionId) =>
+      '$categoryId.$optionId';
 
   @override
   void dispose() {
@@ -397,6 +436,44 @@ class _ProviderRegistrationScreenState
     );
   }
 
+  // ============================================================
+  // يبني نسخة servicesOffered الجاهزة للحفظ في Firestore، كـ map
+  // متداخل: كل فئة فيها label وقائمة options، كل خيار فيه id و
+  // label و enabled (true إذا كان مختار في الفورم).
+  //
+  // ملاحظة: يحفظ كل الخيارات (المختارة وغير المختارة) مع enabled
+  // flag، بدل ما يحفظ بس المختارة، عشان يسهل لاحقًا معرفة كل
+  // الخيارات المتاحة لهذا المزود وتفعيل/تعطيل أي وحدة منها بدون
+  // إعادة بناء القائمة كاملة.
+  // ============================================================
+
+  Map<String, dynamic> _buildServicesOfferedPayload() {
+    final Map<String, dynamic> payload = {};
+
+    _serviceCategories.forEach((categoryId, categoryData) {
+      final String categoryLabel = categoryData['label'] as String;
+      final Map<String, String> options =
+          Map<String, String>.from(categoryData['options'] as Map);
+
+      payload[categoryId] = {
+        'label': categoryLabel,
+        'options': options.entries.map((optionEntry) {
+          final String optionId = optionEntry.key;
+          final String optionLabel = optionEntry.value;
+
+          return {
+            'id': optionId,
+            'label': optionLabel,
+            'enabled':
+                _selectedServices.contains(_optionKey(categoryId, optionId)),
+          };
+        }).toList(),
+      };
+    });
+
+    return payload;
+  }
+
   // Submit
 
   Future<void> _submitForm() async {
@@ -461,7 +538,8 @@ class _ProviderRegistrationScreenState
           ? _otherColorController.text.trim()
           : (_selectedColor ?? '');
 
-      final List<String> servicesToSave = _selectedServices.toList();
+      final Map<String, dynamic> servicesToSave =
+          _buildServicesOfferedPayload();
 
       await FirebaseFirestore.instance
           .collection('providers')
@@ -867,14 +945,21 @@ class _ProviderRegistrationScreenState
                 const SizedBox(height: 16),
 
                 // ======================================================
-                // Services Offered — A heading for each category, with selectable options underneath.
+                // Services Offered — عنوان لكل فئة، والخيارات
+                // الفرعية تحتها كشرائح قابلة للاختيار.
                 // ======================================================
 
                 _sectionCard(
                   title: 'الخدمات المقدمة',
-                  children: _servicesWithOptions.entries.map((entry) {
-                    final String category = entry.key;
-                    final List<String> options = entry.value;
+                  children: _serviceCategories.entries.map((categoryEntry) {
+                    final String categoryId = categoryEntry.key;
+                    final Map<String, dynamic> categoryData =
+                        categoryEntry.value;
+                    final String categoryLabel =
+                        categoryData['label'] as String;
+                    final Map<String, String> options =
+                        Map<String, String>.from(
+                            categoryData['options'] as Map);
 
                     return Padding(
                       padding: const EdgeInsets.only(bottom: 16),
@@ -882,7 +967,7 @@ class _ProviderRegistrationScreenState
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            category,
+                            categoryLabel,
                             style: const TextStyle(
                               fontWeight: FontWeight.bold,
                               color: navy,
@@ -893,16 +978,20 @@ class _ProviderRegistrationScreenState
                           Wrap(
                             spacing: 10,
                             runSpacing: 10,
-                            children: options.map((option) {
+                            children: options.entries.map((optionEntry) {
+                              final String optionId = optionEntry.key;
+                              final String optionLabel = optionEntry.value;
+                              final String key =
+                                  _optionKey(categoryId, optionId);
                               final bool isSelected =
-                                  _selectedServices.contains(option);
+                                  _selectedServices.contains(key);
 
-                              return _serviceChip(option, isSelected, () {
+                              return _serviceChip(optionLabel, isSelected, () {
                                 setState(() {
                                   if (isSelected) {
-                                    _selectedServices.remove(option);
+                                    _selectedServices.remove(key);
                                   } else {
-                                    _selectedServices.add(option);
+                                    _selectedServices.add(key);
                                   }
                                 });
                               });
