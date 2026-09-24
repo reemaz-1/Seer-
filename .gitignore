@@ -1,3 +1,10 @@
-.DS_Store
-*/build/
-*/.dart_tool/
+build/
+.dart_tool/
+android/.gradle/
+provider/windows/
+provider/macos/
+provider/linux/
+provider/ios/
+provider/web/
+/android/
+/lib/
