@@ -6,3 +6,5 @@ provider/macos/
 provider/linux/
 provider/ios/
 provider/web/
+/android/
+/lib/
