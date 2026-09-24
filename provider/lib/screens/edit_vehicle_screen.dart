@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
 import 'provider_profile_screen.dart';
+import '../widgets/plate_number_field.dart';
 
 
 class EditVehicleScreen extends StatefulWidget{
@@ -15,24 +16,31 @@ class EditVehicleScreen extends StatefulWidget{
 
 class _EditVehicleScreenState extends State<EditVehicleScreen> {
   late TextEditingController vehicleController;
-  late TextEditingController plateController;
+  late TextEditingController colorController;
   late TextEditingController licenseController;
+  late String _initialPlateDigits;
+  late String _initialPlateArabicLetters;
+  bool _plateError = false;
 
-
-    final _formKey = GlobalKey<FormState>();
+  final _plateFieldKey = GlobalKey<PlateNumberFieldState>();
+  final _formKey = GlobalKey<FormState>();
 
     @override
     void initState(){
       super.initState();
       vehicleController = TextEditingController(text: widget.provider.vehicle);
-      plateController = TextEditingController(text: widget.provider.plateNumber);
+      colorController = TextEditingController(text: widget.provider.vehicleColor);
       licenseController = TextEditingController(text: widget.provider.licenseNumber);
+
+      final arabicParts = widget.provider.plateNumberArabic.trim().split(' ');
+      _initialPlateDigits = arabicParts.isNotEmpty ? arabicParts[0] : '';
+      _initialPlateArabicLetters = arabicParts.length > 1 ? arabicParts[1] : '';
     }//end initState
 
    @override
    void dispose(){
      vehicleController.dispose();
-     plateController.dispose();
+     colorController.dispose();
      licenseController.dispose();
       super.dispose();
    }//end dispose
@@ -70,22 +78,39 @@ class _EditVehicleScreenState extends State<EditVehicleScreen> {
                     return null;
                   },//end validator
                 ),
+                
                 const SizedBox(height: 14),
 
                 TextFormField(
-                  controller: plateController,
+                  controller: colorController,
                   decoration: const InputDecoration(
-                    labelText: 'رقم اللوحة',
+                    labelText: 'لون المركبة',
                     border: OutlineInputBorder(),
                   ),
-                  keyboardType: TextInputType.phone,
                   validator: (value){
-                    if(value == null || value.trim().isEmpty){
-                      return 'رقم اللوحة مطلوب';
+                    if(value==null || value.trim().isEmpty){
+                      return 'لون المركبة مطلوب' ;
                     }//end if
                     return null;
-                  },//validator
+                  },//end validator
                 ),
+
+                const SizedBox(height: 14),
+
+                  PlateNumberField(
+                  key: _plateFieldKey,
+                  navy: AppColors.navy,
+                  initialDigits: _initialPlateDigits,
+                  initialArabicLetters: _initialPlateArabicLetters,
+                ),
+                if(_plateError)
+                  const Padding(
+                    padding: EdgeInsets.only(top: 6),
+                    child: Text(
+                      'رقم اللوحة مطلوب',
+                      style: TextStyle(color: Colors.red, fontSize: 12),
+                    ),
+                  ),
                 const SizedBox(height: 14),
 
                 TextFormField(
@@ -105,8 +130,15 @@ class _EditVehicleScreenState extends State<EditVehicleScreen> {
                     backgroundColor: AppColors.blue,
                     padding: const EdgeInsets.symmetric(vertical: 14),
                   ),
-                  onPressed: (){
-                    if(_formKey.currentState!.validate()){
+
+
+                    onPressed: (){
+                    final plateValue = _plateFieldKey.currentState!.value;
+                    setState((){
+                      _plateError = !plateValue.isValid;
+                    });
+
+                    if(_formKey.currentState!.validate() && plateValue.isValid){
                       final updatedProvider = ServiceProviderData(
                         firstName: widget.provider.firstName,
                         lastName: widget.provider.lastName,
@@ -114,15 +146,18 @@ class _EditVehicleScreenState extends State<EditVehicleScreen> {
                         email : widget.provider.email,
                         nationalId : widget.provider.nationalId,
                         vehicle : vehicleController.text,
-                        plateNumber : plateController.text,
+                        plateNumberArabic: '${plateValue.digits} ${plateValue.arabicLetters}',
+                        plateNumberLatin: '${plateValue.digits} ${plateValue.englishLetters}',
+                        vehicleColor : colorController.text,
                         licenseNumber : licenseController.text,
                         rating : widget.provider.rating,
                         status : widget.provider.status,
-                        services : widget.provider.services,
+                        activeBranches : widget.provider.activeBranches,
                       );
                       Navigator.pop(context, updatedProvider);
                     }//end if
                   },
+
                   child: const Text(
                     'حفظ التغييرات',
                     style: TextStyle(color: Colors.white),
@@ -136,7 +171,5 @@ class _EditVehicleScreenState extends State<EditVehicleScreen> {
       ),
     );
   }//end build
-
-
 
 }//end _EditVehicleScreenState

@@ -148,11 +148,13 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                         email : widget.provider.email,
                         nationalId : widget.provider.nationalId,
                         vehicle : widget.provider.vehicle,
-                        plateNumber : widget.provider.plateNumber,
+                        plateNumberArabic : widget.provider.plateNumberArabic,
+                        plateNumberLatin : widget.provider.plateNumberLatin, 
+                        vehicleColor: widget.provider.vehicleColor,
                         licenseNumber : widget.provider.licenseNumber,
                         rating : widget.provider.rating,
                         status : widget.provider.status,
-                        services : widget.provider.services,
+                        activeBranches : widget.provider.activeBranches,
                       );
                       Navigator.pop(context, updatedProvider);
                     }//end if
