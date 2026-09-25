@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_nav_bar/google_nav_bar.dart';
+import '../views/customer/profile_page.dart';
 
 import 'home.dart';
 import 'notifications.dart';
@@ -30,9 +31,9 @@ class _CustomerMainState extends State<CustomerMain> {
         return const CustomerOrders();
 
       case 3:
-        // Connect the profile screen here later.
-        return const Home();
+case 3:
 
+  return ProfilePage(uid: FirebaseAuth.instance.currentUser!.uid,);
       default:
         return const Home();
     }
