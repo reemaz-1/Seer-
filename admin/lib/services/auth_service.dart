@@ -23,7 +23,7 @@ class AuthService {
   Stream<User?> get authStateChanges => _auth.authStateChanges();
 
   Future<bool> hasRequiredRole(User user) async {
-    final snapshot = await _firestore.collection('users').doc(user.uid).get();
+    final snapshot = await _firestore.collection('admins').doc(user.uid).get();
     return snapshot.data()?['role']?.toString() == AppConfig.roleKey;
   }
 
