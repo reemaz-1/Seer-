@@ -1,14 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_material_design_icons/flutter_material_design_icons.dart';
+
+import '../services/auth_service.dart';
 import 'provider_success_screen.dart';
 import 'plate_number_input.dart';
 
-
 class ProviderRegistrationScreen extends StatefulWidget {
-  const ProviderRegistrationScreen({super.key});
+  const ProviderRegistrationScreen({super.key, this.authService});
+
+  final AuthService? authService;
 
   @override
   State<ProviderRegistrationScreen> createState() =>
@@ -18,6 +19,7 @@ class ProviderRegistrationScreen extends StatefulWidget {
 class _ProviderRegistrationScreenState
     extends State<ProviderRegistrationScreen> {
   final _formKey = GlobalKey<FormState>();
+  late final AuthService _authService = widget.authService ?? AuthService();
 
   final _firstNameController = TextEditingController();
   final _lastNameController = TextEditingController();
@@ -46,34 +48,16 @@ class _ProviderRegistrationScreenState
   String? _brandError;
   String? _colorError;
   final GlobalKey<PlateNumberFieldState> _plateFieldKey =
-    GlobalKey<PlateNumberFieldState>();
+      GlobalKey<PlateNumberFieldState>();
   bool _plateError = false;
 
   final List<Map<String, dynamic>> _vehicleTypesWithIcons = [
-    {
-      'label': 'سيدان',
-      'icon': MdiIcons.carSide,
-    },
-    {
-      'label': 'دفع رباعي',
-      'icon': MdiIcons.carEstate,
-    },
-    {
-      'label': 'بيك أب',
-      'icon': MdiIcons.carPickup,
-    },
-    {
-      'label': 'فان',
-      'icon': MdiIcons.vanPassenger,
-    },
-    {
-      'label': 'سطحة',
-      'icon': MdiIcons.towTruck,
-    },
-    {
-      'label': 'أخرى',
-      'icon': MdiIcons.dotsHorizontal,
-    },
+    {'label': 'سيدان', 'icon': MdiIcons.carSide},
+    {'label': 'دفع رباعي', 'icon': MdiIcons.carEstate},
+    {'label': 'بيك أب', 'icon': MdiIcons.carPickup},
+    {'label': 'فان', 'icon': MdiIcons.vanPassenger},
+    {'label': 'سطحة', 'icon': MdiIcons.towTruck},
+    {'label': 'أخرى', 'icon': MdiIcons.dotsHorizontal},
   ];
 
   final List<String> _vehicleBrands = [
@@ -89,7 +73,7 @@ class _ProviderRegistrationScreenState
     'ميتسوبيشي',
     'إم جي',
     'جيلي',
-    'چانجان',
+    'شانجان',
     'بي واي دي',
     'أخرى',
   ];
@@ -102,6 +86,7 @@ class _ProviderRegistrationScreenState
     'برتقالي',
     'أحمر',
     'أزرق',
+    'كحلي',
     'بني',
     'ذهبي',
     'بيج',
@@ -131,10 +116,7 @@ class _ProviderRegistrationScreenState
     },
     'fuel': {
       'label': 'التزويد بالوقود',
-      'options': {
-        'petrol91': 'بنزين 91 (أخضر)',
-        'petrol95': 'بنزين 95 (أحمر)',
-      },
+      'options': {'petrol91': 'بنزين 91 (أخضر)', 'petrol95': 'بنزين 95 (أحمر)'},
     },
     'tires': {
       'label': 'خدمة الإطارات',
@@ -147,10 +129,7 @@ class _ProviderRegistrationScreenState
     },
     'towing': {
       'label': 'خدمة السطحة',
-      'options': {
-        'regular': 'سطحة عادية',
-        'hydraulic': 'سطحة هيدروليكية',
-      },
+      'options': {'regular': 'سطحة عادية', 'hydraulic': 'سطحة هيدروليكية'},
     },
   };
 
@@ -191,56 +170,38 @@ class _ProviderRegistrationScreenState
       filled: true,
       fillColor: Colors.grey.shade50,
 
-      contentPadding: const EdgeInsets.symmetric(
-        horizontal: 14,
-        vertical: 15,
-      ),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 15),
 
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(10),
-        borderSide: BorderSide(
-          color: Colors.grey.shade300,
-        ),
+        borderSide: BorderSide(color: Colors.grey.shade300),
       ),
 
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(10),
-        borderSide: BorderSide(
-          color: Colors.grey.shade300,
-        ),
+        borderSide: BorderSide(color: Colors.grey.shade300),
       ),
 
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(10),
-        borderSide: const BorderSide(
-          color: navy,
-          width: 1.5,
-        ),
+        borderSide: const BorderSide(color: navy, width: 1.5),
       ),
 
       errorBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(10),
-        borderSide: const BorderSide(
-          color: Colors.red,
-        ),
+        borderSide: const BorderSide(color: Colors.red),
       ),
 
       focusedErrorBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(10),
-        borderSide: const BorderSide(
-          color: Colors.red,
-          width: 1.5,
-        ),
+        borderSide: const BorderSide(color: Colors.red, width: 1.5),
       ),
     );
   }
 
   // Section Card
 
-  Widget _sectionCard({
-    required String title,
-    required List<Widget> children,
-  }) {
+  Widget _sectionCard({required String title, required List<Widget> children}) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
@@ -251,7 +212,7 @@ class _ProviderRegistrationScreenState
 
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -284,9 +245,7 @@ class _ProviderRegistrationScreenState
     );
   }
 
-  
   // Vehicle Type Dropdown
-  
 
   Widget _vehicleTypeDropdown() {
     return LayoutBuilder(
@@ -299,8 +258,10 @@ class _ProviderRegistrationScreenState
           inputDecorationTheme: InputDecorationTheme(
             filled: true,
             fillColor: Colors.grey.shade50,
-            contentPadding:
-                const EdgeInsets.symmetric(horizontal: 14, vertical: 15),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 14,
+              vertical: 15,
+            ),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
               borderSide: BorderSide(color: Colors.grey.shade300),
@@ -340,8 +301,10 @@ class _ProviderRegistrationScreenState
           inputDecorationTheme: InputDecorationTheme(
             filled: true,
             fillColor: Colors.grey.shade50,
-            contentPadding:
-                const EdgeInsets.symmetric(horizontal: 14, vertical: 15),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 14,
+              vertical: 15,
+            ),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
               borderSide: BorderSide(color: Colors.grey.shade300),
@@ -377,8 +340,10 @@ class _ProviderRegistrationScreenState
           inputDecorationTheme: InputDecorationTheme(
             filled: true,
             fillColor: Colors.grey.shade50,
-            contentPadding:
-                const EdgeInsets.symmetric(horizontal: 14, vertical: 15),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 14,
+              vertical: 15,
+            ),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
               borderSide: BorderSide(color: Colors.grey.shade300),
@@ -416,10 +381,12 @@ class _ProviderRegistrationScreenState
           duration: const Duration(milliseconds: 150),
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
           decoration: BoxDecoration(
-            color: isSelected ? navy.withOpacity(0.08) : Colors.white,
+            color: isSelected ? navy.withValues(alpha: 0.08) : Colors.white,
             borderRadius: BorderRadius.circular(30),
             border: Border.all(
-              color: isSelected ? navy.withOpacity(0.35) : Colors.grey.shade300,
+              color: isSelected
+                  ? navy.withValues(alpha: 0.35)
+                  : Colors.grey.shade300,
               width: 1,
             ),
           ),
@@ -452,8 +419,9 @@ class _ProviderRegistrationScreenState
 
     _serviceCategories.forEach((categoryId, categoryData) {
       final String categoryLabel = categoryData['label'] as String;
-      final Map<String, String> options =
-          Map<String, String>.from(categoryData['options'] as Map);
+      final Map<String, String> options = Map<String, String>.from(
+        categoryData['options'] as Map,
+      );
 
       payload[categoryId] = {
         'label': categoryLabel,
@@ -464,8 +432,9 @@ class _ProviderRegistrationScreenState
           return {
             'id': optionId,
             'label': optionLabel,
-            'enabled':
-                _selectedServices.contains(_optionKey(categoryId, optionId)),
+            'enabled': _selectedServices.contains(
+              _optionKey(categoryId, optionId),
+            ),
           };
         }).toList(),
       };
@@ -477,11 +446,13 @@ class _ProviderRegistrationScreenState
   // Submit
 
   Future<void> _submitForm() async {
+    if (_isLoading) return;
     FocusScope.of(context).unfocus();
 
     setState(() {
-      _vehicleTypeError =
-          _selectedVehicleType == null ? 'الرجاء اختيار نوع المركبة' : null;
+      _vehicleTypeError = _selectedVehicleType == null
+          ? 'الرجاء اختيار نوع المركبة'
+          : null;
       _brandError = _selectedBrand == null ? 'الرجاء اختيار الماركة' : null;
       _colorError = _selectedColor == null ? 'الرجاء اختيار اللون' : null;
     });
@@ -503,11 +474,7 @@ class _ProviderRegistrationScreenState
 
     if (_selectedServices.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'الرجاء اختيار خدمة واحدة على الأقل',
-          ),
-        ),
+        const SnackBar(content: Text('الرجاء اختيار خدمة واحدة على الأقل')),
       );
 
       return;
@@ -518,14 +485,6 @@ class _ProviderRegistrationScreenState
     });
 
     try {
-      final UserCredential userCredential =
-          await FirebaseAuth.instance.createUserWithEmailAndPassword(
-        email: _emailController.text.trim(),
-        password: _passwordController.text,
-      );
-
-      await userCredential.user!.sendEmailVerification();
-
       final String vehicleType = _selectedVehicleType?['label'] == 'أخرى'
           ? _otherVehicleTypeController.text.trim()
           : (_selectedVehicleType?['label'] ?? '');
@@ -541,67 +500,49 @@ class _ProviderRegistrationScreenState
       final Map<String, dynamic> servicesToSave =
           _buildServicesOfferedPayload();
 
-      await FirebaseFirestore.instance
-          .collection('providers')
-          .doc(userCredential.user!.uid)
-          .set({
-        'firstName': _firstNameController.text.trim(),
-        'lastName': _lastNameController.text.trim(),
-        'email': _emailController.text.trim(),
-        'phone': _phoneController.text.trim(),
-        'nationalId': _nationalIdController.text.trim(),
+      final verificationEmailSent = await _authService.registerProvider(
+        email: _emailController.text.trim(),
+        password: _passwordController.text,
+        profile: {
+          'firstName': _firstNameController.text.trim(),
+          'lastName': _lastNameController.text.trim(),
+          'email': _emailController.text.trim(),
+          'phone': _phoneController.text.trim(),
+          'nationalId': _nationalIdController.text.trim(),
 
-        'vehicleType': vehicleType,
-        'vehicleBrand': brand,
-        'vehicleColor': color,
-        'vehicleModel': _modelController.text.trim(),
-        'vehicleYear': _yearController.text.trim(),
+          'vehicleType': vehicleType,
+          'vehicleBrand': brand,
+          'vehicleColor': color,
+          'vehicleModel': _modelController.text.trim(),
+          'vehicleYear': _yearController.text.trim(),
 
-        'plateNumberLatin': '${plate.digits} ${plate.englishLetters}',
-        'plateNumberArabic': '${plate.digits} ${plate.arabicLetters}',
-        'licenseNumber': _licenseNumberController.text.trim(),
+          'plateNumberLatin': '${plate.digits} ${plate.englishLetters}',
+          'plateNumberArabic': '${plate.digits} ${plate.arabicLetters}',
+          'licenseNumber': _licenseNumberController.text.trim(),
 
-        'servicesOffered': servicesToSave,
-
-        'status': 'pending',
-
-        'createdAt': FieldValue.serverTimestamp(),
-      });
+          'servicesOffered': servicesToSave,
+        },
+      );
 
       if (!mounted) return;
 
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(
-          builder: (context) => const ProviderSuccessScreen(),
+          builder: (context) => ProviderSuccessScreen(
+            verificationEmailSent: verificationEmailSent,
+          ),
         ),
       );
-    } on FirebaseAuthException catch (e) {
-      String message = 'حدث خطأ ما. الرجاء المحاولة مرة أخرى.';
-
-      if (e.code == 'email-already-in-use') {
-        message = 'هذا البريد الإلكتروني مسجل مسبقًا.';
-      } else if (e.code == 'weak-password') {
-        message = 'كلمة المرور ضعيفة جدًا.';
-      } else if (e.code == 'invalid-email') {
-        message = 'الرجاء إدخال بريد إلكتروني صحيح.';
-      }
-
+    } on AuthException catch (error) {
       if (!mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(message),
-        ),
-      );
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(error.message)));
     } catch (e) {
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'حدث خطأ ما. الرجاء المحاولة مرة أخرى.',
-          ),
-        ),
+        const SnackBar(content: Text('حدث خطأ ما. الرجاء المحاولة مرة أخرى.')),
       );
     } finally {
       if (mounted) {
@@ -616,430 +557,464 @@ class _ProviderRegistrationScreenState
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF5F5FA),
+    return PopScope(
+      canPop: !_isLoading,
+      child: Scaffold(
+        backgroundColor: const Color(0xFFF5F5FA),
 
-      resizeToAvoidBottomInset: true,
+        resizeToAvoidBottomInset: true,
 
-      appBar: AppBar(
-        backgroundColor: navy,
-        foregroundColor: Colors.white,
+        appBar: AppBar(
+          automaticallyImplyLeading: !_isLoading,
+          backgroundColor: navy,
+          foregroundColor: Colors.white,
 
-        title: const Text(
-          'تسجيل مزود خدمة',
+          title: const Text('تسجيل مزود خدمة'),
+
+          centerTitle: true,
         ),
 
-        centerTitle: true,
-      ),
+        body: IgnorePointer(
+          ignoring: _isLoading,
+          child: SafeArea(
+            child: ScrollConfiguration(
+              behavior: const _AppScrollBehavior(),
 
-      body: SafeArea(
-        child: ScrollConfiguration(
-          behavior: const _AppScrollBehavior(),
+              child: Form(
+                key: _formKey,
 
-          child: Form(
-            key: _formKey,
+                // هذا هو الـ Scroll الوحيد للفورم كاملًا
+                child: SingleChildScrollView(
+                  controller: _scrollController,
 
-            // هذا هو الـ Scroll الوحيد للفورم كاملًا
-            child: ListView(
-              controller: _scrollController,
+                  physics: const ClampingScrollPhysics(),
 
-              physics: const ClampingScrollPhysics(),
+                  keyboardDismissBehavior:
+                      ScrollViewKeyboardDismissBehavior.onDrag,
 
-              keyboardDismissBehavior:
-                  ScrollViewKeyboardDismissBehavior.onDrag,
-
-              padding: EdgeInsets.only(
-                left: 16,
-                right: 16,
-                top: 16,
-                bottom: MediaQuery.of(context).viewInsets.bottom + 24,
-              ),
-
-              children: [
-                // ======================================================
-                // Personal Information
-                // ======================================================
-
-                _sectionCard(
-                  title: 'المعلومات الشخصية',
-                  children: [
-                    TextFormField(
-                      controller: _firstNameController,
-                      decoration: _fieldDecoration('الاسم الأول'),
-                      textInputAction: TextInputAction.next,
-                      validator: (value) {
-                        if (value == null || value.trim().isEmpty) {
-                          return 'الرجاء إدخال الاسم الأول';
-                        }
-
-                        return null;
-                      },
+                  child: Padding(
+                    padding: EdgeInsets.only(
+                      left: 16,
+                      right: 16,
+                      top: 16,
+                      bottom: MediaQuery.of(context).viewInsets.bottom + 24,
                     ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        // ======================================================
+                        // Personal Information
+                        // ======================================================
 
-                    const SizedBox(height: 12),
+                        _sectionCard(
+                          title: 'المعلومات الشخصية',
+                          children: [
+                            TextFormField(
+                              controller: _firstNameController,
+                              decoration: _fieldDecoration('الاسم الأول'),
+                              textInputAction: TextInputAction.next,
+                              validator: (value) {
+                                if (value == null || value.trim().isEmpty) {
+                                  return 'الرجاء إدخال الاسم الأول';
+                                }
 
-                    TextFormField(
-                      controller: _lastNameController,
-                      decoration: _fieldDecoration('اسم العائلة'),
-                      textInputAction: TextInputAction.next,
-                      validator: (value) {
-                        if (value == null || value.trim().isEmpty) {
-                          return 'الرجاء إدخال اسم العائلة';
-                        }
+                                return null;
+                              },
+                            ),
 
-                        return null;
-                      },
-                    ),
+                            const SizedBox(height: 12),
 
-                    const SizedBox(height: 12),
+                            TextFormField(
+                              controller: _lastNameController,
+                              decoration: _fieldDecoration('اسم العائلة'),
+                              textInputAction: TextInputAction.next,
+                              validator: (value) {
+                                if (value == null || value.trim().isEmpty) {
+                                  return 'الرجاء إدخال اسم العائلة';
+                                }
 
-                    TextFormField(
-                      controller: _nationalIdController,
-                      keyboardType: TextInputType.number,
-                      decoration: _fieldDecoration('رقم الهوية / الإقامة'),
-                      textInputAction: TextInputAction.next,
-                      validator: (value) {
-                        if (value == null || value.trim().isEmpty) {
-                          return 'الرجاء إدخال رقم الهوية أو الإقامة';
-                        }
+                                return null;
+                              },
+                            ),
 
-                        return null;
-                      },
-                    ),
+                            const SizedBox(height: 12),
 
-                    const SizedBox(height: 12),
+                            TextFormField(
+                              controller: _nationalIdController,
+                              keyboardType: TextInputType.number,
+                              decoration: _fieldDecoration(
+                                'رقم الهوية / الإقامة',
+                              ),
+                              textInputAction: TextInputAction.next,
+                              validator: (value) {
+                                if (value == null || value.trim().isEmpty) {
+                                  return 'الرجاء إدخال رقم الهوية أو الإقامة';
+                                }
 
-                    TextFormField(
-                      controller: _phoneController,
-                      keyboardType: TextInputType.phone,
-                      decoration: _fieldDecoration('رقم الجوال'),
-                      textInputAction: TextInputAction.next,
-                      validator: (value) {
-                        if (value == null || value.trim().isEmpty) {
-                          return 'الرجاء إدخال رقم الجوال';
-                        }
+                                return null;
+                              },
+                            ),
 
-                        if (value.trim().length < 9) {
-                          return 'الرجاء إدخال رقم جوال صحيح';
-                        }
+                            const SizedBox(height: 12),
 
-                        return null;
-                      },
-                    ),
+                            TextFormField(
+                              controller: _phoneController,
+                              keyboardType: TextInputType.phone,
+                              decoration: _fieldDecoration('رقم الجوال'),
+                              textInputAction: TextInputAction.next,
+                              validator: (value) {
+                                if (value == null || value.trim().isEmpty) {
+                                  return 'الرجاء إدخال رقم الجوال';
+                                }
 
-                    const SizedBox(height: 12),
+                                if (value.trim().length < 9) {
+                                  return 'الرجاء إدخال رقم جوال صحيح';
+                                }
 
-                    TextFormField(
-                      controller: _emailController,
-                      keyboardType: TextInputType.emailAddress,
-                      decoration: _fieldDecoration('البريد الإلكتروني'),
-                      textInputAction: TextInputAction.next,
-                      validator: (value) {
-                        if (value == null || value.trim().isEmpty) {
-                          return 'الرجاء إدخال البريد الإلكتروني';
-                        }
+                                return null;
+                              },
+                            ),
 
-                        final emailRegex = RegExp(
-                          r'^[^@\s]+@[^@\s]+\.[^@\s]+$',
-                        );
+                            const SizedBox(height: 12),
 
-                        if (!emailRegex.hasMatch(value.trim())) {
-                          return 'الرجاء إدخال بريد إلكتروني صحيح';
-                        }
+                            TextFormField(
+                              controller: _emailController,
+                              keyboardType: TextInputType.emailAddress,
+                              decoration: _fieldDecoration('البريد الإلكتروني'),
+                              textInputAction: TextInputAction.next,
+                              validator: (value) {
+                                if (value == null || value.trim().isEmpty) {
+                                  return 'الرجاء إدخال البريد الإلكتروني';
+                                }
 
-                        return null;
-                      },
-                    ),
+                                final emailRegex = RegExp(
+                                  r'^[^@\s]+@[^@\s]+\.[^@\s]+$',
+                                );
 
-                    const SizedBox(height: 12),
+                                if (!emailRegex.hasMatch(value.trim())) {
+                                  return 'الرجاء إدخال بريد إلكتروني صحيح';
+                                }
 
-                    TextFormField(
-                      controller: _passwordController,
-                      obscureText: true,
-                      decoration: _fieldDecoration('كلمة المرور'),
-                      textInputAction: TextInputAction.next,
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'الرجاء إدخال كلمة المرور';
-                        }
+                                return null;
+                              },
+                            ),
 
-                        if (value.length < 8) {
-                          return 'يجب أن تكون كلمة المرور 8 أحرف على الأقل';
-                        }
+                            const SizedBox(height: 12),
 
-                        return null;
-                      },
-                    ),
+                            TextFormField(
+                              controller: _passwordController,
+                              obscureText: true,
+                              decoration: _fieldDecoration('كلمة المرور'),
+                              textInputAction: TextInputAction.next,
+                              validator: (value) {
+                                if (value == null || value.isEmpty) {
+                                  return 'الرجاء إدخال كلمة المرور';
+                                }
 
-                    const SizedBox(height: 12),
+                                if (value.length < 8) {
+                                  return 'يجب أن تكون كلمة المرور 8 أحرف على الأقل';
+                                }
 
-                    TextFormField(
-                      controller: _confirmPasswordController,
-                      obscureText: true,
-                      decoration: _fieldDecoration('تأكيد كلمة المرور'),
-                      textInputAction: TextInputAction.done,
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'الرجاء تأكيد كلمة المرور';
-                        }
+                                return null;
+                              },
+                            ),
 
-                        if (value != _passwordController.text) {
-                          return 'كلمتا المرور غير متطابقتين';
-                        }
+                            const SizedBox(height: 12),
 
-                        return null;
-                      },
-                    ),
-                  ],
-                ),
+                            TextFormField(
+                              controller: _confirmPasswordController,
+                              obscureText: true,
+                              decoration: _fieldDecoration('تأكيد كلمة المرور'),
+                              textInputAction: TextInputAction.done,
+                              validator: (value) {
+                                if (value == null || value.isEmpty) {
+                                  return 'الرجاء تأكيد كلمة المرور';
+                                }
 
-                const SizedBox(height: 16),
+                                if (value != _passwordController.text) {
+                                  return 'كلمتا المرور غير متطابقتين';
+                                }
 
-                // ======================================================
-                // Vehicle Details
-                // ======================================================
-
-                _sectionCard(
-                  title: 'بيانات المركبة',
-                  children: [
-                    _vehicleTypeDropdown(),
-
-                    if (_selectedVehicleType?['label'] == 'أخرى') ...[
-                      const SizedBox(height: 12),
-
-                      TextFormField(
-                        controller: _otherVehicleTypeController,
-                        decoration: _fieldDecoration('حدد نوع المركبة'),
-                        textInputAction: TextInputAction.next,
-                        validator: (value) {
-                          if (_selectedVehicleType?['label'] == 'أخرى' &&
-                              (value == null || value.trim().isEmpty)) {
-                            return 'الرجاء تحديد نوع المركبة';
-                          }
-
-                          return null;
-                        },
-                      ),
-                    ],
-
-                    const SizedBox(height: 12),
-
-                    _brandDropdown(),
-
-                    if (_selectedBrand == 'أخرى') ...[
-                      const SizedBox(height: 12),
-
-                      TextFormField(
-                        controller: _otherBrandController,
-                        decoration: _fieldDecoration('حدد الماركة'),
-                        textInputAction: TextInputAction.next,
-                        validator: (value) {
-                          if (_selectedBrand == 'أخرى' &&
-                              (value == null || value.trim().isEmpty)) {
-                            return 'الرجاء تحديد الماركة';
-                          }
-
-                          return null;
-                        },
-                      ),
-                    ],
-
-                    const SizedBox(height: 12),
-
-                    _colorDropdown(),
-
-                    if (_selectedColor == 'أخرى') ...[
-                      const SizedBox(height: 12),
-
-                      TextFormField(
-                        controller: _otherColorController,
-                        decoration: _fieldDecoration('حدد اللون'),
-                        textInputAction: TextInputAction.next,
-                        validator: (value) {
-                          if (_selectedColor == 'أخرى' &&
-                              (value == null || value.trim().isEmpty)) {
-                            return 'الرجاء تحديد اللون';
-                          }
-
-                          return null;
-                        },
-                      ),
-                    ],
-
-                    const SizedBox(height: 12),
-
-                    TextFormField(
-                      controller: _modelController,
-                      decoration: _fieldDecoration('الموديل (مثال: كامري)'),
-                      textInputAction: TextInputAction.next,
-                      validator: (value) {
-                        if (value == null || value.trim().isEmpty) {
-                          return 'الرجاء إدخال الموديل';
-                        }
-
-                        return null;
-                      },
-                    ),
-
-                    const SizedBox(height: 12),
-
-                    TextFormField(
-                      controller: _yearController,
-                      keyboardType: TextInputType.number,
-                      decoration: _fieldDecoration('السنة (مثال: 2023)'),
-                      textInputAction: TextInputAction.next,
-                      validator: (value) {
-                        if (value == null || value.trim().isEmpty) {
-                          return 'الرجاء إدخال السنة';
-                        }
-
-                        final year = int.tryParse(value.trim());
-
-                        if (year == null || value.trim().length != 4) {
-                          return 'الرجاء إدخال سنة صحيحة';
-                        }
-
-                        return null;
-                      },
-                    ),
-
-                    const SizedBox(height: 12),
-
-                    Text(
-                      'رقم اللوحة',
-                      style: TextStyle(fontWeight: FontWeight.bold, color: navy),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      'الرجاء إدخال رقم اللوحة بنفس ترتيبه على لوحتك',
-                      style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
-                    ),
-                    const SizedBox(height: 10),
-                    PlateNumberField(navy: navy, key: _plateFieldKey),
-                    if (_plateError)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 6),
-                        child: Text(
-                          'الرجاء إدخال رقم وحرف واحد على الأقل',
-                          style: TextStyle(color: Colors.red, fontSize: 12),
+                                return null;
+                              },
+                            ),
+                          ],
                         ),
-                      ),
 
-                    const SizedBox(height: 12),
+                        const SizedBox(height: 16),
 
-                    TextFormField(
-                      controller: _licenseNumberController,
-                      decoration: _fieldDecoration('رقم الرخصة / التصريح'),
-                      textInputAction: TextInputAction.next,
-                      validator: (value) {
-                        if (value == null || value.trim().isEmpty) {
-                          return 'الرجاء إدخال رقم الرخصة أو التصريح';
-                        }
+                        // ======================================================
+                        // Vehicle Details
+                        // ======================================================
+                        _sectionCard(
+                          title: 'بيانات المركبة',
+                          children: [
+                            _vehicleTypeDropdown(),
 
-                        return null;
-                      },
-                    ),
-                  ],
-                ),
+                            if (_selectedVehicleType?['label'] == 'أخرى') ...[
+                              const SizedBox(height: 12),
 
-                const SizedBox(height: 16),
-
-                // ======================================================
-                // Services Offered — عنوان لكل فئة، والخيارات
-                // الفرعية تحتها كشرائح قابلة للاختيار.
-                // ======================================================
-
-                _sectionCard(
-                  title: 'الخدمات المقدمة',
-                  children: _serviceCategories.entries.map((categoryEntry) {
-                    final String categoryId = categoryEntry.key;
-                    final Map<String, dynamic> categoryData =
-                        categoryEntry.value;
-                    final String categoryLabel =
-                        categoryData['label'] as String;
-                    final Map<String, String> options =
-                        Map<String, String>.from(
-                            categoryData['options'] as Map);
-
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            categoryLabel,
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: navy,
-                              fontSize: 14,
-                            ),
-                          ),
-                          const SizedBox(height: 10),
-                          Wrap(
-                            spacing: 10,
-                            runSpacing: 10,
-                            children: options.entries.map((optionEntry) {
-                              final String optionId = optionEntry.key;
-                              final String optionLabel = optionEntry.value;
-                              final String key =
-                                  _optionKey(categoryId, optionId);
-                              final bool isSelected =
-                                  _selectedServices.contains(key);
-
-                              return _serviceChip(optionLabel, isSelected, () {
-                                setState(() {
-                                  if (isSelected) {
-                                    _selectedServices.remove(key);
-                                  } else {
-                                    _selectedServices.add(key);
+                              TextFormField(
+                                controller: _otherVehicleTypeController,
+                                decoration: _fieldDecoration('حدد نوع المركبة'),
+                                textInputAction: TextInputAction.next,
+                                validator: (value) {
+                                  if (_selectedVehicleType?['label'] ==
+                                          'أخرى' &&
+                                      (value == null || value.trim().isEmpty)) {
+                                    return 'الرجاء تحديد نوع المركبة';
                                   }
-                                });
-                              });
-                            }).toList(),
+
+                                  return null;
+                                },
+                              ),
+                            ],
+
+                            const SizedBox(height: 12),
+
+                            _brandDropdown(),
+
+                            if (_selectedBrand == 'أخرى') ...[
+                              const SizedBox(height: 12),
+
+                              TextFormField(
+                                controller: _otherBrandController,
+                                decoration: _fieldDecoration('حدد الماركة'),
+                                textInputAction: TextInputAction.next,
+                                validator: (value) {
+                                  if (_selectedBrand == 'أخرى' &&
+                                      (value == null || value.trim().isEmpty)) {
+                                    return 'الرجاء تحديد الماركة';
+                                  }
+
+                                  return null;
+                                },
+                              ),
+                            ],
+
+                            const SizedBox(height: 12),
+
+                            _colorDropdown(),
+
+                            if (_selectedColor == 'أخرى') ...[
+                              const SizedBox(height: 12),
+
+                              TextFormField(
+                                controller: _otherColorController,
+                                decoration: _fieldDecoration('حدد اللون'),
+                                textInputAction: TextInputAction.next,
+                                validator: (value) {
+                                  if (_selectedColor == 'أخرى' &&
+                                      (value == null || value.trim().isEmpty)) {
+                                    return 'الرجاء تحديد اللون';
+                                  }
+
+                                  return null;
+                                },
+                              ),
+                            ],
+
+                            const SizedBox(height: 12),
+
+                            TextFormField(
+                              controller: _modelController,
+                              decoration: _fieldDecoration(
+                                'الموديل (مثال: كامري)',
+                              ),
+                              textInputAction: TextInputAction.next,
+                              validator: (value) {
+                                if (value == null || value.trim().isEmpty) {
+                                  return 'الرجاء إدخال الموديل';
+                                }
+
+                                return null;
+                              },
+                            ),
+
+                            const SizedBox(height: 12),
+
+                            TextFormField(
+                              controller: _yearController,
+                              keyboardType: TextInputType.number,
+                              decoration: _fieldDecoration(
+                                'السنة (مثال: 2023)',
+                              ),
+                              textInputAction: TextInputAction.next,
+                              validator: (value) {
+                                if (value == null || value.trim().isEmpty) {
+                                  return 'الرجاء إدخال السنة';
+                                }
+
+                                final year = int.tryParse(value.trim());
+
+                                if (year == null || value.trim().length != 4) {
+                                  return 'الرجاء إدخال سنة صحيحة';
+                                }
+
+                                return null;
+                              },
+                            ),
+
+                            const SizedBox(height: 12),
+
+                            Text(
+                              'رقم اللوحة',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: navy,
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              'الرجاء إدخال رقم اللوحة بنفس ترتيبه على لوحتك',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey.shade600,
+                              ),
+                            ),
+                            const SizedBox(height: 10),
+                            PlateNumberField(navy: navy, key: _plateFieldKey),
+                            if (_plateError)
+                              Padding(
+                                padding: const EdgeInsets.only(top: 6),
+                                child: Text(
+                                  'الرجاء إدخال رقم وحرف واحد على الأقل',
+                                  style: TextStyle(
+                                    color: Colors.red,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ),
+
+                            const SizedBox(height: 12),
+
+                            TextFormField(
+                              controller: _licenseNumberController,
+                              decoration: _fieldDecoration(
+                                'رقم الرخصة / التصريح',
+                              ),
+                              textInputAction: TextInputAction.next,
+                              validator: (value) {
+                                if (value == null || value.trim().isEmpty) {
+                                  return 'الرجاء إدخال رقم الرخصة أو التصريح';
+                                }
+
+                                return null;
+                              },
+                            ),
+                          ],
+                        ),
+
+                        const SizedBox(height: 16),
+
+                        // ======================================================
+                        // Services Offered — عنوان لكل فئة، والخيارات
+                        // الفرعية تحتها كشرائح قابلة للاختيار.
+                        // ======================================================
+                        _sectionCard(
+                          title: 'الخدمات المقدمة',
+                          children: _serviceCategories.entries.map((
+                            categoryEntry,
+                          ) {
+                            final String categoryId = categoryEntry.key;
+                            final Map<String, dynamic> categoryData =
+                                categoryEntry.value;
+                            final String categoryLabel =
+                                categoryData['label'] as String;
+                            final Map<String, String> options =
+                                Map<String, String>.from(
+                                  categoryData['options'] as Map,
+                                );
+
+                            return Padding(
+                              padding: const EdgeInsets.only(bottom: 16),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    categoryLabel,
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      color: navy,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 10),
+                                  Wrap(
+                                    spacing: 10,
+                                    runSpacing: 10,
+                                    children: options.entries.map((
+                                      optionEntry,
+                                    ) {
+                                      final String optionId = optionEntry.key;
+                                      final String optionLabel =
+                                          optionEntry.value;
+                                      final String key = _optionKey(
+                                        categoryId,
+                                        optionId,
+                                      );
+                                      final bool isSelected = _selectedServices
+                                          .contains(key);
+
+                                      return _serviceChip(
+                                        optionLabel,
+                                        isSelected,
+                                        () {
+                                          setState(() {
+                                            if (isSelected) {
+                                              _selectedServices.remove(key);
+                                            } else {
+                                              _selectedServices.add(key);
+                                            }
+                                          });
+                                        },
+                                      );
+                                    }).toList(),
+                                  ),
+                                ],
+                              ),
+                            );
+                          }).toList(),
+                        ),
+
+                        const SizedBox(height: 24),
+
+                        // ======================================================
+                        // Registration button
+                        // ======================================================
+                        SizedBox(
+                          height: 52,
+                          child: ElevatedButton(
+                            onPressed: _isLoading ? null : _submitForm,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: navy,
+                              foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                            child: _isLoading
+                                ? const SizedBox(
+                                    height: 20,
+                                    width: 20,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: Colors.white,
+                                    ),
+                                  )
+                                : const Text(
+                                    'إرسال طلب التسجيل',
+                                    style: TextStyle(fontSize: 16),
+                                  ),
                           ),
-                        ],
-                      ),
-                    );
-                  }).toList(),
-                ),
+                        ),
 
-                const SizedBox(height: 24),
-
-              // ======================================================
-              // Registration button
-              // ======================================================
-
-                SizedBox(
-                  height: 52,
-                  child: ElevatedButton(
-                    onPressed: _isLoading ? null : _submitForm,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: navy,
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
+                        const SizedBox(height: 16),
+                      ],
                     ),
-                    child: _isLoading
-                        ? const SizedBox(
-                            height: 20,
-                            width: 20,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Colors.white,
-                            ),
-                          )
-                        : const Text(
-                            'إرسال طلب التسجيل',
-                            style: TextStyle(
-                              fontSize: 16,
-                            ),
-                          ),
                   ),
                 ),
-
-                const SizedBox(height: 16),
-              ],
+              ),
             ),
           ),
         ),
@@ -1055,9 +1030,9 @@ class _AppScrollBehavior extends MaterialScrollBehavior {
 
   @override
   Set<PointerDeviceKind> get dragDevices => {
-        PointerDeviceKind.touch,
-        PointerDeviceKind.mouse,
-        PointerDeviceKind.trackpad,
-        PointerDeviceKind.stylus,
-      };
+    PointerDeviceKind.touch,
+    PointerDeviceKind.mouse,
+    PointerDeviceKind.trackpad,
+    PointerDeviceKind.stylus,
+  };
 }

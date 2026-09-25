@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 
 import '../config/app_config.dart';
 import '../services/auth_service.dart';
+import 'provider_registration_screen.dart';
 
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
+  const LoginScreen({super.key, this.authService});
+  final AuthService? authService;
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -14,7 +16,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-  final _authService = AuthService();
+  late final _authService = widget.authService ?? AuthService();
   bool _loading = false;
   bool _obscurePassword = true;
 
@@ -26,7 +28,7 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _logIn() async {
-    if (!_formKey.currentState!.validate()) return;
+    if (_loading || !_formKey.currentState!.validate()) return;
     setState(() => _loading = true);
     try {
       await _authService.logIn(
@@ -145,6 +147,18 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                         )
                       : const Text('تسجيل الدخول'),
+                ),
+                TextButton(
+                  onPressed: _loading
+                      ? null
+                      : () => Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                            builder: (_) => ProviderRegistrationScreen(
+                              authService: _authService,
+                            ),
+                          ),
+                        ),
+                  child: const Text('إنشاء حساب مزود خدمة'),
                 ),
               ],
             ),

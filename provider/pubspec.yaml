@@ -38,8 +38,18 @@ dependencies:
   firebase_auth: ^5.3.1
   cloud_firestore: ^5.4.3
   google_nav_bar: ^5.0.7
+  flutter_material_design_icons: ^3.1.0+7447
+  flutter_localizations:
+    sdk: flutter
 
 dev_dependencies:
+  firebase_core_web: ^2.24.1
+  firebase_auth_web: ^5.15.3
+  cloud_firestore_web: ^4.4.12
+  flutter_web_plugins:
+    sdk: flutter
+  http: ^1.6.0
+  mocktail: ^1.0.4
   flutter_test:
     sdk: flutter
 
