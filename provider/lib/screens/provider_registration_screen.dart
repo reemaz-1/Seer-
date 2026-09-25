@@ -73,7 +73,7 @@ class _ProviderRegistrationScreenState
     'ميتسوبيشي',
     'إم جي',
     'جيلي',
-    'چانجان',
+    'شانجان',
     'بي واي دي',
     'أخرى',
   ];
@@ -86,6 +86,7 @@ class _ProviderRegistrationScreenState
     'برتقالي',
     'أحمر',
     'أزرق',
+    'كحلي',
     'بني',
     'ذهبي',
     'بيج',
