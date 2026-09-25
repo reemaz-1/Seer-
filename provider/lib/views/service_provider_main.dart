@@ -1,17 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:google_nav_bar/google_nav_bar.dart';
+
 import '../screens/provider_profile_screen.dart';
 
+import '../services/auth_service.dart';
+import '../widgets/logout_button.dart';
 import 'home.dart';
 import 'notifications.dart';
 import 'orders.dart';
 
 class ServiceProviderMain extends StatefulWidget {
-  const ServiceProviderMain({super.key});
+  const ServiceProviderMain({super.key, this.authService, this.firstName = ''});
+  final AuthService? authService;
+  final String firstName;
 
   @override
-  State<ServiceProviderMain> createState() =>
-      _ServiceProviderMainState();
+  State<ServiceProviderMain> createState() => _ServiceProviderMainState();
 }
 
 class _ServiceProviderMainState extends State<ServiceProviderMain> {
@@ -23,24 +27,26 @@ class _ServiceProviderMainState extends State<ServiceProviderMain> {
       backgroundColor: const Color(0xFFF1F4FA),
 
       // Index 1 opens the combined Orders screen.
-     body: selectedIndex == 0
-    ? const ProviderHome()
-    : selectedIndex == 1
-        ? const ProviderOrders()
-        : const ProviderProfileScreen(),
+      body: selectedIndex == 0
+          ? ProviderHome(firstName: widget.firstName)
+          : selectedIndex == 1
+          ? const ProviderOrders()
+          : ProviderProfileScreen(authService: widget.authService),
 
       appBar: AppBar(
         backgroundColor: const Color(0xFFF1F4FA),
         elevation: 0,
         centerTitle: true,
         leadingWidth: 130,
-        leading: const Padding(
-          padding: EdgeInsets.only(left: 16),
+        leading: Padding(
+          padding: const EdgeInsets.only(left: 16),
           child: Align(
             alignment: Alignment.centerLeft,
             child: Text(
-              'مرحباً، نورة',
-              style: TextStyle(
+              widget.firstName.isEmpty
+                  ? 'مرحباً بك'
+                  : 'مرحباً، ${widget.firstName}',
+              style: const TextStyle(
                 color: Color(0xFF0E1B33),
                 fontSize: 14,
                 fontWeight: FontWeight.w500,
@@ -58,6 +64,7 @@ class _ServiceProviderMainState extends State<ServiceProviderMain> {
           ),
         ),
         actions: [
+          LogoutButton(authService: widget.authService),
           Padding(
             padding: const EdgeInsets.only(right: 16),
             child: Container(
@@ -70,15 +77,11 @@ class _ServiceProviderMainState extends State<ServiceProviderMain> {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) =>
-                          const ProviderNotifications(),
+                      builder: (context) => const ProviderNotifications(),
                     ),
                   );
                 },
-                icon: const Icon(
-                  Icons.notifications_none,
-                  color: Colors.white,
-                ),
+                icon: const Icon(Icons.notifications_none, color: Colors.white),
               ),
             ),
           ),
@@ -88,10 +91,7 @@ class _ServiceProviderMainState extends State<ServiceProviderMain> {
       bottomNavigationBar: Container(
         color: const Color(0xFFF1F4FA),
         child: Padding(
-          padding: const EdgeInsets.symmetric(
-            horizontal: 15,
-            vertical: 20,
-          ),
+          padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 20),
           child: GNav(
             backgroundColor: Colors.transparent,
             color: const Color(0xFF69728C),
@@ -106,18 +106,9 @@ class _ServiceProviderMainState extends State<ServiceProviderMain> {
               });
             },
             tabs: const [
-              GButton(
-                icon: Icons.home_rounded,
-                text: 'الرئيسية',
-              ),
-              GButton(
-                icon: Icons.receipt_long_rounded,
-                text: 'الطلبات',
-              ),
-              GButton(
-                icon: Icons.person_rounded,
-                text: 'الحساب',
-              ),
+              GButton(icon: Icons.home_rounded, text: 'الرئيسية'),
+              GButton(icon: Icons.receipt_long_rounded, text: 'الطلبات'),
+              GButton(icon: Icons.person_rounded, text: 'الحساب'),
             ],
           ),
         ),
