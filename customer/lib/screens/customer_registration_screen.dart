@@ -73,6 +73,9 @@ class _CustomerRegistrationScreenState
           content: Text('تم إنشاء الحساب! الرجاء التحقق من بريدك الإلكتروني.'),
         ),
       );
+
+      Navigator.of(context).popUntil((route) => route.isFirst);
+
     } on FirebaseAuthException catch (e) {
       String message = 'حدث خطأ ما. الرجاء المحاولة مرة أخرى.';
       if (e.code == 'email-already-in-use') {

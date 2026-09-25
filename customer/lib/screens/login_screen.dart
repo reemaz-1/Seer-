@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
 import '../theme/app_theme.dart';
-import 'home_screen.dart';
+import 'customer_main.dart';
 
 /// Log In screen — works for both apps; pass [role] to pick the
 /// matching color theme (Customer = Icon Navy, Provider = Fleet Blue).
@@ -39,11 +39,7 @@ class _LoginScreenState extends State<LoginScreen> {
         email: _emailController.text,
         password: _passwordController.text,
       );
-      if (!mounted) return;
-      Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (_) => HomeScreen(role: widget.role)),
-            (route) => false,
-      );
+     
     } on AuthException catch (e) {
       _showError(e.message);
     } finally {

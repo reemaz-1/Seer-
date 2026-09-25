@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
- 
+import 'package:firebase_auth/firebase_auth.dart';
+
 import '../models/customer.dart';
 import '../models/vehicle.dart';
  
@@ -61,8 +62,7 @@ class ProfileController extends ChangeNotifier {
   }
  
   Future<void> logout() async {
-    // Once Firebase Auth is set up:
-    // await FirebaseAuth.instance.signOut();
+    await FirebaseAuth.instance.signOut();
   }
  
   // ---------- Validation (kept here so the views stay simple) ----------

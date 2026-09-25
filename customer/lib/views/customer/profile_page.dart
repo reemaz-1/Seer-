@@ -57,13 +57,25 @@ class _ProfilePageState extends State<ProfilePage> {
       danger: true,
     );
     if (!ok) return;
-    await _controller.logout();
+
+    debugPrint('🔴 logout button pressed, calling signOut...');
+
+    try {
+      await _controller.logout().timeout(
+        const Duration(seconds: 8),
+        onTimeout: () {
+          debugPrint('🔴 signOut TIMED OUT after 8 seconds');
+          throw Exception('انتهت المهلة — signOut علّق أكثر من 8 ثواني');
+        },
+      );
+      debugPrint('🟢 signOut finished successfully');
+    } catch (e) {
+      debugPrint('🔴 signOut threw an error: $e');
+      if (mounted) _showMessage('خطأ: $e');
+      return;
+    }
+
     if (!mounted) return;
-    // TODO: go to the login page once it exists, e.g.
-    // Navigator.of(context).pushAndRemoveUntil(
-    //   MaterialPageRoute(builder: (_) => const LoginPage()),
-    //   (route) => false,
-    // );
   }
 
   Future<void> _openVehicles() async {
