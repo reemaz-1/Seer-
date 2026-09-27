@@ -47,11 +47,11 @@ class _CustomerRegistrationScreenState
     });
 
     try {
-      final UserCredential userCredential =
-          await FirebaseAuth.instance.createUserWithEmailAndPassword(
-        email: _emailController.text.trim(),
-        password: _passwordController.text,
-      );
+      final UserCredential userCredential = await FirebaseAuth.instance
+          .createUserWithEmailAndPassword(
+            email: _emailController.text.trim(),
+            password: _passwordController.text,
+          );
 
       await userCredential.user!.sendEmailVerification();
 
@@ -59,12 +59,12 @@ class _CustomerRegistrationScreenState
           .collection('customers')
           .doc(userCredential.user!.uid)
           .set({
-        'firstName': _firstNameController.text.trim(),
-        'lastName': _lastNameController.text.trim(),
-        'email': _emailController.text.trim(),
-        'phone': _phoneController.text.trim(),
-        'createdAt': FieldValue.serverTimestamp(),
-      });
+            'firstName': _firstNameController.text.trim(),
+            'lastName': _lastNameController.text.trim(),
+            'email': _emailController.text.trim(),
+            'phone': _phoneController.text.trim(),
+            'createdAt': FieldValue.serverTimestamp(),
+          });
 
       if (!mounted) return;
 
@@ -73,6 +73,9 @@ class _CustomerRegistrationScreenState
           content: Text('تم إنشاء الحساب! الرجاء التحقق من بريدك الإلكتروني.'),
         ),
       );
+
+      Navigator.of(context).popUntil((route) => route.isFirst);
+
     } on FirebaseAuthException catch (e) {
       String message = 'حدث خطأ ما. الرجاء المحاولة مرة أخرى.';
       if (e.code == 'email-already-in-use') {
@@ -84,9 +87,8 @@ class _CustomerRegistrationScreenState
       }
 
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(message)),
-      );
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(message)));
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -130,7 +132,7 @@ class _CustomerRegistrationScreenState
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -153,6 +155,7 @@ class _CustomerRegistrationScreenState
       ),
     );
   }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
