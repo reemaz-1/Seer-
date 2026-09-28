@@ -5,99 +5,13 @@ import 'edit_vehicle_screen.dart';
 import 'edit_services_screen.dart';
 import '../services/auth_service.dart';
 import '../widgets/logout_button.dart';
+import '../models/service_provider.dart';
+import '../controllers/provider_profile_controller.dart';
+
+export '../models/service_provider.dart';
 
 
-const Map<String, List<String>> allServiceBranches = {
-  'البطارية': ['شحن', 'تبديل'],
-  'الوقود': ['٩١', '٩٥'],
-  'الإطارات': ['نفخ', 'تصليح', 'تبديل احتياطي', 'تركيب جديد'],
-  'السطحة': ['عادية', 'هيدروليك'],
-};
 
-const Map<String, String> _serviceOptionToBranch = {
-  'activation'  : 'شحن',
-  'replace'     : 'تبديل',
-  'petrol91'    : '٩١',
-  'petrol95'    : '٩٥',
-  'airInflate'  : 'نفخ',
-  'patch'       : 'تصليح',
-  'spareChange' : 'تبديل احتياطي',
-  'newTire'     : 'تركيب جديد',
-  'regular'     : 'عادية',
-  'hydraulic'   : 'هيدروليك',
-};
-
-Set<String> activeBranchesFromServicesOffered(dynamic servicesOffered){
-  final Set<String> active = {};
-  if(servicesOffered is! Map) return active;
-
-  for(final category in servicesOffered.values){
-    if(category is! Map) continue;
-    final options = category['options'];
-    if(options is! List) continue;
-
-    for(final option in options){
-      if(option is! Map) continue;
-      if(option['enabled'] == true){
-        final branch = _serviceOptionToBranch[option['id']];
-        if(branch != null) active.add(branch);
-      }//end if
-    }//end for
-  }//end for
-  return active;
-}//end activeBranchesFromServicesOffered
-
-const Map<String, Map<String, dynamic>> _serviceCategoryDefinitions = {
-  'battery': {
-    'label': 'خدمة البطارية',
-    'options': [
-      {'id': 'activation', 'label': 'تشغيل البطارية (اشتراك)', 'branch': 'شحن'},
-      {'id': 'replace', 'label': 'تغيير البطارية', 'branch': 'تبديل'},
-    ],
-  },
-  'fuel': {
-    'label': 'التزويد بالوقود',
-    'options': [
-      {'id': 'petrol91', 'label': 'بنزين 91 (أخضر)', 'branch': '٩١'},
-      {'id': 'petrol95', 'label': 'بنزين 95 (أحمر)', 'branch': '٩٥'},
-    ],
-  },
-  'tires': {
-    'label': 'خدمة الإطارات',
-    'options': [
-      {'id': 'airInflate', 'label': 'نفخ الإطار بالهواء', 'branch': 'نفخ'},
-      {'id': 'patch', 'label': 'ترقيع الإطار', 'branch': 'تصليح'},
-      {'id': 'spareChange', 'label': 'تغيير الإطار الاحتياطي', 'branch': 'تبديل احتياطي'},
-      {'id': 'newTire', 'label': 'تغيير الإطار بإطار جديد', 'branch': 'تركيب جديد'},
-    ],
-  },
-  'towing': {
-    'label': 'خدمة السطحة',
-    'options': [
-      {'id': 'regular', 'label': 'سطحة عادية', 'branch': 'عادية'},
-      {'id': 'hydraulic', 'label': 'سطحة هيدروليكية', 'branch': 'هيدروليك'},
-    ],
-  },
-};
-
-
-Map<String, dynamic> servicesOfferedFromActiveBranches(Set<String> activeBranches){
-  final Map<String, dynamic> result = {};
-  _serviceCategoryDefinitions.forEach((categoryKey, categoryDef){
-    result[categoryKey] = {
-      'label': categoryDef['label'],
-      'options': [
-        for (final opt in categoryDef['options'] as List<Map<String, dynamic>>)
-          {
-            'id': opt['id'],
-            'label': opt['label'],
-            'enabled': activeBranches.contains(opt['branch']),
-          },
-      ],
-    };
-  });
-  return result;
-}//end servicesOfferedFromActiveBranches
 
 class ProviderProfileScreen extends StatefulWidget{
 
@@ -113,69 +27,57 @@ class ProviderProfileScreen extends StatefulWidget{
 class _ProviderProfileScreenState extends State<ProviderProfileScreen>{
 
   late final AuthService _authService;
-  ServiceProviderData? provider;
-  bool isLoading = true;
-  String? errorMessage;
+  late final ProviderProfileController _controller;
 
-  @override
+    @override
   void initState(){
    super.initState();
    _authService = widget.authService ?? AuthService();
+   _controller = ProviderProfileController()..addListener(_onControllerChanged);
    _loadProvider();
   }
 
-  Future<void> _loadProvider() async{
-    setState(() {
-      isLoading = true;
-      errorMessage = null;
-    });
-    try{
-      final map = await _authService.getProviderProfile();
-      if (!mounted) return;
-      if(map != null){
-        provider = ServiceProviderData.fromMap(map);
-      } else {
-        errorMessage = 'المستند غير موجود';
-      }
-    } on AuthException catch (error) {
-      if (!mounted) return;
-      errorMessage = error.message;
-    } catch(e){
-      if (!mounted) return;
-      errorMessage = 'تم قطع الاتصال، الرجاء التأكد من اتصالك بالإنترنت';
-    }
-    setState((){
-      isLoading = false;
-    });
+  @override
+  void dispose() {
+    _controller.removeListener(_onControllerChanged);
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _onControllerChanged() {
+    if (mounted) setState(() {});
+  }
+
+    Future<void> _loadProvider() async{
+    final uid = _authService.currentUser?.uid;
+    if (uid == null) return;
+    await _controller.load(uid);
   }//end _loadProvider
 
-  Future<bool> _saveProviderUpdates(Map<String, dynamic> updates) async{
-    try {
-      await _authService.updateProviderProfile(updates);
-      return mounted;
-    } on AuthException catch (error) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(error.message)),
-        );
-      }
-      return false;
+    Future<void> _saveProviderUpdates(Map<String, dynamic> updates, ServiceProviderData updated) async{
+    final uid = _authService.currentUser?.uid;
+    if (uid == null) return;
+    final error = await _controller.saveUpdates(uid, updates, updated);
+    if (error != null && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error)),
+      );
     }
   }//end _saveProviderUpdates
  
   @override
   Widget build(BuildContext contex){
 
-    if(isLoading){
+        if(_controller.isLoading){
       return const Center(child: CircularProgressIndicator());
     }// end if
 
-    if(errorMessage != null ){
+    if(_controller.provider == null){
       return Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(errorMessage!, textAlign: TextAlign.center),
+            Text(_controller.errorMessage ?? 'حدث خطأ غير متوقع', textAlign: TextAlign.center),
             TextButton(
               onPressed: _loadProvider,
               child: const Text('إعادة المحاولة'),
@@ -186,7 +88,7 @@ class _ProviderProfileScreenState extends State<ProviderProfileScreen>{
       );
     }//end if
 
-    final data = provider!;
+    final data = _controller.provider!;
 
     return Directionality(
       textDirection: TextDirection.rtl,
@@ -218,16 +120,13 @@ class _ProviderProfileScreenState extends State<ProviderProfileScreen>{
                       builder: (context) => EditProfileScreen(provider: data),
                     ),
                   );
+                  
                   if(updated != null && mounted){
-                    final saved = await _saveProviderUpdates({
+                    await _saveProviderUpdates({
                       'firstName' : updated.firstName,
                       'lastName' :updated.lastName,
                       'phone' : updated.phone,
-                    });
-                    if (!saved || !mounted) return;
-                    setState((){
-                      provider = updated;
-                    });
+                    }, updated);
                   }
                 }, // edit the profile page
               ),
@@ -248,18 +147,15 @@ class _ProviderProfileScreenState extends State<ProviderProfileScreen>{
                     MaterialPageRoute(
                       builder: (context) => EditVehicleScreen(provider: data),
                     ),
-                  );
-                  if(updated != null && mounted){
-                    final saved = await _saveProviderUpdates({
+                  );        
+
+                   if(updated != null && mounted){
+                    await _saveProviderUpdates({
                       'vehicleColor' : updated.vehicleColor,
                       'plateNumberArabic' : updated.plateNumberArabic,
                       'plateNumberLatin' : updated.plateNumberLatin,
                       'licenseNumber' : updated.licenseNumber,
-                    });
-                    if (!saved || !mounted) return;
-                    setState((){
-                      provider = updated;
-                    });
+                    }, updated);
                   }
                 },
               ),
@@ -438,16 +334,13 @@ Widget _buildServicesCard(ServiceProviderData provider){
                   MaterialPageRoute(
                     builder : (context) => EditServicesScreen(provider: provider),
                   ),
-                );
-                if(updated != null && mounted){
-                  final saved = await _saveProviderUpdates({
+                );           
+
+                 if(updated != null && mounted){
+                  await _saveProviderUpdates({
                     'servicesOffered' : servicesOfferedFromActiveBranches(updated.activeBranches),
-                   });
-                  if (!saved || !mounted) return;
-                  setState((){
-                    this.provider = updated;
-                  });
-                }
+                   }, updated);
+                }//end if
               },
               child: const Text(
                 'تعديل',
@@ -530,55 +423,3 @@ Widget _buildAccountCard(){
 
 
 
-class ServiceProviderData{
-  final String firstName;
-  final String lastName;
-  final String phone;
-  final String email;
-  final String nationalId;
-  final String vehicle;
-  final String plateNumberArabic;
-  final String plateNumberLatin;
-  final String vehicleColor;
-  final String licenseNumber;
-  final double rating;
-  final String status;
-  final Set<String> activeBranches;
-
-
-  ServiceProviderData({
-    required this.firstName,
-    required this.lastName,
-    required this.phone,
-    required this.email,
-    required this.nationalId,
-    required this.vehicle,
-    required this.plateNumberArabic,
-    required this.plateNumberLatin,
-    required this.vehicleColor,
-    required this.licenseNumber,
-    required this.rating,
-    required this.status,
-    required this.activeBranches,
-  });
-
-  factory ServiceProviderData.fromMap(Map<String, dynamic> map) {
-
-    return ServiceProviderData(
-      firstName: map['firstName'] ?? '',
-      lastName: map['lastName'] ?? '',
-      phone: map['phone'] ?? '',
-      email: map['email'] ?? '',
-      nationalId: map['nationalId'] ?? '',
-      vehicle: '${map['vehicleBrand'] ?? ''} ${map['vehicleModel'] ?? ''}',
-      plateNumberArabic: map['plateNumberArabic'] ?? '',
-      plateNumberLatin: map['plateNumberLatin'] ?? '',
-      vehicleColor: map['vehicleColor'] ?? '',
-      licenseNumber: map['licenseNumber'] ?? '',
-      rating: 0.0,
-      status: map['status'] ?? '',
-      activeBranches: activeBranchesFromServicesOffered(map['servicesOffered']),
-    );
-  }
-
-}//end serviceProviderData
