@@ -3,7 +3,8 @@ import '../theme/app_colors.dart';
 import 'edit_profile_screen.dart';
 import 'edit_vehicle_screen.dart';
 import 'edit_services_screen.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import '../services/auth_service.dart';
+import '../widgets/logout_button.dart';
 
 
 const Map<String, List<String>> allServiceBranches = {
@@ -100,7 +101,9 @@ Map<String, dynamic> servicesOfferedFromActiveBranches(Set<String> activeBranche
 
 class ProviderProfileScreen extends StatefulWidget{
 
-  const ProviderProfileScreen({super.key});
+  const ProviderProfileScreen({super.key, this.authService});
+
+  final AuthService? authService;
 
   @override
   State<ProviderProfileScreen> createState() => _ProviderProfileScreenState();
@@ -109,6 +112,7 @@ class ProviderProfileScreen extends StatefulWidget{
 
 class _ProviderProfileScreenState extends State<ProviderProfileScreen>{
 
+  late final AuthService _authService;
   ServiceProviderData? provider;
   bool isLoading = true;
   String? errorMessage;
@@ -116,22 +120,28 @@ class _ProviderProfileScreenState extends State<ProviderProfileScreen>{
   @override
   void initState(){
    super.initState();
+   _authService = widget.authService ?? AuthService();
    _loadProvider();
   }
 
   Future<void> _loadProvider() async{
+    setState(() {
+      isLoading = true;
+      errorMessage = null;
+    });
     try{
-      final doc = await FirebaseFirestore.instance
-      .collection('providers')
-      .doc('ktBu2no74XRXl0oTvckZ8MD7Z543')
-      .get();
-      final map = doc.data();
+      final map = await _authService.getProviderProfile();
+      if (!mounted) return;
       if(map != null){
         provider = ServiceProviderData.fromMap(map);
       } else {
         errorMessage = 'المستند غير موجود';
       }
+    } on AuthException catch (error) {
+      if (!mounted) return;
+      errorMessage = error.message;
     } catch(e){
+      if (!mounted) return;
       errorMessage = 'تم قطع الاتصال، الرجاء التأكد من اتصالك بالإنترنت';
     }
     setState((){
@@ -139,11 +149,18 @@ class _ProviderProfileScreenState extends State<ProviderProfileScreen>{
     });
   }//end _loadProvider
 
-  Future<void> _saveProviderUpdates(Map<String, dynamic> updates) async{
-    await FirebaseFirestore.instance
-    .collection('providers')
-    .doc('ktBu2no74XRXl0oTvckZ8MD7Z543')
-    .update(updates);
+  Future<bool> _saveProviderUpdates(Map<String, dynamic> updates) async{
+    try {
+      await _authService.updateProviderProfile(updates);
+      return mounted;
+    } on AuthException catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(error.message)),
+        );
+      }
+      return false;
+    }
   }//end _saveProviderUpdates
  
   @override
@@ -154,7 +171,19 @@ class _ProviderProfileScreenState extends State<ProviderProfileScreen>{
     }// end if
 
     if(errorMessage != null ){
-      return Center(child: Text(errorMessage!));
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(errorMessage!, textAlign: TextAlign.center),
+            TextButton(
+              onPressed: _loadProvider,
+              child: const Text('إعادة المحاولة'),
+            ),
+            LogoutButton(authService: _authService),
+          ],
+        ),
+      );
     }//end if
 
     final data = provider!;
@@ -189,12 +218,13 @@ class _ProviderProfileScreenState extends State<ProviderProfileScreen>{
                       builder: (context) => EditProfileScreen(provider: data),
                     ),
                   );
-                  if(updated != null){
-                    await _saveProviderUpdates({  
+                  if(updated != null && mounted){
+                    final saved = await _saveProviderUpdates({
                       'firstName' : updated.firstName,
                       'lastName' :updated.lastName,
                       'phone' : updated.phone,
                     });
+                    if (!saved || !mounted) return;
                     setState((){
                       provider = updated;
                     });
@@ -219,13 +249,14 @@ class _ProviderProfileScreenState extends State<ProviderProfileScreen>{
                       builder: (context) => EditVehicleScreen(provider: data),
                     ),
                   );
-                  if(updated != null){
-                    await _saveProviderUpdates({
+                  if(updated != null && mounted){
+                    final saved = await _saveProviderUpdates({
                       'vehicleColor' : updated.vehicleColor,
                       'plateNumberArabic' : updated.plateNumberArabic,
                       'plateNumberLatin' : updated.plateNumberLatin,
                       'licenseNumber' : updated.licenseNumber,
                     });
+                    if (!saved || !mounted) return;
                     setState((){
                       provider = updated;
                     });
@@ -263,7 +294,7 @@ class _ProviderProfileScreenState extends State<ProviderProfileScreen>{
            ),
            alignment: Alignment.center,
            child: Text(
-            provider.firstName.characters.first,
+            provider.firstName.isEmpty ? '؟' : provider.firstName.characters.first,
             style: const TextStyle(
               color: Colors.white,
               fontWeight: FontWeight.bold,
@@ -349,10 +380,28 @@ class _ProviderProfileScreenState extends State<ProviderProfileScreen>{
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 6),
               child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(rows.keys.elementAt(i), style:TextStyle(fontSize: 13)),
-                  Text(rows.values.elementAt(i), style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.secondaryText)),
+                  Expanded(
+                    flex: 2,
+                    child: Text(
+                      rows.keys.elementAt(i),
+                      style: const TextStyle(fontSize: 13),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    flex: 3,
+                    child: Text(
+                      rows.values.elementAt(i),
+                      textAlign: TextAlign.end,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.secondaryText,
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -390,10 +439,11 @@ Widget _buildServicesCard(ServiceProviderData provider){
                     builder : (context) => EditServicesScreen(provider: provider),
                   ),
                 );
-                if(updated != null){
-                  await _saveProviderUpdates({
+                if(updated != null && mounted){
+                  final saved = await _saveProviderUpdates({
                     'servicesOffered' : servicesOfferedFromActiveBranches(updated.activeBranches),
                    });
+                  if (!saved || !mounted) return;
                   setState((){
                     this.provider = updated;
                   });
@@ -458,10 +508,11 @@ Widget _buildChip(String label, {required bool active}){
 }//end _buildChip
 
 Widget _buildAccountCard(){
-  return Container(
-    decoration: BoxDecoration(
-      color: AppColors.card,
-      border: Border.all(color: AppColors.cardBorder),
+  return Material(
+    color: AppColors.card,
+    clipBehavior: Clip.antiAlias,
+    shape: RoundedRectangleBorder(
+      side: const BorderSide(color: AppColors.cardBorder),
       borderRadius: BorderRadius.circular(16),
     ),
     child: ListTile(
@@ -470,7 +521,7 @@ Widget _buildAccountCard(){
         'تسجيل الخروج ',
         style: TextStyle(color: Colors.red, fontSize: 15),
       ),
-      onTap: () {},
+      onTap: () => LogoutButton.confirm(context, authService: _authService),
     ),
   );
 }//end _buildAccountCard

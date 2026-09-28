@@ -9,7 +9,7 @@ import 'screens/customer_main.dart';
 import 'screens/login_screen.dart';
 import 'screens/customer_registration_screen.dart';
 import 'theme/app_theme.dart';
-
+import 'screens/email_verification_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -54,8 +54,15 @@ class MyApp extends StatelessWidget {
     );
   }
 }
-class AuthGate extends StatelessWidget {
+class AuthGate extends StatefulWidget {
   const AuthGate({super.key});
+
+  @override
+  State<AuthGate> createState() => _AuthGateState();
+}
+
+class _AuthGateState extends State<AuthGate> {
+  void _refresh() => setState(() {});
 
   @override
   Widget build(BuildContext context) {
@@ -67,10 +74,14 @@ class AuthGate extends StatelessWidget {
             body: Center(child: CircularProgressIndicator()),
           );
         }
-        if (snapshot.hasData) {
-          return const CustomerMain();
+        final user = snapshot.data;
+        if (user == null) {
+          return const LoginScreen(role: AppRole.customer);
         }
-        return const LoginScreen(role: AppRole.customer);
+        if (!user.emailVerified) {
+          return EmailVerificationScreen(onVerified: _refresh);
+        }
+        return const CustomerMain();
       },
     );
   }

@@ -7,13 +7,13 @@ class AppTheme {
     useMaterial3: true,
     scaffoldBackgroundColor: AppColors.background,
     colorScheme: ColorScheme.fromSeed(
-      seedColor: AppColors.accent,
-      primary: AppColors.accent,
+      seedColor: AppColors.blue,
+      primary: AppColors.blue,
       surface: AppColors.background,
-      error: AppColors.error,
+      error: Colors.red,
     ),
     appBarTheme: const AppBarTheme(
-      backgroundColor: AppColors.darkPanel,
+      backgroundColor: AppColors.navy,
       foregroundColor: Colors.white,
       elevation: 0,
       centerTitle: true,
@@ -32,12 +32,12 @@ class AppTheme {
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: AppColors.accent, width: 1.6),
+        borderSide: const BorderSide(color: AppColors.blue, width: 1.6),
       ),
     ),
     elevatedButtonTheme: ElevatedButtonThemeData(
       style: ElevatedButton.styleFrom(
-        backgroundColor: AppColors.accent,
+        backgroundColor: AppColors.blue,
         foregroundColor: Colors.white,
         minimumSize: const Size.fromHeight(52),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
