@@ -1,4 +1,4 @@
-/*import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
 import '../theme/app_theme.dart';
 import '../views/customer/login_screen.dart';
@@ -47,4 +47,4 @@ class LogoutButton extends StatelessWidget {
       onPressed: () => _confirmAndLogOut(context),
     );
   }
-}*/
+}
