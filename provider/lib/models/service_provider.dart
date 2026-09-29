@@ -108,6 +108,7 @@ class ServiceProviderData{
   final double rating;
   final String status;
   final Set<String> activeBranches;
+  final bool isAvailable;
 
 
   ServiceProviderData({
@@ -124,6 +125,7 @@ class ServiceProviderData{
     required this.rating,
     required this.status,
     required this.activeBranches,
+    required this.isAvailable,
   });
 
   factory ServiceProviderData.fromMap(Map<String, dynamic> map) {
@@ -142,6 +144,7 @@ class ServiceProviderData{
       rating: 0.0,
       status: map['status'] ?? '',
       activeBranches: activeBranchesFromServicesOffered(map['servicesOffered']),
+      isAvailable: map['isAvailable'] == true,
     );
   }
 

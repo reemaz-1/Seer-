@@ -155,6 +155,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                         rating : widget.provider.rating,
                         status : widget.provider.status,
                         activeBranches : widget.provider.activeBranches,
+                        isAvailable: widget.provider.isAvailable,
+
                       );
                       Navigator.pop(context, updatedProvider);
                     }//end if

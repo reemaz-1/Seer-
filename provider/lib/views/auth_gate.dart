@@ -5,7 +5,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 import '../services/auth_service.dart';
-import '../views/service_provider_main.dart';
+import 'service_provider_main.dart';
 import '../widgets/logout_button.dart';
 import 'login_screen.dart';
 

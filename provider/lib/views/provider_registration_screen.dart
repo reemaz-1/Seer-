@@ -4,7 +4,7 @@ import 'package:flutter_material_design_icons/flutter_material_design_icons.dart
 
 import '../services/auth_service.dart';
 import 'provider_success_screen.dart';
-import 'plate_number_input.dart';
+import '../widgets/plate_number_input.dart';
 
 class ProviderRegistrationScreen extends StatefulWidget {
   const ProviderRegistrationScreen({super.key, this.authService});

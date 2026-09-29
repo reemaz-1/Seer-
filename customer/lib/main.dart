@@ -5,11 +5,11 @@ import 'package:firebase_app_check/firebase_app_check.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 import 'firebase_options.dart';
-import 'screens/customer_main.dart';
-import 'screens/login_screen.dart';
-import 'screens/customer_registration_screen.dart';
+import 'views/customer/customer_main.dart';
+import 'views/customer/login_screen.dart';
+import 'views/customer/customer_registration_screen.dart';
+import 'views/customer/email_verification_screen.dart';
 import 'theme/app_theme.dart';
-import 'screens/email_verification_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();

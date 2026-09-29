@@ -3,7 +3,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:firebase_core/firebase_core.dart';
 
 import 'firebase_options.dart';
-import 'screens/auth_gate.dart';
+import 'views/auth_gate.dart';
 import 'services/auth_service.dart';
 import 'theme/app_theme.dart';
 

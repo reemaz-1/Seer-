@@ -153,6 +153,7 @@ class _EditVehicleScreenState extends State<EditVehicleScreen> {
                         rating : widget.provider.rating,
                         status : widget.provider.status,
                         activeBranches : widget.provider.activeBranches,
+                        isAvailable: widget.provider.isAvailable,
                       );
                       Navigator.pop(context, updatedProvider);
                     }//end if

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
-import '../services/auth_service.dart';
-import '../theme/app_theme.dart';
-import 'customer_main.dart';
+import '../../services/auth_service.dart';
+import '../../theme/app_theme.dart';
 
 /// Log In screen — works for both apps; pass [role] to pick the
 /// matching color theme (Customer = Icon Navy, Provider = Fleet Blue).

@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import '../controllers/admin_users_controller.dart';
+import '../models/admin_users_model.dart';
 
 class AdminUsers extends StatelessWidget {
-  const AdminUsers({super.key});
+const AdminUsers({super.key});
+final AdminUsersController _controller = const AdminUsersController();
 
   static const Color navy = Color(0xFF0E1B33);
   static const Color accent = Color(0xFF1C63D6);
@@ -18,10 +20,8 @@ class AdminUsers extends StatelessWidget {
         padding: const EdgeInsets.all(24),
 
         // Listen to the customers collection
-        child: StreamBuilder<QuerySnapshot>(
-          stream: FirebaseFirestore.instance
-              .collection('customers')
-              .snapshots(),
+        child: StreamBuilder<List<AdminUserData>>(
+          stream: _controller.getCustomers(),
           builder: (context, customerSnapshot) {
             if (customerSnapshot.connectionState ==
                 ConnectionState.waiting) {
@@ -37,11 +37,8 @@ class AdminUsers extends StatelessWidget {
             }
 
             // Listen to approved service providers
-            return StreamBuilder<QuerySnapshot>(
-              stream: FirebaseFirestore.instance
-                  .collection('providers')
-                  .where('status', isEqualTo: 'approved')
-                  .snapshots(),
+            return StreamBuilder<List<AdminUserData>>(
+              stream: _controller.getApprovedProviders(),
               builder: (context, providerSnapshot) {
                 if (providerSnapshot.connectionState ==
                     ConnectionState.waiting) {
@@ -57,10 +54,10 @@ class AdminUsers extends StatelessWidget {
                 }
 
                 final customers =
-                    customerSnapshot.data?.docs ?? [];
+                    customerSnapshot.data ?? [];
 
                 final providers =
-                    providerSnapshot.data?.docs ?? [];
+                    providerSnapshot.data ?? [];
 
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -106,16 +103,19 @@ class AdminUsers extends StatelessWidget {
                               const SizedBox(height: 10),
 
                               ...customers.map((document) {
-                                final data = document.data()
-                                    as Map<String, dynamic>;
+                                final data = document;
 
                                 return _buildUserCard(
                                   icon: Icons.person_outline,
                                   type: 'عميل',
                                   name:
-                                      '${data['firstName'] ?? ''} ${data['lastName'] ?? ''}',
-                                  email: data['email'] ?? 'غير متوفر',
-                                  phone: data['phone'] ?? 'غير متوفر',
+                                      '${data.firstName} ${data.lastName}',
+                                  email: data.email.isEmpty
+                                      ? 'غير متوفر'
+                                      : data.email,
+                                  phone: data.phone.isEmpty
+                                      ? 'غير متوفر'
+                                      : data.phone,
                                 );
                               }),
 
@@ -136,18 +136,21 @@ class AdminUsers extends StatelessWidget {
                               const SizedBox(height: 10),
 
                               ...providers.map((document) {
-                                final data = document.data()
-                                    as Map<String, dynamic>;
+                                final data = document;
 
                                 return _buildUserCard(
                                   icon: Icons.build_outlined,
                                   type: 'مزود خدمة',
                                   name:
-                                      '${data['firstName'] ?? ''} ${data['lastName'] ?? ''}',
-                                  email: data['email'] ?? 'غير متوفر',
-                                  phone: data['phone'] ?? 'غير متوفر',
+                                      '${data.firstName} ${data.lastName}',
+                                  email: data.email.isEmpty
+                                      ? 'غير متوفر'
+                                      : data.email,
+                                  phone: data.phone.isEmpty
+                                      ? 'غير متوفر'
+                                      : data.phone,
                                   extra:
-                                      '${data['vehicleBrand'] ?? ''} ${data['vehicleModel'] ?? ''}',
+                                      '${data.vehicleBrand} ${data.vehicleModel}',
                                 );
                               }),
                             ],

@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 
 import 'config/app_config.dart';
 import 'firebase_options.dart';
-import 'screens/auth_gate.dart';
+import 'views/auth_gate.dart';
 import 'theme/app_theme.dart';
 
 Future<void> main() async {

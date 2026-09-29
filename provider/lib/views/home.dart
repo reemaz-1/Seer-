@@ -1,15 +1,79 @@
 import 'package:flutter/material.dart';
+import '../services/auth_service.dart';
+import '../controllers/provider_availability_controller.dart';
 
 class ProviderHome extends StatefulWidget {
-  const ProviderHome({super.key, this.firstName = ''});
+  const ProviderHome({
+    super.key,
+    this.firstName = '',
+    this.authService,
+  });
+
   final String firstName;
+  final AuthService? authService;
 
   @override
   State<ProviderHome> createState() => _ProviderHomeState();
 }
 
 class _ProviderHomeState extends State<ProviderHome> {
-  bool isAvailable = true;
+ bool isAvailable = false;
+bool isLoadingAvailability = true;
+bool isSavingAvailability = false;
+
+late final ProviderAvailabilityController _availabilityController;
+
+@override
+void initState() {
+  super.initState();
+  _availabilityController = ProviderAvailabilityController(
+    widget.authService ?? AuthService(),
+  );
+  _loadAvailability();
+}
+
+Future<void> _loadAvailability() async {
+  try {
+    final availability = await _availabilityController.loadAvailability();
+    if (!mounted) return;
+
+    setState(() {
+      isAvailable = availability;
+      isLoadingAvailability = false;
+    });
+  } catch (_) {
+    if (!mounted) return;
+
+    setState(() {
+      isLoadingAvailability = false;
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('تعذر تحميل حالة التوفر')),
+    );
+  }
+}
+
+Future<void> _changeAvailability(bool value) async {
+  setState(() => isSavingAvailability = true);
+
+  try {
+    await _availabilityController.updateAvailability(value);
+    if (!mounted) return;
+
+    setState(() => isAvailable = value);
+  } catch (_) {
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('تعذر حفظ حالة التوفر')),
+    );
+  } finally {
+    if (mounted) {
+      setState(() => isSavingAvailability = false);
+    }
+  }
+}
 
   @override
   Widget build(BuildContext context) {
@@ -66,14 +130,12 @@ class _ProviderHomeState extends State<ProviderHome> {
               children: [
                 // Availability Switch
                 Switch(
-                  value: isAvailable,
-                  activeThumbColor: const Color(0xFF1C63D6),
-                  onChanged: (value) {
-                    setState(() {
-                      isAvailable = value;
-                    });
-                  },
-                ),
+  value: isAvailable,
+  activeThumbColor: const Color(0xFF1C63D6),
+  onChanged: isLoadingAvailability || isSavingAvailability
+      ? null
+      : _changeAvailability,
+),
 
                 // Availability Text
                 Column(
@@ -123,7 +185,7 @@ class _ProviderHomeState extends State<ProviderHome> {
               Expanded(
                 child: _buildStatCard(
                   icon: Icons.star_rounded,
-                  value: '4.8',
+                  value: '0.0',
                   label: 'التقييم',
                 ),
               ),
@@ -133,7 +195,7 @@ class _ProviderHomeState extends State<ProviderHome> {
               Expanded(
                 child: _buildStatCard(
                   icon: Icons.check_circle_outline_rounded,
-                  value: '12',
+                  value: '0',
                   label: 'طلبات مكتملة',
                 ),
               ),
@@ -143,7 +205,7 @@ class _ProviderHomeState extends State<ProviderHome> {
               Expanded(
                 child: _buildStatCard(
                   icon: Icons.receipt_long_rounded,
-                  value: '5',
+                  value: '0',
                   label: 'طلبات اليوم',
                 ),
               ),

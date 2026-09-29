@@ -93,6 +93,7 @@ class _EditServicesScreenState extends State<EditServicesScreen> {
                       rating: widget.provider.rating,
                       status: widget.provider.status,
                       activeBranches: selectedBranches,
+                      isAvailable: widget.provider.isAvailable,
                     );
                     Navigator.pop(context, updatedProvider);
                   },
