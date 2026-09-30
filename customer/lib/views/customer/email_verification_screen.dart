@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import '../../theme/app_colors.dart';
 
 class EmailVerificationScreen extends StatefulWidget {
   const EmailVerificationScreen({super.key, required this.onVerified});
@@ -56,59 +57,200 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
   Widget build(BuildContext context) {
     final email = FirebaseAuth.instance.currentUser?.email ?? '';
     return Scaffold(
+      backgroundColor: CustomerColors.background,
       body: SafeArea(
-        child: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(Icons.mark_email_unread_outlined, size: 64),
-                const SizedBox(height: 16),
-                const Text(
-                  'تحقق من بريدك الإلكتروني',
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  'أرسلنا رابط تحقق إلى $email\nافتح الرابط ثم اضغط "تحققت من بريدي".',
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(color: Colors.grey),
-                ),
-                const SizedBox(height: 24),
-                if (_message != null) ...[
-                  Text(_message!, textAlign: TextAlign.center),
-                  const SizedBox(height: 12),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Brand header — same as login
+              Row(
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: Image.asset(
+                      'assets/icon/icon.jpg',
+                      width: 48,
+                      height: 48,
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  const Text(
+                    'سير',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 20,
+                      color: CustomerColors.primaryText,
+                    ),
+                  ),
                 ],
-                ElevatedButton(
+              ),
+              const SizedBox(height: 48),
+
+              // Mail icon
+              Center(
+                child: Container(
+                  width: 88,
+                  height: 88,
+                  decoration: BoxDecoration(
+                    color: CustomerColors.accent.withValues(alpha: 0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.mark_email_unread_outlined,
+                    size: 42,
+                    color: CustomerColors.accent,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 24),
+
+              const Text(
+                'تحقق من بريدك الإلكتروني',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.w800,
+                  color: CustomerColors.primaryText,
+                ),
+              ),
+              const SizedBox(height: 12),
+              const Text(
+                'أرسلنا رابط تحقق إلى',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 14,
+                  color: CustomerColors.secondaryText,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                email,
+                textAlign: TextAlign.center,
+                textDirection: TextDirection.ltr,
+                style: const TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                  color: CustomerColors.primaryText,
+                ),
+              ),
+              const SizedBox(height: 12),
+              const Text(
+                'افتح الرابط ثم اضغط "تحققت من بريدي".',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 14,
+                  color: CustomerColors.secondaryText,
+                ),
+              ),
+              const SizedBox(height: 32),
+
+              // Status message
+              if (_message != null) ...[
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
+                  decoration: BoxDecoration(
+                    color: CustomerColors.fieldFill,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: CustomerColors.cardBorder),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.info_outline,
+                        size: 20,
+                        color: CustomerColors.accent,
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          _message!,
+                          style: const TextStyle(
+                            fontSize: 14,
+                            color: CustomerColors.primaryText,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 20),
+              ],
+
+              // Primary: I've verified
+              SizedBox(
+                height: 54,
+                child: ElevatedButton(
                   onPressed: _isChecking ? null : _checkVerified,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: CustomerColors.darkPanel,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
                   child: _isChecking
+                      ? const SizedBox(
+                          height: 22,
+                          width: 22,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2.4,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Text(
+                          'تحققت من بريدي',
+                          style: TextStyle(fontSize: 16),
+                        ),
+                ),
+              ),
+              const SizedBox(height: 12),
+
+              // Secondary: resend
+              SizedBox(
+                height: 54,
+                child: OutlinedButton(
+                  onPressed: _isSending ? null : _resendEmail,
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: CustomerColors.primaryText,
+                    side: const BorderSide(color: CustomerColors.cardBorder),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: _isSending
                       ? const SizedBox(
                           height: 20,
                           width: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2),
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: CustomerColors.accent,
+                          ),
                         )
-                      : const Text('تحققت من بريدي'),
+                      : const Text(
+                          'إعادة إرسال رابط التحقق',
+                          style: TextStyle(fontSize: 16),
+                        ),
                 ),
-                const SizedBox(height: 12),
-                TextButton(
-                  onPressed: _isSending ? null : _resendEmail,
-                  child: _isSending
-                      ? const SizedBox(
-                          height: 18,
-                          width: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Text('إعادة إرسال رابط التحقق'),
-                ),
-                const SizedBox(height: 8),
-                TextButton(
+              ),
+              const SizedBox(height: 16),
+
+              // Logout
+              Center(
+                child: TextButton(
                   onPressed: _logout,
-                  child: const Text('تسجيل خروج'),
+                  style: TextButton.styleFrom(
+                    foregroundColor: CustomerColors.secondaryText,
+                  ),
+                  child: const Text('الرجوع لتسجيل الدخول'),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),

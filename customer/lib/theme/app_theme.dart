@@ -20,6 +20,10 @@ class AppTheme {
     final border = role == AppRole.customer
         ? CustomerColors.cardBorder
         : ProviderColors.cardBorder;
+    final fieldFill = role == AppRole.customer
+        ? CustomerColors.fieldFill
+        : ProviderColors.fieldFill;
+    final buttonColor = role == AppRole.customer ? panel : accent;
     final primaryText = role == AppRole.customer
         ? CustomerColors.primaryText
         : ProviderColors.primaryText;
@@ -54,7 +58,7 @@ class AppTheme {
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: bg,
+        fillColor: fieldFill,
         contentPadding:
         const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         border: OutlineInputBorder(
@@ -77,7 +81,7 @@ class AppTheme {
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
-          backgroundColor: accent,
+          backgroundColor: buttonColor,
           foregroundColor: Colors.white,
           minimumSize: const Size.fromHeight(52),
           shape: RoundedRectangleBorder(

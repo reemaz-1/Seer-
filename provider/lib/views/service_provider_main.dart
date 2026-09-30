@@ -3,7 +3,6 @@ import 'package:google_nav_bar/google_nav_bar.dart';
 
 import 'provider_profile_screen.dart';
 import '../services/auth_service.dart';
-import '../widgets/logout_button.dart';
 import 'home.dart';
 import 'notifications.dart';
 import 'orders.dart';
@@ -63,7 +62,6 @@ class _ServiceProviderMainState extends State<ServiceProviderMain> {
           ),
         ),
         actions: [
-          LogoutButton(authService: widget.authService),
           Padding(
             padding: const EdgeInsets.only(right: 16),
             child: Container(

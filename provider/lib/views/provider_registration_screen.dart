@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter_material_design_icons/flutter_material_design_icons.dart';
+import '../theme/app_colors.dart';
 
 import '../services/auth_service.dart';
 import 'provider_success_screen.dart';
@@ -18,8 +19,15 @@ class ProviderRegistrationScreen extends StatefulWidget {
 
 class _ProviderRegistrationScreenState
     extends State<ProviderRegistrationScreen> {
-  final _formKey = GlobalKey<FormState>();
+  // One Form per step, so "Next" only validates the fields of the
+  // current step. Steps stay mounted (Visibility + maintainState),
+  // so entered values and the plate field state are never lost.
+  final _personalFormKey = GlobalKey<FormState>();
+  final _vehicleFormKey = GlobalKey<FormState>();
   late final AuthService _authService = widget.authService ?? AuthService();
+
+  static const int _totalSteps = 3;
+  int _step = 0;
 
   final _firstNameController = TextEditingController();
   final _lastNameController = TextEditingController();
@@ -38,8 +46,8 @@ class _ProviderRegistrationScreenState
   final ScrollController _scrollController = ScrollController();
 
   bool _isLoading = false;
-
-  static const Color navy = Color(0xFF0F1B4C);
+  bool _obscurePassword = true;
+  bool _obscureConfirm = true;
 
   Map<String, dynamic>? _selectedVehicleType;
   String? _selectedBrand;
@@ -162,39 +170,80 @@ class _ProviderRegistrationScreenState
     super.dispose();
   }
 
-  // Input Decoration
+  // ============================================================
+  // UI helpers
+  // ============================================================
 
-  InputDecoration _fieldDecoration(String label) {
+  OutlineInputBorder _border(Color color, [double width = 1]) {
+    return OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+      borderSide: BorderSide(color: color, width: width),
+    );
+  }
+
+  InputDecoration _fieldDecoration(
+    String hint, {
+    IconData? icon,
+    Widget? suffix,
+  }) {
     return InputDecoration(
-      labelText: label,
+      hintText: hint,
+      hintStyle: const TextStyle(color: AppColors.secondaryText),
+      prefixIcon:
+          icon == null ? null : Icon(icon, color: AppColors.secondaryText),
+      suffixIcon: suffix,
       filled: true,
-      fillColor: Colors.grey.shade50,
+      fillColor: AppColors.background,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      border: _border(AppColors.cardBorder),
+      enabledBorder: _border(AppColors.cardBorder),
+      focusedBorder: _border(AppColors.blue, 1.6),
+      errorBorder: _border(Colors.red),
+      focusedErrorBorder: _border(Colors.red, 1.6),
+    );
+  }
 
-      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 15),
+  InputDecorationTheme _dropdownTheme() {
+    return InputDecorationTheme(
+      filled: true,
+      fillColor: AppColors.background,
+      hintStyle: const TextStyle(color: AppColors.secondaryText),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      border: _border(AppColors.cardBorder),
+      enabledBorder: _border(AppColors.cardBorder),
+      focusedBorder: _border(AppColors.blue, 1.6),
+      errorBorder: _border(Colors.red),
+      focusedErrorBorder: _border(Colors.red, 1.6),
+    );
+  }
 
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(10),
-        borderSide: BorderSide(color: Colors.grey.shade300),
+  Widget _fieldLabel(String text) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Text(
+        text,
+        style: const TextStyle(
+          fontSize: 14,
+          fontWeight: FontWeight.w600,
+          color: AppColors.navy,
+        ),
       ),
+    );
+  }
 
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(10),
-        borderSide: BorderSide(color: Colors.grey.shade300),
-      ),
+  Widget _labeled(String label, Widget field) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [_fieldLabel(label), field],
+    );
+  }
 
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(10),
-        borderSide: const BorderSide(color: navy, width: 1.5),
-      ),
-
-      errorBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(10),
-        borderSide: const BorderSide(color: Colors.red),
-      ),
-
-      focusedErrorBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(10),
-        borderSide: const BorderSide(color: Colors.red, width: 1.5),
+  Widget _eyeToggle(bool obscured, VoidCallback onPressed) {
+    return IconButton(
+      onPressed: onPressed,
+      icon: Icon(
+        obscured ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+        color: AppColors.secondaryText,
       ),
     );
   }
@@ -205,20 +254,11 @@ class _ProviderRegistrationScreenState
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
-
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        border: Border.all(color: AppColors.cardBorder),
       ),
-
       // Material(type: MaterialType.transparency) يعطي أقرب Material
       // ancestor للعناصر التفاعلية (InkWell/CheckboxListTile) داخل
       // هالكرت، عشان تأثير اللمس (ripple) والخلفية يرسمهم صح.
@@ -230,14 +270,12 @@ class _ProviderRegistrationScreenState
             Text(
               title,
               style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: navy,
+                fontSize: 18,
+                fontWeight: FontWeight.w800,
+                color: AppColors.navy,
               ),
             ),
-
-            const SizedBox(height: 16),
-
+            const SizedBox(height: 20),
             ...children,
           ],
         ),
@@ -253,25 +291,14 @@ class _ProviderRegistrationScreenState
         return DropdownMenu<Map<String, dynamic>>(
           width: constraints.maxWidth,
           initialSelection: _selectedVehicleType,
-          label: const Text('نوع المركبة'),
+          hintText: 'اختر نوع المركبة',
           errorText: _vehicleTypeError,
-          inputDecorationTheme: InputDecorationTheme(
-            filled: true,
-            fillColor: Colors.grey.shade50,
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 14,
-              vertical: 15,
-            ),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(10),
-              borderSide: BorderSide(color: Colors.grey.shade300),
-            ),
-          ),
+          inputDecorationTheme: _dropdownTheme(),
           dropdownMenuEntries: _vehicleTypesWithIcons.map((type) {
             return DropdownMenuEntry<Map<String, dynamic>>(
               value: type,
               label: type['label'],
-              leadingIcon: Icon(type['icon'], size: 20, color: navy),
+              leadingIcon: Icon(type['icon'], size: 20, color: AppColors.navy),
             );
           }).toList(),
           onSelected: (value) {
@@ -296,20 +323,9 @@ class _ProviderRegistrationScreenState
         return DropdownMenu<String>(
           width: constraints.maxWidth,
           initialSelection: _selectedBrand,
-          label: const Text('الماركة'),
+          hintText: 'اختر الماركة',
           errorText: _brandError,
-          inputDecorationTheme: InputDecorationTheme(
-            filled: true,
-            fillColor: Colors.grey.shade50,
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 14,
-              vertical: 15,
-            ),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(10),
-              borderSide: BorderSide(color: Colors.grey.shade300),
-            ),
-          ),
+          inputDecorationTheme: _dropdownTheme(),
           dropdownMenuEntries: _vehicleBrands.map((brand) {
             return DropdownMenuEntry<String>(value: brand, label: brand);
           }).toList(),
@@ -335,20 +351,9 @@ class _ProviderRegistrationScreenState
         return DropdownMenu<String>(
           width: constraints.maxWidth,
           initialSelection: _selectedColor,
-          label: const Text('اللون'),
+          hintText: 'اختر اللون',
           errorText: _colorError,
-          inputDecorationTheme: InputDecorationTheme(
-            filled: true,
-            fillColor: Colors.grey.shade50,
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 14,
-              vertical: 15,
-            ),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(10),
-              borderSide: BorderSide(color: Colors.grey.shade300),
-            ),
-          ),
+          inputDecorationTheme: _dropdownTheme(),
           dropdownMenuEntries: _vehicleColors.map((color) {
             return DropdownMenuEntry<String>(value: color, label: color);
           }).toList(),
@@ -381,12 +386,14 @@ class _ProviderRegistrationScreenState
           duration: const Duration(milliseconds: 150),
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
           decoration: BoxDecoration(
-            color: isSelected ? navy.withValues(alpha: 0.08) : Colors.white,
+            color: isSelected
+                ? AppColors.navy.withValues(alpha: 0.08)
+                : Colors.white,
             borderRadius: BorderRadius.circular(30),
             border: Border.all(
               color: isSelected
-                  ? navy.withValues(alpha: 0.35)
-                  : Colors.grey.shade300,
+                  ? AppColors.navy.withValues(alpha: 0.35)
+                  : AppColors.cardBorder,
               width: 1,
             ),
           ),
@@ -395,7 +402,7 @@ class _ProviderRegistrationScreenState
             style: TextStyle(
               fontSize: 13,
               fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-              color: isSelected ? navy : Colors.grey.shade600,
+              color: isSelected ? AppColors.navy : AppColors.secondaryText,
             ),
           ),
         ),
@@ -443,12 +450,16 @@ class _ProviderRegistrationScreenState
     return payload;
   }
 
-  // Submit
+  // ============================================================
+  // Step validation — same rules and messages as before, just
+  // split per step.
+  // ============================================================
 
-  Future<void> _submitForm() async {
-    if (_isLoading) return;
-    FocusScope.of(context).unfocus();
+  bool _validatePersonal() {
+    return _personalFormKey.currentState!.validate();
+  }
 
+  bool _validateVehicle() {
     setState(() {
       _vehicleTypeError = _selectedVehicleType == null
           ? 'الرجاء اختيار نوع المركبة'
@@ -457,18 +468,57 @@ class _ProviderRegistrationScreenState
       _colorError = _selectedColor == null ? 'الرجاء اختيار اللون' : null;
     });
 
-    final bool formValid = _formKey.currentState!.validate();
+    final bool formValid = _vehicleFormKey.currentState!.validate();
 
     if (!formValid ||
         _selectedVehicleType == null ||
         _selectedBrand == null ||
         _selectedColor == null) {
-      return;
+      return false;
     }
 
     final plate = _plateFieldKey.currentState!.value;
     setState(() => _plateError = !plate.isValid);
-    if (!plate.isValid) {
+    return plate.isValid;
+  }
+
+  void _scrollToTop() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scrollController.hasClients) _scrollController.jumpTo(0);
+    });
+  }
+
+  void _goToStep(int step) {
+    setState(() => _step = step);
+    _scrollToTop();
+  }
+
+  void _goNext() {
+    FocusScope.of(context).unfocus();
+    if (_step == 0 && !_validatePersonal()) return;
+    if (_step == 1 && !_validateVehicle()) return;
+    _goToStep(_step + 1);
+  }
+
+  void _goBack() {
+    FocusScope.of(context).unfocus();
+    if (_step > 0) _goToStep(_step - 1);
+  }
+
+  // Submit
+
+  Future<void> _submitForm() async {
+    if (_isLoading) return;
+    FocusScope.of(context).unfocus();
+
+    // Re-check earlier steps before sending, and jump back to
+    // whichever step has a problem.
+    if (!_validatePersonal()) {
+      _goToStep(0);
+      return;
+    }
+    if (!_validateVehicle()) {
+      _goToStep(1);
       return;
     }
 
@@ -479,6 +529,8 @@ class _ProviderRegistrationScreenState
 
       return;
     }
+
+    final plate = _plateFieldKey.currentState!.value;
 
     setState(() {
       _isLoading = true;
@@ -553,468 +605,606 @@ class _ProviderRegistrationScreenState
     }
   }
 
+  // ============================================================
+  // Header + step indicator
+  // ============================================================
+
+  Widget _header() {
+    return Row(
+      children: [
+        Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: AppColors.cardBorder),
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: Image.asset(
+              'assets/icon/icon.jpg',
+              width: 44,
+              height: 44,
+              fit: BoxFit.cover,
+            ),
+          ),
+        ),
+        const SizedBox(width: 12),
+        const Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'تسجيل مزود خدمة',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.navy,
+                ),
+              ),
+              SizedBox(height: 2),
+              Text(
+                'أكمل بياناتك لإرسال طلب الانضمام.',
+                style: TextStyle(fontSize: 13, color: AppColors.secondaryText),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _stepIndicator() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: List.generate(_totalSteps, (i) {
+            return Expanded(
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                height: 4,
+                margin: EdgeInsetsDirectional.only(
+                  end: i < _totalSteps - 1 ? 6 : 0,
+                ),
+                decoration: BoxDecoration(
+                  color: i <= _step ? AppColors.blue : AppColors.cardBorder,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            );
+          }),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          'الخطوة ${_step + 1} من $_totalSteps',
+          style: const TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+            color: AppColors.secondaryText,
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ============================================================
+  // Step 1 — Personal information
+  // ============================================================
+
+  Widget _personalStep() {
+    return _sectionCard(
+      title: 'المعلومات الشخصية',
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: _labeled(
+                'الاسم الأول',
+                TextFormField(
+                  controller: _firstNameController,
+                  decoration: _fieldDecoration('محمد'),
+                  textInputAction: TextInputAction.next,
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return 'الرجاء إدخال الاسم الأول';
+                    }
+                    return null;
+                  },
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _labeled(
+                'اسم العائلة',
+                TextFormField(
+                  controller: _lastNameController,
+                  decoration: _fieldDecoration('العتيبي'),
+                  textInputAction: TextInputAction.next,
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return 'الرجاء إدخال اسم العائلة';
+                    }
+                    return null;
+                  },
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        _labeled(
+          'رقم الهوية / الإقامة',
+          TextFormField(
+            controller: _nationalIdController,
+            keyboardType: TextInputType.number,
+            textDirection: TextDirection.ltr,
+            decoration: _fieldDecoration(
+              'أدخل رقم الهوية أو الإقامة',
+              icon: Icons.badge_outlined,
+            ),
+            textInputAction: TextInputAction.next,
+            validator: (value) {
+              if (value == null || value.trim().isEmpty) {
+                return 'الرجاء إدخال رقم الهوية أو الإقامة';
+              }
+              return null;
+            },
+          ),
+        ),
+        const SizedBox(height: 16),
+        _labeled(
+          'رقم الجوال',
+          TextFormField(
+            controller: _phoneController,
+            keyboardType: TextInputType.phone,
+            textDirection: TextDirection.ltr,
+            decoration: _fieldDecoration(
+              '05XXXXXXXX',
+              icon: Icons.phone_outlined,
+            ),
+            textInputAction: TextInputAction.next,
+            validator: (value) {
+              if (value == null || value.trim().isEmpty) {
+                return 'الرجاء إدخال رقم الجوال';
+              }
+              if (value.trim().length < 9) {
+                return 'الرجاء إدخال رقم جوال صحيح';
+              }
+              return null;
+            },
+          ),
+        ),
+        const SizedBox(height: 16),
+        _labeled(
+          'البريد الإلكتروني',
+          TextFormField(
+            controller: _emailController,
+            keyboardType: TextInputType.emailAddress,
+            textDirection: TextDirection.ltr,
+            decoration: _fieldDecoration(
+              'example@email.com',
+              icon: Icons.email_outlined,
+            ),
+            textInputAction: TextInputAction.next,
+            validator: (value) {
+              if (value == null || value.trim().isEmpty) {
+                return 'الرجاء إدخال البريد الإلكتروني';
+              }
+              final emailRegex = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
+              if (!emailRegex.hasMatch(value.trim())) {
+                return 'الرجاء إدخال بريد إلكتروني صحيح';
+              }
+              return null;
+            },
+          ),
+        ),
+        const SizedBox(height: 16),
+        _labeled(
+          'كلمة المرور',
+          TextFormField(
+            controller: _passwordController,
+            obscureText: _obscurePassword,
+            textDirection: TextDirection.ltr,
+            decoration: _fieldDecoration(
+              '8 أحرف على الأقل',
+              icon: Icons.lock_outline,
+              suffix: _eyeToggle(
+                _obscurePassword,
+                () => setState(() => _obscurePassword = !_obscurePassword),
+              ),
+            ),
+            textInputAction: TextInputAction.next,
+            validator: (value) {
+              if (value == null || value.isEmpty) {
+                return 'الرجاء إدخال كلمة المرور';
+              }
+              if (value.length < 8) {
+                return 'يجب أن تكون كلمة المرور 8 أحرف على الأقل';
+              }
+              return null;
+            },
+          ),
+        ),
+        const SizedBox(height: 16),
+        _labeled(
+          'تأكيد كلمة المرور',
+          TextFormField(
+            controller: _confirmPasswordController,
+            obscureText: _obscureConfirm,
+            textDirection: TextDirection.ltr,
+            decoration: _fieldDecoration(
+              'أعد كتابة كلمة المرور',
+              icon: Icons.lock_outline,
+              suffix: _eyeToggle(
+                _obscureConfirm,
+                () => setState(() => _obscureConfirm = !_obscureConfirm),
+              ),
+            ),
+            textInputAction: TextInputAction.done,
+            validator: (value) {
+              if (value == null || value.isEmpty) {
+                return 'الرجاء تأكيد كلمة المرور';
+              }
+              if (value != _passwordController.text) {
+                return 'كلمتا المرور غير متطابقتين';
+              }
+              return null;
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ============================================================
+  // Step 2 — Vehicle details
+  // ============================================================
+
+  Widget _vehicleStep() {
+    return _sectionCard(
+      title: 'بيانات المركبة',
+      children: [
+        _fieldLabel('نوع المركبة'),
+        _vehicleTypeDropdown(),
+        if (_selectedVehicleType?['label'] == 'أخرى') ...[
+          const SizedBox(height: 12),
+          TextFormField(
+            controller: _otherVehicleTypeController,
+            decoration: _fieldDecoration('حدد نوع المركبة'),
+            textInputAction: TextInputAction.next,
+            validator: (value) {
+              if (_selectedVehicleType?['label'] == 'أخرى' &&
+                  (value == null || value.trim().isEmpty)) {
+                return 'الرجاء تحديد نوع المركبة';
+              }
+              return null;
+            },
+          ),
+        ],
+        const SizedBox(height: 16),
+        _fieldLabel('الماركة'),
+        _brandDropdown(),
+        if (_selectedBrand == 'أخرى') ...[
+          const SizedBox(height: 12),
+          TextFormField(
+            controller: _otherBrandController,
+            decoration: _fieldDecoration('حدد الماركة'),
+            textInputAction: TextInputAction.next,
+            validator: (value) {
+              if (_selectedBrand == 'أخرى' &&
+                  (value == null || value.trim().isEmpty)) {
+                return 'الرجاء تحديد الماركة';
+              }
+              return null;
+            },
+          ),
+        ],
+        const SizedBox(height: 16),
+        _fieldLabel('اللون'),
+        _colorDropdown(),
+        if (_selectedColor == 'أخرى') ...[
+          const SizedBox(height: 12),
+          TextFormField(
+            controller: _otherColorController,
+            decoration: _fieldDecoration('حدد اللون'),
+            textInputAction: TextInputAction.next,
+            validator: (value) {
+              if (_selectedColor == 'أخرى' &&
+                  (value == null || value.trim().isEmpty)) {
+                return 'الرجاء تحديد اللون';
+              }
+              return null;
+            },
+          ),
+        ],
+        const SizedBox(height: 16),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: _labeled(
+                'الموديل',
+                TextFormField(
+                  controller: _modelController,
+                  decoration: _fieldDecoration('مثال: كامري'),
+                  textInputAction: TextInputAction.next,
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return 'الرجاء إدخال الموديل';
+                    }
+                    return null;
+                  },
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _labeled(
+                'السنة',
+                TextFormField(
+                  controller: _yearController,
+                  keyboardType: TextInputType.number,
+                  decoration: _fieldDecoration('مثال: 2023'),
+                  textInputAction: TextInputAction.next,
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return 'الرجاء إدخال السنة';
+                    }
+                    final year = int.tryParse(value.trim());
+                    if (year == null || value.trim().length != 4) {
+                      return 'الرجاء إدخال سنة صحيحة';
+                    }
+                    return null;
+                  },
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        _fieldLabel('رقم اللوحة'),
+        const Text(
+          'الرجاء إدخال رقم اللوحة بنفس ترتيبه على لوحتك',
+          style: TextStyle(fontSize: 12, color: AppColors.secondaryText),
+        ),
+        const SizedBox(height: 10),
+        PlateNumberField(navy: AppColors.navy, key: _plateFieldKey),
+        if (_plateError)
+          const Padding(
+            padding: EdgeInsets.only(top: 6),
+            child: Text(
+              'الرجاء إدخال رقم وحرف واحد على الأقل',
+              style: TextStyle(color: Colors.red, fontSize: 12),
+            ),
+          ),
+        const SizedBox(height: 16),
+        _labeled(
+          'رقم الرخصة / التصريح',
+          TextFormField(
+            controller: _licenseNumberController,
+            decoration: _fieldDecoration(
+              'أدخل رقم الرخصة أو التصريح',
+              icon: Icons.assignment_outlined,
+            ),
+            textInputAction: TextInputAction.done,
+            validator: (value) {
+              if (value == null || value.trim().isEmpty) {
+                return 'الرجاء إدخال رقم الرخصة أو التصريح';
+              }
+              return null;
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ============================================================
+  // Step 3 — Services offered
+  // ============================================================
+
+  Widget _servicesStep() {
+    return _sectionCard(
+      title: 'الخدمات المقدمة',
+      children: [
+        const Text(
+          'اختر الخدمات اللي تقدمها (خدمة واحدة على الأقل).',
+          style: TextStyle(fontSize: 13, color: AppColors.secondaryText),
+        ),
+        const SizedBox(height: 16),
+        ..._serviceCategories.entries.map((categoryEntry) {
+          final String categoryId = categoryEntry.key;
+          final Map<String, dynamic> categoryData = categoryEntry.value;
+          final String categoryLabel = categoryData['label'] as String;
+          final Map<String, String> options = Map<String, String>.from(
+            categoryData['options'] as Map,
+          );
+
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  categoryLabel,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.navy,
+                    fontSize: 14,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Wrap(
+                  spacing: 10,
+                  runSpacing: 10,
+                  children: options.entries.map((optionEntry) {
+                    final String optionId = optionEntry.key;
+                    final String optionLabel = optionEntry.value;
+                    final String key = _optionKey(categoryId, optionId);
+                    final bool isSelected = _selectedServices.contains(key);
+
+                    return _serviceChip(optionLabel, isSelected, () {
+                      setState(() {
+                        if (isSelected) {
+                          _selectedServices.remove(key);
+                        } else {
+                          _selectedServices.add(key);
+                        }
+                      });
+                    });
+                  }).toList(),
+                ),
+              ],
+            ),
+          );
+        }),
+      ],
+    );
+  }
+
+  // ============================================================
+  // Bottom navigation buttons
+  // ============================================================
+
+  Widget _bottomBar() {
+    final bool isLastStep = _step == _totalSteps - 1;
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        border: Border(top: BorderSide(color: AppColors.cardBorder)),
+      ),
+      child: Row(
+        children: [
+          if (_step > 0) ...[
+            Expanded(
+              child: SizedBox(
+                height: 54,
+                child: OutlinedButton(
+                  onPressed: _isLoading ? null : _goBack,
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.navy,
+                    side: const BorderSide(color: AppColors.cardBorder),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: const Text('السابق', style: TextStyle(fontSize: 16)),
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+          ],
+          Expanded(
+            flex: 2,
+            child: SizedBox(
+              height: 54,
+              child: ElevatedButton(
+                onPressed: _isLoading
+                    ? null
+                    : (isLastStep ? _submitForm : _goNext),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.blue,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                child: _isLoading
+                    ? const SizedBox(
+                        height: 22,
+                        width: 22,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2.4,
+                          color: Colors.white,
+                        ),
+                      )
+                    : Text(
+                        isLastStep ? 'إرسال طلب التسجيل' : 'التالي',
+                        style: const TextStyle(fontSize: 16),
+                      ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   // BUILD
 
   @override
   Widget build(BuildContext context) {
     return PopScope(
-      canPop: !_isLoading,
+      // Back (app bar arrow or Android back) goes to the previous
+      // step; only leaves the screen from step 1.
+      canPop: !_isLoading && _step == 0,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop || _isLoading) return;
+        _goBack();
+      },
       child: Scaffold(
-        backgroundColor: const Color(0xFFF5F5FA),
-
+        backgroundColor: AppColors.background,
         resizeToAvoidBottomInset: true,
-
         appBar: AppBar(
           automaticallyImplyLeading: !_isLoading,
-          backgroundColor: navy,
-          foregroundColor: Colors.white,
-
-          title: const Text('تسجيل مزود خدمة'),
-
-          centerTitle: true,
+          backgroundColor: AppColors.background,
+          foregroundColor: AppColors.navy,
+          elevation: 0,
+          scrolledUnderElevation: 0,
         ),
-
         body: IgnorePointer(
           ignoring: _isLoading,
           child: SafeArea(
-            child: ScrollConfiguration(
-              behavior: const _AppScrollBehavior(),
-
-              child: Form(
-                key: _formKey,
-
-                // هذا هو الـ Scroll الوحيد للفورم كاملًا
-                child: SingleChildScrollView(
-                  controller: _scrollController,
-
-                  physics: const ClampingScrollPhysics(),
-
-                  keyboardDismissBehavior:
-                      ScrollViewKeyboardDismissBehavior.onDrag,
-
-                  child: Padding(
-                    padding: EdgeInsets.only(
-                      left: 16,
-                      right: 16,
-                      top: 16,
-                      bottom: MediaQuery.of(context).viewInsets.bottom + 24,
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        // ======================================================
-                        // Personal Information
-                        // ======================================================
-
-                        _sectionCard(
-                          title: 'المعلومات الشخصية',
-                          children: [
-                            TextFormField(
-                              controller: _firstNameController,
-                              decoration: _fieldDecoration('الاسم الأول'),
-                              textInputAction: TextInputAction.next,
-                              validator: (value) {
-                                if (value == null || value.trim().isEmpty) {
-                                  return 'الرجاء إدخال الاسم الأول';
-                                }
-
-                                return null;
-                              },
+            top: false,
+            child: Column(
+              children: [
+                Expanded(
+                  child: ScrollConfiguration(
+                    behavior: const _AppScrollBehavior(),
+                    child: SingleChildScrollView(
+                      controller: _scrollController,
+                      physics: const ClampingScrollPhysics(),
+                      keyboardDismissBehavior:
+                          ScrollViewKeyboardDismissBehavior.onDrag,
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          _header(),
+                          const SizedBox(height: 20),
+                          _stepIndicator(),
+                          const SizedBox(height: 16),
+                          Visibility(
+                            visible: _step == 0,
+                            maintainState: true,
+                            child: Form(
+                              key: _personalFormKey,
+                              child: _personalStep(),
                             ),
-
-                            const SizedBox(height: 12),
-
-                            TextFormField(
-                              controller: _lastNameController,
-                              decoration: _fieldDecoration('اسم العائلة'),
-                              textInputAction: TextInputAction.next,
-                              validator: (value) {
-                                if (value == null || value.trim().isEmpty) {
-                                  return 'الرجاء إدخال اسم العائلة';
-                                }
-
-                                return null;
-                              },
-                            ),
-
-                            const SizedBox(height: 12),
-
-                            TextFormField(
-                              controller: _nationalIdController,
-                              keyboardType: TextInputType.number,
-                              decoration: _fieldDecoration(
-                                'رقم الهوية / الإقامة',
-                              ),
-                              textInputAction: TextInputAction.next,
-                              validator: (value) {
-                                if (value == null || value.trim().isEmpty) {
-                                  return 'الرجاء إدخال رقم الهوية أو الإقامة';
-                                }
-
-                                return null;
-                              },
-                            ),
-
-                            const SizedBox(height: 12),
-
-                            TextFormField(
-                              controller: _phoneController,
-                              keyboardType: TextInputType.phone,
-                              decoration: _fieldDecoration('رقم الجوال'),
-                              textInputAction: TextInputAction.next,
-                              validator: (value) {
-                                if (value == null || value.trim().isEmpty) {
-                                  return 'الرجاء إدخال رقم الجوال';
-                                }
-
-                                if (value.trim().length < 9) {
-                                  return 'الرجاء إدخال رقم جوال صحيح';
-                                }
-
-                                return null;
-                              },
-                            ),
-
-                            const SizedBox(height: 12),
-
-                            TextFormField(
-                              controller: _emailController,
-                              keyboardType: TextInputType.emailAddress,
-                              decoration: _fieldDecoration('البريد الإلكتروني'),
-                              textInputAction: TextInputAction.next,
-                              validator: (value) {
-                                if (value == null || value.trim().isEmpty) {
-                                  return 'الرجاء إدخال البريد الإلكتروني';
-                                }
-
-                                final emailRegex = RegExp(
-                                  r'^[^@\s]+@[^@\s]+\.[^@\s]+$',
-                                );
-
-                                if (!emailRegex.hasMatch(value.trim())) {
-                                  return 'الرجاء إدخال بريد إلكتروني صحيح';
-                                }
-
-                                return null;
-                              },
-                            ),
-
-                            const SizedBox(height: 12),
-
-                            TextFormField(
-                              controller: _passwordController,
-                              obscureText: true,
-                              decoration: _fieldDecoration('كلمة المرور'),
-                              textInputAction: TextInputAction.next,
-                              validator: (value) {
-                                if (value == null || value.isEmpty) {
-                                  return 'الرجاء إدخال كلمة المرور';
-                                }
-
-                                if (value.length < 8) {
-                                  return 'يجب أن تكون كلمة المرور 8 أحرف على الأقل';
-                                }
-
-                                return null;
-                              },
-                            ),
-
-                            const SizedBox(height: 12),
-
-                            TextFormField(
-                              controller: _confirmPasswordController,
-                              obscureText: true,
-                              decoration: _fieldDecoration('تأكيد كلمة المرور'),
-                              textInputAction: TextInputAction.done,
-                              validator: (value) {
-                                if (value == null || value.isEmpty) {
-                                  return 'الرجاء تأكيد كلمة المرور';
-                                }
-
-                                if (value != _passwordController.text) {
-                                  return 'كلمتا المرور غير متطابقتين';
-                                }
-
-                                return null;
-                              },
-                            ),
-                          ],
-                        ),
-
-                        const SizedBox(height: 16),
-
-                        // ======================================================
-                        // Vehicle Details
-                        // ======================================================
-                        _sectionCard(
-                          title: 'بيانات المركبة',
-                          children: [
-                            _vehicleTypeDropdown(),
-
-                            if (_selectedVehicleType?['label'] == 'أخرى') ...[
-                              const SizedBox(height: 12),
-
-                              TextFormField(
-                                controller: _otherVehicleTypeController,
-                                decoration: _fieldDecoration('حدد نوع المركبة'),
-                                textInputAction: TextInputAction.next,
-                                validator: (value) {
-                                  if (_selectedVehicleType?['label'] ==
-                                          'أخرى' &&
-                                      (value == null || value.trim().isEmpty)) {
-                                    return 'الرجاء تحديد نوع المركبة';
-                                  }
-
-                                  return null;
-                                },
-                              ),
-                            ],
-
-                            const SizedBox(height: 12),
-
-                            _brandDropdown(),
-
-                            if (_selectedBrand == 'أخرى') ...[
-                              const SizedBox(height: 12),
-
-                              TextFormField(
-                                controller: _otherBrandController,
-                                decoration: _fieldDecoration('حدد الماركة'),
-                                textInputAction: TextInputAction.next,
-                                validator: (value) {
-                                  if (_selectedBrand == 'أخرى' &&
-                                      (value == null || value.trim().isEmpty)) {
-                                    return 'الرجاء تحديد الماركة';
-                                  }
-
-                                  return null;
-                                },
-                              ),
-                            ],
-
-                            const SizedBox(height: 12),
-
-                            _colorDropdown(),
-
-                            if (_selectedColor == 'أخرى') ...[
-                              const SizedBox(height: 12),
-
-                              TextFormField(
-                                controller: _otherColorController,
-                                decoration: _fieldDecoration('حدد اللون'),
-                                textInputAction: TextInputAction.next,
-                                validator: (value) {
-                                  if (_selectedColor == 'أخرى' &&
-                                      (value == null || value.trim().isEmpty)) {
-                                    return 'الرجاء تحديد اللون';
-                                  }
-
-                                  return null;
-                                },
-                              ),
-                            ],
-
-                            const SizedBox(height: 12),
-
-                            TextFormField(
-                              controller: _modelController,
-                              decoration: _fieldDecoration(
-                                'الموديل (مثال: كامري)',
-                              ),
-                              textInputAction: TextInputAction.next,
-                              validator: (value) {
-                                if (value == null || value.trim().isEmpty) {
-                                  return 'الرجاء إدخال الموديل';
-                                }
-
-                                return null;
-                              },
-                            ),
-
-                            const SizedBox(height: 12),
-
-                            TextFormField(
-                              controller: _yearController,
-                              keyboardType: TextInputType.number,
-                              decoration: _fieldDecoration(
-                                'السنة (مثال: 2023)',
-                              ),
-                              textInputAction: TextInputAction.next,
-                              validator: (value) {
-                                if (value == null || value.trim().isEmpty) {
-                                  return 'الرجاء إدخال السنة';
-                                }
-
-                                final year = int.tryParse(value.trim());
-
-                                if (year == null || value.trim().length != 4) {
-                                  return 'الرجاء إدخال سنة صحيحة';
-                                }
-
-                                return null;
-                              },
-                            ),
-
-                            const SizedBox(height: 12),
-
-                            Text(
-                              'رقم اللوحة',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: navy,
-                              ),
-                            ),
-                            const SizedBox(height: 6),
-                            Text(
-                              'الرجاء إدخال رقم اللوحة بنفس ترتيبه على لوحتك',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.grey.shade600,
-                              ),
-                            ),
-                            const SizedBox(height: 10),
-                            PlateNumberField(navy: navy, key: _plateFieldKey),
-                            if (_plateError)
-                              Padding(
-                                padding: const EdgeInsets.only(top: 6),
-                                child: Text(
-                                  'الرجاء إدخال رقم وحرف واحد على الأقل',
-                                  style: TextStyle(
-                                    color: Colors.red,
-                                    fontSize: 12,
-                                  ),
-                                ),
-                              ),
-
-                            const SizedBox(height: 12),
-
-                            TextFormField(
-                              controller: _licenseNumberController,
-                              decoration: _fieldDecoration(
-                                'رقم الرخصة / التصريح',
-                              ),
-                              textInputAction: TextInputAction.next,
-                              validator: (value) {
-                                if (value == null || value.trim().isEmpty) {
-                                  return 'الرجاء إدخال رقم الرخصة أو التصريح';
-                                }
-
-                                return null;
-                              },
-                            ),
-                          ],
-                        ),
-
-                        const SizedBox(height: 16),
-
-                        // ======================================================
-                        // Services Offered — عنوان لكل فئة، والخيارات
-                        // الفرعية تحتها كشرائح قابلة للاختيار.
-                        // ======================================================
-                        _sectionCard(
-                          title: 'الخدمات المقدمة',
-                          children: _serviceCategories.entries.map((
-                            categoryEntry,
-                          ) {
-                            final String categoryId = categoryEntry.key;
-                            final Map<String, dynamic> categoryData =
-                                categoryEntry.value;
-                            final String categoryLabel =
-                                categoryData['label'] as String;
-                            final Map<String, String> options =
-                                Map<String, String>.from(
-                                  categoryData['options'] as Map,
-                                );
-
-                            return Padding(
-                              padding: const EdgeInsets.only(bottom: 16),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    categoryLabel,
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      color: navy,
-                                      fontSize: 14,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 10),
-                                  Wrap(
-                                    spacing: 10,
-                                    runSpacing: 10,
-                                    children: options.entries.map((
-                                      optionEntry,
-                                    ) {
-                                      final String optionId = optionEntry.key;
-                                      final String optionLabel =
-                                          optionEntry.value;
-                                      final String key = _optionKey(
-                                        categoryId,
-                                        optionId,
-                                      );
-                                      final bool isSelected = _selectedServices
-                                          .contains(key);
-
-                                      return _serviceChip(
-                                        optionLabel,
-                                        isSelected,
-                                        () {
-                                          setState(() {
-                                            if (isSelected) {
-                                              _selectedServices.remove(key);
-                                            } else {
-                                              _selectedServices.add(key);
-                                            }
-                                          });
-                                        },
-                                      );
-                                    }).toList(),
-                                  ),
-                                ],
-                              ),
-                            );
-                          }).toList(),
-                        ),
-
-                        const SizedBox(height: 24),
-
-                        // ======================================================
-                        // Registration button
-                        // ======================================================
-                        SizedBox(
-                          height: 52,
-                          child: ElevatedButton(
-                            onPressed: _isLoading ? null : _submitForm,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: navy,
-                              foregroundColor: Colors.white,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                            ),
-                            child: _isLoading
-                                ? const SizedBox(
-                                    height: 20,
-                                    width: 20,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      color: Colors.white,
-                                    ),
-                                  )
-                                : const Text(
-                                    'إرسال طلب التسجيل',
-                                    style: TextStyle(fontSize: 16),
-                                  ),
                           ),
-                        ),
-
-                        const SizedBox(height: 16),
-                      ],
+                          Visibility(
+                            visible: _step == 1,
+                            maintainState: true,
+                            child: Form(
+                              key: _vehicleFormKey,
+                              child: _vehicleStep(),
+                            ),
+                          ),
+                          Visibility(
+                            visible: _step == 2,
+                            maintainState: true,
+                            child: _servicesStep(),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
-              ),
+                _bottomBar(),
+              ],
             ),
           ),
         ),

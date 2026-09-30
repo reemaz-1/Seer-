@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/gestures.dart';
 import '../../services/auth_service.dart';
 import '../../theme/app_theme.dart';
+import '../../theme/app_colors.dart';
 
 /// Log In screen — works for both apps; pass [role] to pick the
 /// matching color theme (Customer = Icon Navy, Provider = Fleet Blue).
@@ -38,7 +40,6 @@ class _LoginScreenState extends State<LoginScreen> {
         email: _emailController.text,
         password: _passwordController.text,
       );
-     
     } on AuthException catch (e) {
       _showError(e.message);
     } finally {
@@ -70,106 +71,188 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
+  bool get _isCustomer => widget.role == AppRole.customer;
+
+  Widget _fieldLabel(BuildContext context, String text) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Text(
+        text,
+        style: Theme.of(context)
+            .textTheme
+            .bodyMedium
+            ?.copyWith(fontWeight: FontWeight.w600),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final title = _isCustomer ? 'مرحباً بعودتك' : 'سجّل الدخول';
+    final subtitle = _isCustomer
+        ? 'سجّل الدخول لطلب المساعدة لمركبتك.'
+        : 'سجّل الدخول لمتابعة طلبات الخدمة الخاصة بك.';
+    final brandLabel = _isCustomer ? 'سير' : 'سير لمزودي الخدمة';
+
     return Theme(
       data: AppTheme.of(widget.role),
-      child: Scaffold(
-        body: SafeArea(
-          child: Center(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Text(
-                      'تسجيل الدخول',
-                      textAlign: TextAlign.center,
-                      style: Theme.of(context).textTheme.titleLarge,
-                    ),
-                    const SizedBox(height: 32),
-                    TextFormField(
-                      controller: _emailController,
-                      keyboardType: TextInputType.emailAddress,
-                      textDirection: TextDirection.ltr,
-                      decoration: const InputDecoration(
-                        labelText: 'البريد الإلكتروني',
-                        prefixIcon: Icon(Icons.email_outlined),
+      child: Builder(
+        builder: (context) {
+          final textTheme = Theme.of(context).textTheme;
+          return Scaffold(
+            body: SafeArea(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Row(
+                        children: [
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(12),
+                            child: Image.asset(
+                              'assets/icon/icon.jpg',
+                              width: 48,
+                              height: 48,
+                              fit: BoxFit.cover,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Text(
+                            brandLabel,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w800,
+                              fontSize: 20,
+                            ),
+                          ),
+                        ],
                       ),
-                      validator: (value) {
-                        final v = value?.trim() ?? '';
-                        if (v.isEmpty) return 'أدخل بريدك الإلكتروني';
-                        if (!v.contains('@') || !v.contains('.')) {
-                          return 'صيغة البريد الإلكتروني غير صحيحة';
-                        }
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 16),
-                    TextFormField(
-                      controller: _passwordController,
-                      obscureText: _obscurePassword,
-                      textDirection: TextDirection.ltr,
-                      decoration: InputDecoration(
-                        labelText: 'كلمة المرور',
-                        prefixIcon: const Icon(Icons.lock_outline),
-                        suffixIcon: IconButton(
-                          icon: Icon(_obscurePassword
-                              ? Icons.visibility_outlined
-                              : Icons.visibility_off_outlined),
-                          onPressed: () => setState(
-                                  () => _obscurePassword = !_obscurePassword),
+                      const SizedBox(height: 28),
+                      Text(
+                        title,
+                        style: textTheme.headlineSmall
+                            ?.copyWith(fontWeight: FontWeight.w800),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        subtitle,
+                        style: textTheme.bodyMedium
+                            ?.copyWith(color: Colors.grey.shade600),
+                      ),
+                      const SizedBox(height: 36),
+                      _fieldLabel(context, 'البريد الإلكتروني'),
+                      TextFormField(
+                        controller: _emailController,
+                        keyboardType: TextInputType.emailAddress,
+                        textDirection: TextDirection.ltr,
+                        decoration: const InputDecoration(
+                          hintText: 'example@email.com',
+                          prefixIcon: Icon(Icons.email_outlined),
+                        ),
+                        validator: (value) {
+                          final v = value?.trim() ?? '';
+                          if (v.isEmpty) return 'أدخل بريدك الإلكتروني';
+                          if (!v.contains('@') || !v.contains('.')) {
+                            return 'صيغة البريد الإلكتروني غير صحيحة';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 20),
+                      _fieldLabel(context, 'كلمة المرور'),
+                      TextFormField(
+                        controller: _passwordController,
+                        obscureText: _obscurePassword,
+                        textDirection: TextDirection.ltr,
+                        decoration: InputDecoration(
+                          hintText: '••••••••',
+                          prefixIcon: const Icon(Icons.lock_outline),
+                          suffixIcon: IconButton(
+                            icon: Icon(_obscurePassword
+                                ? Icons.visibility_outlined
+                                : Icons.visibility_off_outlined),
+                            onPressed: () => setState(
+                                () => _obscurePassword = !_obscurePassword),
+                          ),
+                        ),
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'أدخل كلمة المرور';
+                          }
+                          if (value.length < 8) {
+                            return 'كلمة المرور يجب أن تكون 8 أحرف على الأقل';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 4),
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: TextButton(
+                          onPressed: _isLoading ? null : _handleForgotPassword,
+                          child: const Text('نسيت كلمة المرور؟'),
                         ),
                       ),
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'أدخل كلمة المرور';
-                        }
-                        if (value.length < 8) {
-                          return 'كلمة المرور يجب أن تكون 8 أحرف على الأقل';
-                        }
-                        return null;
-                      },
-                    ),
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: TextButton(
-                        onPressed: _isLoading ? null : _handleForgotPassword,
-                        child: const Text('نسيت كلمة المرور؟'),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    ElevatedButton(
-                      onPressed: _isLoading ? null : _handleLogin,
-                      child: _isLoading
-                          ? const SizedBox(
-                        height: 22,
-                        width: 22,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2.4,
-                          color: Colors.white,
+                      const SizedBox(height: 16),
+                      SizedBox(
+                        height: 54,
+                        child: ElevatedButton(
+                          onPressed: _isLoading ? null : _handleLogin,
+                          child: _isLoading
+                              ? const SizedBox(
+                                  height: 22,
+                                  width: 22,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2.4,
+                                    color: Colors.white,
+                                  ),
+                                )
+                              : const Text(
+                                  'تسجيل الدخول',
+                                  style: TextStyle(fontSize: 16),
+                                ),
                         ),
-                      )
-                          : const Text('تسجيل الدخول'),
-                    ),
-                    const SizedBox(height: 12),
-                    TextButton(
-                      onPressed: _isLoading
-                          ? null
-                          : () {
-                        Navigator.of(context).pushNamed('/register');
-                      },
-                      child: const Text('ليس لديك حساب؟ إنشاء حساب جديد'),
-                    ),
-                  ],
+                      ),
+                      const SizedBox(height: 20),
+                      Center(
+                        child: RichText(
+                          text: TextSpan(
+                            style: textTheme.bodyMedium,
+                            children: [
+                              TextSpan(
+                                text: _isCustomer
+                                    ? 'ليس لديك حساب؟ '
+                                    : 'مزود خدمة جديد؟ ',
+                              ),
+                              TextSpan(
+                                text: 'سجّل الآن',
+                                style: TextStyle(
+                                  color: _isCustomer
+                                      ? CustomerColors.accent
+                                      : ProviderColors.accent,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                                recognizer: (TapGestureRecognizer()
+                                  ..onTap = _isLoading
+                                      ? null
+                                      : () {
+                                          Navigator.of(context)
+                                              .pushNamed('/register');
+                                        }),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
-          ),
-        ),
+          );
+        },
       ),
     );
   }

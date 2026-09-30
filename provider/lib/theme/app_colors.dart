@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 
-class AppColors{
+class AppColors {
   static const background = Color(0xFFF1F4FA);
+  static const fieldFill = Colors.white;
   static const navy = Color(0xFF0E1B33);
   static const blue = Color(0xFF1C63D6);
   static const cardBorder = Color(0xFFDCE6F5);
@@ -11,3 +12,4 @@ class AppColors{
   static const error = Color(0xFFD32F2F);
   static const darkPanel = Color(0xFF0E1B33);
 }// end AppColors
+
