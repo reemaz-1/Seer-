@@ -55,6 +55,7 @@ class _EditVehicleScreenState extends State<EditVehicleScreen> {
         appBar: AppBar(
           title: const Text('تعديل تفاصيل المركبة'),
           backgroundColor: AppColors.background,
+          foregroundColor: AppColors.navy,
           elevation: 0,
         ),
         body: SafeArea(

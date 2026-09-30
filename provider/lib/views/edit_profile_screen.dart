@@ -53,6 +53,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         appBar: AppBar(
           title: const Text('تعديل المعلومات الشخصية'),
           backgroundColor: AppColors.background,
+          foregroundColor: AppColors.navy,
           elevation: 0,
         ),
         body: SafeArea(

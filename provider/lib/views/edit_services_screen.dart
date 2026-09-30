@@ -41,6 +41,7 @@ class _EditServicesScreenState extends State<EditServicesScreen> {
         appBar: AppBar(
           title: const Text('تعديل الخدمات المقدمة'),
           backgroundColor: AppColors.background,
+          foregroundColor: AppColors.navy,
           elevation: 0,
         ),
         body: SafeArea(
