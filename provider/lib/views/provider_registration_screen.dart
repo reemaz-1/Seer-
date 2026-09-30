@@ -6,6 +6,7 @@ import '../theme/app_colors.dart';
 import '../services/auth_service.dart';
 import 'provider_success_screen.dart';
 import '../widgets/plate_number_input.dart';
+import '../widgets/app_snackbar.dart';
 
 class ProviderRegistrationScreen extends StatefulWidget {
   const ProviderRegistrationScreen({super.key, this.authService});
@@ -523,9 +524,7 @@ class _ProviderRegistrationScreenState
     }
 
     if (_selectedServices.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('الرجاء اختيار خدمة واحدة على الأقل')),
-      );
+      showAppMessage(context, 'الرجاء اختيار خدمة واحدة على الأقل');
 
       return;
     }
@@ -588,14 +587,13 @@ class _ProviderRegistrationScreenState
     } on AuthException catch (error) {
       if (!mounted) return;
 
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(error.message)));
+
+      showAppMessage(context, error.message);
     } catch (e) {
       if (!mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('حدث خطأ ما. الرجاء المحاولة مرة أخرى.')),
-      );
+      showAppMessage(context, 'حدث خطأ ما. الرجاء المحاولة مرة أخرى.');
+
     } finally {
       if (mounted) {
         setState(() {

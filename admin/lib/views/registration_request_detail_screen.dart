@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../controllers/registration_requests_controller.dart';
 import '../models/provider_registration_request.dart';
+import '../widgets/app_snackbar.dart';
 
 class RegistrationRequestDetailScreen extends StatefulWidget {
   final String requestId;
@@ -148,15 +149,11 @@ class _RegistrationRequestDetailScreenState
       await _controller.approveRequest(widget.requestId);
       if (mounted) {
         setState(() {});
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('تم قبول الطلب بنجاح')),
-        );
+        showAppMessage(context, 'تم قبول الطلب بنجاح', isError: false);
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('حدث خطأ: $e')),
-        );
+        showAppMessage(context, 'حدث خطأ: $e');
       }
     } finally {
       if (mounted) setState(() => _isProcessing = false);
@@ -169,15 +166,11 @@ class _RegistrationRequestDetailScreenState
       await _controller.rejectRequest(widget.requestId);
       if (mounted) {
         setState(() {});
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('تم رفض الطلب')),
-        );
+        showAppMessage(context, 'تم رفض الطلب', isError: false);
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('حدث خطأ: $e')),
-        );
+        showAppMessage(context, 'حدث خطأ: $e');
       }
     } finally {
       if (mounted) setState(() => _isProcessing = false);

@@ -3,6 +3,7 @@ import 'package:flutter/gestures.dart';
 import '../../theme/app_colors.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../../widgets/app_snackbar.dart';
 
 class CustomerRegistrationScreen extends StatefulWidget {
   const CustomerRegistrationScreen({super.key});
@@ -70,10 +71,10 @@ class _CustomerRegistrationScreenState
 
       if (!mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('تم إنشاء الحساب! الرجاء التحقق من بريدك الإلكتروني.'),
-        ),
+      showAppMessage(
+        context,
+        'تم إنشاء الحساب! الرجاء التحقق من بريدك الإلكتروني.',
+        isError: false,
       );
 
       Navigator.of(context).popUntil((route) => route.isFirst);
@@ -89,13 +90,11 @@ class _CustomerRegistrationScreenState
       }
 
       if (!mounted) return;
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(message)));
+      showAppMessage(context, message);
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('حدث خطأ ما. الرجاء المحاولة مرة أخرى.')),
-      );
+      showAppMessage(context, 'حدث خطأ ما. الرجاء المحاولة مرة أخرى.');
+      
     } finally {
       if (mounted) {
         setState(() {
