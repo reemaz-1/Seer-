@@ -50,6 +50,8 @@ class _SessionHarness {
 
   _SessionHarness() {
     when(() => user.uid).thenReturn('current-provider');
+    // AuthGate now requires a verified email before showing account status.
+    when(() => user.emailVerified).thenReturn(true);
     when(() => service.currentUser).thenAnswer((_) => currentUser);
     when(() => service.isAuthenticating).thenAnswer((_) => busy);
     when(() => service.authStateChanges).thenAnswer((_) => authEvents.stream);
@@ -96,6 +98,22 @@ class _SessionHarness {
   }
 }
 
+// The register link is a tappable span inside a RichText on the login screen.
+Future<void> _openRegistration(WidgetTester tester) async {
+  await tester.tapOnText(find.textRange.ofSubstring('سجّل الآن'));
+  await tester.pumpAndSettle();
+}
+
+// Logout now lives on the profile tab (removed from the home app bar).
+Future<void> _openProfileTab(WidgetTester tester) async {
+  await tester.tap(
+    find.byWidgetPredicate(
+      (widget) => widget is GButton && widget.icon == Icons.person_rounded,
+    ),
+  );
+  await tester.pumpAndSettle();
+}
+
 void main() {
   late _SessionHarness session;
 
@@ -109,8 +127,7 @@ void main() {
 
     expect(find.byType(LoginScreen), findsOneWidget);
     expect(find.byType(ServiceProviderMain), findsNothing);
-    await tester.tap(find.text('إنشاء حساب مزود خدمة'));
-    await tester.pumpAndSettle();
+    await _openRegistration(tester);
     expect(find.byType(ProviderRegistrationScreen), findsOneWidget);
 
     await tester.binding.handlePopRoute();
@@ -133,20 +150,12 @@ void main() {
   );
 
   testWidgets(
-    'empty registration form shows required errors without creating an account',
+    'empty first registration step shows required errors without creating an account',
     (tester) async {
       await session.mount(tester);
-      await tester.tap(find.text('إنشاء حساب مزود خدمة'));
-      await tester.pumpAndSettle();
-      final formScroll = find
-          .descendant(
-            of: find.byType(ProviderRegistrationScreen),
-            matching: find.byType(Scrollable),
-          )
-          .first;
-      final submit = find.widgetWithText(ElevatedButton, 'إرسال طلب التسجيل');
-      await tester.scrollUntilVisible(submit, 350, scrollable: formScroll);
-      await tester.tap(submit);
+      await _openRegistration(tester);
+
+      await tester.tap(find.widgetWithText(ElevatedButton, 'التالي'));
       await tester.pumpAndSettle();
 
       verifyNever(
@@ -157,17 +166,8 @@ void main() {
         ),
       );
       expect(find.byType(ProviderRegistrationScreen), findsOneWidget);
-      await tester.scrollUntilVisible(
-        find.text('الرجاء اختيار نوع المركبة'),
-        -350,
-        scrollable: formScroll,
-      );
-      expect(find.text('الرجاء اختيار نوع المركبة'), findsOneWidget);
-      await tester.scrollUntilVisible(
-        find.text('الاسم الأول'),
-        -350,
-        scrollable: formScroll,
-      );
+      // Still on step 1 — invalid fields block moving forward.
+      expect(find.text('الخطوة 1 من 3'), findsOneWidget);
       expect(find.text('الرجاء إدخال الاسم الأول'), findsOneWidget);
       expect(find.text('الرجاء إدخال البريد الإلكتروني'), findsOneWidget);
     },
@@ -195,7 +195,8 @@ void main() {
   });
 
   for (final entry in <String, String>{
-    'pending': 'طلب تسجيلك قيد المراجعة من الإدارة.',
+    'pending':
+        'تم استلام طلبك بنجاح، وهو بانتظار موافقة الإدارة. يمكنك تسجيل الدخول بعد اعتماد الطلب.',
     'rejected': 'تم رفض طلب تسجيلك. تواصل مع الإدارة.',
     'missing': 'هذا الحساب غير مصرح له بالدخول إلى تطبيق مزود الخدمة.',
   }.entries) {
@@ -210,7 +211,7 @@ void main() {
 
         expect(find.text(entry.value), findsOneWidget);
         expect(find.byType(ServiceProviderMain), findsNothing);
-        expect(find.byTooltip('تسجيل الخروج'), findsOneWidget);
+        expect(find.text('تسجيل خروج'), findsOneWidget);
       },
     );
   }
@@ -264,6 +265,7 @@ void main() {
     'logout cancellation retains session and confirmation returns login',
     (tester) async {
       await session.approve(tester);
+      await _openProfileTab(tester);
       await tester.tap(find.byTooltip('تسجيل الخروج'));
       await tester.pumpAndSettle();
       await tester.tap(find.widgetWithText(TextButton, 'إلغاء'));
@@ -288,6 +290,7 @@ void main() {
     tester,
   ) async {
     await session.approve(tester);
+    await _openProfileTab(tester);
     await tester.tap(find.byTooltip('تسجيل الخروج'));
     await tester.pumpAndSettle();
     expect(find.byType(AlertDialog), findsOneWidget);
@@ -361,12 +364,7 @@ void main() {
       'email': 'current-provider@example.com',
       'phone': '0500000000',
     };
-    await tester.tap(
-      find.byWidgetPredicate(
-        (widget) => widget is GButton && widget.icon == Icons.person_rounded,
-      ),
-    );
-    await tester.pumpAndSettle();
+    await _openProfileTab(tester);
 
     expect(find.byType(ProviderProfileScreen), findsOneWidget);
     expect(find.text('current-provider@example.com'), findsOneWidget);

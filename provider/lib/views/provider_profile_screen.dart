@@ -149,14 +149,16 @@ class _ProviderProfileScreenState extends State<ProviderProfileScreen>{
                     ),
                   );        
 
-                   if(updated != null && mounted){
-                    await _saveProviderUpdates({
-                      'vehicleColor' : updated.vehicleColor,
-                      'plateNumberArabic' : updated.plateNumberArabic,
-                      'plateNumberLatin' : updated.plateNumberLatin,
-                      'licenseNumber' : updated.licenseNumber,
-                    }, updated);
-                  }
+                  if(updated != null && mounted){
+  await _saveProviderUpdates({
+    'vehicleBrand' : updated.vehicleBrand,
+    'vehicleModel' : updated.vehicleModel,
+    'vehicleColor' : updated.vehicleColor,
+    'plateNumberArabic' : updated.plateNumberArabic,
+    'plateNumberLatin' : updated.plateNumberLatin,
+    'licenseNumber' : updated.licenseNumber,
+  }, updated);
+}
                 },
               ),
 

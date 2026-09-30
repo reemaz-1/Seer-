@@ -76,6 +76,7 @@ void main() {
     operations = [];
 
     when(() => user.uid).thenReturn(uid);
+    when(() => user.emailVerified).thenReturn(true);
     when(() => credential.user).thenReturn(user);
     when(() => auth.currentUser).thenAnswer((_) => currentUser);
     when(() => auth.authStateChanges()).thenAnswer((_) => const Stream.empty());

@@ -73,6 +73,12 @@ class AuthService extends ChangeNotifier {
       if (user == null) {
         throw const AuthException('تعذر تسجيل الدخول، حاول مرة أخرى.');
       }
+      // NEW: an unverified provider stays signed in so AuthGate can show
+      // the email verification screen. Account status is checked by
+      // AuthGate after the email is verified.
+      if (!user.emailVerified) {
+        return user;
+      }
       final data = (await _provider(
         user.uid,
       ).get(const GetOptions(source: Source.server))).data();

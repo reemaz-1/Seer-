@@ -5,9 +5,11 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 import '../services/auth_service.dart';
+import '../theme/app_colors.dart';
 import 'service_provider_main.dart';
 import '../widgets/logout_button.dart';
 import 'login_screen.dart';
+import 'email_verification_screen.dart';
 
 class AuthGate extends StatefulWidget {
   const AuthGate({super.key, this.authService});
@@ -77,7 +79,9 @@ class _AuthGateState extends State<AuthGate> {
     if (_waiting) return const _LoadingScreen();
     if (_authError) {
       return _status(
-        'تعذر التحقق من تسجيل الدخول.',
+        icon: Icons.wifi_off_rounded,
+        title: 'تعذر الاتصال',
+        message: 'تعذر التحقق من تسجيل الدخول.',
         retry: () async {
           await _subscription?.cancel();
           if (!mounted) return;
@@ -93,13 +97,24 @@ class _AuthGateState extends State<AuthGate> {
     if (user == null) {
       return _session('signed-out', LoginScreen(authService: _auth));
     }
+    // Email must be verified before the provider can see their account
+    // status. After verifying, the screen calls _syncSession so we re-read
+    // the (reloaded) user and continue to the status switch below.
+    if (!user.emailVerified) {
+      return _session(
+        'verify-${user.uid}',
+        EmailVerificationScreen(authService: _auth, onVerified: _syncSession),
+      );
+    }
     return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
       key: ValueKey(user.uid),
       stream: _profile,
       builder: (context, snapshot) {
         if (snapshot.hasError) {
           return _status(
-            'تعذر تحميل حالة الحساب. تحقق من الاتصال وحاول مرة أخرى.',
+            icon: Icons.wifi_off_rounded,
+            title: 'تعذر تحميل الحساب',
+            message: 'تعذر تحميل حالة الحساب. تحقق من الاتصال وحاول مرة أخرى.',
             retry: () => setState(() {
               _profile = _auth.watchProvider(user.uid);
             }),
@@ -120,36 +135,125 @@ class _AuthGateState extends State<AuthGate> {
               ),
             );
           case 'pending':
-            return _status('طلب تسجيلك قيد المراجعة من الإدارة.');
+            return _status(
+              icon: Icons.hourglass_top_rounded,
+              title: 'طلبك قيد المراجعة',
+              message:
+                  'تم استلام طلبك بنجاح، وهو بانتظار موافقة الإدارة. يمكنك تسجيل الدخول بعد اعتماد الطلب.',
+            );
           case 'rejected':
-            return _status('تم رفض طلب تسجيلك. تواصل مع الإدارة.');
+            return _status(
+              icon: Icons.close_rounded,
+              title: 'تم رفض الطلب',
+              message: 'تم رفض طلب تسجيلك. تواصل مع الإدارة.',
+            );
           default:
             return _status(
-              'هذا الحساب غير مصرح له بالدخول إلى تطبيق مزود الخدمة.',
+              icon: Icons.lock_outline_rounded,
+              title: 'غير مصرح',
+              message: 'هذا الحساب غير مصرح له بالدخول إلى تطبيق مزود الخدمة.',
             );
         }
       },
     );
   }
 
-  Widget _status(String message, {VoidCallback? retry}) => Scaffold(
-    body: Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.info_outline, size: 56),
-            const SizedBox(height: 16),
-            Text(message, textAlign: TextAlign.center),
-            if (retry != null)
-              TextButton(onPressed: retry, child: const Text('إعادة المحاولة')),
-            LogoutButton(authService: _auth),
-          ],
+  // Same look as the registration success screen: navy circle icon,
+  // title, message, and full-width actions.
+  Widget _status({
+    required IconData icon,
+    required String title,
+    required String message,
+    VoidCallback? retry,
+  }) =>
+      Scaffold(
+        backgroundColor: AppColors.background,
+        body: SafeArea(
+          child: Center(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 96,
+                      height: 96,
+                      decoration: const BoxDecoration(
+                        color: AppColors.navy,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(icon, size: 48, color: Colors.white),
+                    ),
+                  ),
+                  const SizedBox(height: 28),
+                  Text(
+                    title,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.navy,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    message,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontSize: 15,
+                      height: 1.6,
+                      color: AppColors.secondaryText,
+                    ),
+                  ),
+                  const SizedBox(height: 36),
+                  if (retry != null) ...[
+                    SizedBox(
+                      height: 54,
+                      child: ElevatedButton(
+                        onPressed: retry,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.blue,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: const Text(
+                          'إعادة المحاولة',
+                          style: TextStyle(fontSize: 16),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                  ],
+                  SizedBox(
+                    height: 54,
+                    child: OutlinedButton.icon(
+                      onPressed: () =>
+                          LogoutButton.confirm(context, authService: _auth),
+                      icon: const Icon(Icons.logout_rounded),
+                      label: const Text(
+                        'تسجيل خروج',
+                        style: TextStyle(fontSize: 16),
+                      ),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.navy,
+                        backgroundColor: Colors.white,
+                        side: const BorderSide(color: AppColors.cardBorder),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
         ),
-      ),
-    ),
-  );
+      );
 }
 
 class _LoadingScreen extends StatelessWidget {

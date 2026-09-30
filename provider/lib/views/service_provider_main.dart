@@ -26,7 +26,10 @@ class _ServiceProviderMainState extends State<ServiceProviderMain> {
 
       // Index 1 opens the combined Orders screen.
       body: selectedIndex == 0
-          ? ProviderHome(firstName: widget.firstName)
+          ? ProviderHome(
+    firstName: widget.firstName,
+    authService: widget.authService,
+  )
           : selectedIndex == 1
           ? const ProviderOrders()
           : ProviderProfileScreen(authService: widget.authService),

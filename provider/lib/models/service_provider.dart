@@ -73,7 +73,6 @@ const Map<String, Map<String, dynamic>> _serviceCategoryDefinitions = {
   },
 };
 
-
 Map<String, dynamic> servicesOfferedFromActiveBranches(Set<String> activeBranches){
   final Map<String, dynamic> result = {};
   _serviceCategoryDefinitions.forEach((categoryKey, categoryDef){
@@ -93,14 +92,18 @@ Map<String, dynamic> servicesOfferedFromActiveBranches(Set<String> activeBranche
 }//end servicesOfferedFromActiveBranches
 
 
-
 class ServiceProviderData{
   final String firstName;
   final String lastName;
   final String phone;
   final String email;
   final String nationalId;
+
+  // Keep the database values separately for vehicle editing.
+  final String vehicleBrand;
+  final String vehicleModel;
   final String vehicle;
+
   final String plateNumberArabic;
   final String plateNumberLatin;
   final String vehicleColor;
@@ -110,14 +113,18 @@ class ServiceProviderData{
   final Set<String> activeBranches;
   final bool isAvailable;
 
-
   ServiceProviderData({
     required this.firstName,
     required this.lastName,
     required this.phone,
     required this.email,
     required this.nationalId,
+
+    // Defaults keep existing ServiceProviderData constructors working.
+    this.vehicleBrand = '',
+    this.vehicleModel = '',
     required this.vehicle,
+
     required this.plateNumberArabic,
     required this.plateNumberLatin,
     required this.vehicleColor,
@@ -129,14 +136,17 @@ class ServiceProviderData{
   });
 
   factory ServiceProviderData.fromMap(Map<String, dynamic> map) {
-
     return ServiceProviderData(
       firstName: map['firstName'] ?? '',
       lastName: map['lastName'] ?? '',
       phone: map['phone'] ?? '',
       email: map['email'] ?? '',
       nationalId: map['nationalId'] ?? '',
-      vehicle: '${map['vehicleBrand'] ?? ''} ${map['vehicleModel'] ?? ''}',
+
+      vehicleBrand: map['vehicleBrand'] ?? '',
+      vehicleModel: map['vehicleModel'] ?? '',
+      vehicle: '${map['vehicleBrand'] ?? ''} ${map['vehicleModel'] ?? ''}'.trim(),
+
       plateNumberArabic: map['plateNumberArabic'] ?? '',
       plateNumberLatin: map['plateNumberLatin'] ?? '',
       vehicleColor: map['vehicleColor'] ?? '',
@@ -149,7 +159,6 @@ class ServiceProviderData{
   }
 
 }//end serviceProviderData
-
 
 
 /// Talks to the database.
