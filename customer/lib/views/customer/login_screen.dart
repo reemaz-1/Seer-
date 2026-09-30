@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
+
 import '../../services/auth_service.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/app_colors.dart';
@@ -57,17 +58,19 @@ class _LoginScreenState extends State<LoginScreen> {
     try {
       await _authService.sendPasswordResetEmail(email);
       if (!mounted) return;
-      showAppMessage(context, 'تم إرسال رابط إعادة التعيين إلى بريدك.',
-          isError: false);
-          
+      showAppMessage(
+        context,
+        'تم إرسال رابط إعادة التعيين إلى بريدك.',
+        isError: false,
+      );
     } on AuthException catch (e) {
       _showError(e.message);
     }
   }
 
-  void _showError(String message, {bool isError = true}) {
+  void _showError(String message) {
     if (!mounted) return;
-    showAppMessage(context, message, isError: isError);
+    showAppMessage(context, message, isError: true);
   }
 
   bool get _isCustomer => widget.role == AppRole.customer;
@@ -77,9 +80,7 @@ class _LoginScreenState extends State<LoginScreen> {
       padding: const EdgeInsets.only(bottom: 8),
       child: Text(
         text,
-        style: Theme.of(context)
-            .textTheme
-            .bodyMedium
+        style: Theme.of(context).textTheme.bodyMedium
             ?.copyWith(fontWeight: FontWeight.w600),
       ),
     );
@@ -131,14 +132,16 @@ class _LoginScreenState extends State<LoginScreen> {
                       const SizedBox(height: 28),
                       Text(
                         title,
-                        style: textTheme.headlineSmall
-                            ?.copyWith(fontWeight: FontWeight.w800),
+                        style: textTheme.headlineSmall?.copyWith(
+                          fontWeight: FontWeight.w800,
+                        ),
                       ),
                       const SizedBox(height: 8),
                       Text(
                         subtitle,
-                        style: textTheme.bodyMedium
-                            ?.copyWith(color: Colors.grey.shade600),
+                        style: textTheme.bodyMedium?.copyWith(
+                          color: Colors.grey.shade600,
+                        ),
                       ),
                       const SizedBox(height: 36),
                       _fieldLabel(context, 'البريد الإلكتروني'),
@@ -169,11 +172,14 @@ class _LoginScreenState extends State<LoginScreen> {
                           hintText: '••••••••',
                           prefixIcon: const Icon(Icons.lock_outline),
                           suffixIcon: IconButton(
-                            icon: Icon(_obscurePassword
-                                ? Icons.visibility_outlined
-                                : Icons.visibility_off_outlined),
+                            icon: Icon(
+                              _obscurePassword
+                                  ? Icons.visibility_outlined
+                                  : Icons.visibility_off_outlined,
+                            ),
                             onPressed: () => setState(
-                                () => _obscurePassword = !_obscurePassword),
+                              () => _obscurePassword = !_obscurePassword,
+                            ),
                           ),
                         ),
                         validator: (value) {

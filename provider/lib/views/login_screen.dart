@@ -53,16 +53,16 @@ class _LoginScreenState extends State<LoginScreen> {
     }
     try {
       await _authService.sendPasswordResetEmail(email);
-      _showMessage('تم إرسال رابط إعادة تعيين كلمة المرور.', isError: false);    } on AuthException catch (error) {
+      _showMessage('تم إرسال رابط إعادة تعيين كلمة المرور.', isError: false);
+    } on AuthException catch (error) {
       _showMessage(error.message);
     }
   }
 
-    void _showMessage(String message, {bool isError = true}) {
+  void _showMessage(String message, {bool isError = true}) {
     if (!mounted) return;
     showAppMessage(context, message, isError: isError);
   }
-
 
   Widget _fieldLabel(String text) {
     return Padding(
@@ -80,171 +80,164 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-        body: SafeArea(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
-            child: Form(
-              key: _formKey,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
+    body: SafeArea(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
                 children: [
-                  Row(
-                    children: [
-                      Container(
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: AppColors.cardBorder),
-                        ),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(12),
-                          child: Image.asset(
-                            'assets/icon/icon.jpg',
-                            width: 48,
-                            height: 48,
-                            fit: BoxFit.cover,
-                          ),
-                        ),
+                  Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: AppColors.cardBorder),
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: Image.asset(
+                        'assets/icon/icon.jpg',
+                        width: 48,
+                        height: 48,
+                        fit: BoxFit.cover,
                       ),
-                      const SizedBox(width: 12),
-                      const Text(
-                        'سير',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w800,
-                          fontSize: 20,
-                          color: AppColors.navy,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 28),
-                  Text(
-                    'سجّل دخول ${AppConfig.roleLabel}',
-                    style: const TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.navy,
                     ),
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(width: 12),
                   const Text(
-                    'سجّل الدخول لمتابعة طلبات الخدمة الخاصة بك.',
+                    'سير',
                     style: TextStyle(
-                      fontSize: 14,
-                      color: AppColors.secondaryText,
-                    ),
-                  ),
-                  const SizedBox(height: 36),
-                  _fieldLabel('البريد الإلكتروني'),
-                  TextFormField(
-                    controller: _emailController,
-                    keyboardType: TextInputType.emailAddress,
-                    textDirection: TextDirection.ltr,
-                    decoration: const InputDecoration(
-                      hintText: 'example@email.com',
-                      prefixIcon: Icon(Icons.email_outlined),
-                    ),
-                    validator: (value) {
-                      final email = value?.trim() ?? '';
-                      if (email.isEmpty) return 'أدخل البريد الإلكتروني';
-                      if (!email.contains('@') || !email.contains('.')) {
-                        return 'صيغة البريد الإلكتروني غير صحيحة';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 20),
-                  _fieldLabel('كلمة المرور'),
-                  TextFormField(
-                    controller: _passwordController,
-                    obscureText: _obscurePassword,
-                    textDirection: TextDirection.ltr,
-                    decoration: InputDecoration(
-                      hintText: '••••••••',
-                      prefixIcon: const Icon(Icons.lock_outline),
-                      suffixIcon: IconButton(
-                        onPressed: () => setState(
-                            () => _obscurePassword = !_obscurePassword),
-                        icon: Icon(
-                          _obscurePassword
-                              ? Icons.visibility_outlined
-                              : Icons.visibility_off_outlined,
-                        ),
-                      ),
-                    ),
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'أدخل كلمة المرور';
-                      }
-                      if (value.length < 8) {
-                        return 'كلمة المرور يجب أن تكون 8 أحرف على الأقل';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 4),
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: TextButton(
-                      onPressed: _loading ? null : _resetPassword,
-                      child: const Text('نسيت كلمة المرور؟'),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  SizedBox(
-                    height: 54,
-                    child: ElevatedButton(
-                      onPressed: _loading ? null : _logIn,
-                      child: _loading
-                          ? const SizedBox(
-                              width: 22,
-                              height: 22,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2.4,
-                                color: Colors.white,
-                              ),
-                            )
-                          : const Text(
-                              'تسجيل الدخول',
-                              style: TextStyle(fontSize: 16),
-                            ),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  Center(
-                    child: RichText(
-                      text: TextSpan(
-                        style: const TextStyle(
-                          color: AppColors.navy,
-                          fontSize: 14,
-                        ),
-                        children: [
-                          const TextSpan(text: 'مزود خدمة جديد؟ '),
-                          TextSpan(
-                            text: 'سجّل الآن',
-                            style: const TextStyle(
-                              color: AppColors.blue,
-                              fontWeight: FontWeight.bold,
-                            ),
-                            recognizer: (TapGestureRecognizer()
-                              ..onTap = _loading
-                                  ? null
-                                  : () => Navigator.of(context).push(
-                                        MaterialPageRoute<void>(
-                                          builder: (_) =>
-                                              ProviderRegistrationScreen(
-                                            authService: _authService,
-                                          ),
-                                        ),
-                                      )),
-                          ),
-                        ],
-                      ),
+                      fontWeight: FontWeight.w800,
+                      fontSize: 20,
+                      color: AppColors.navy,
                     ),
                   ),
                 ],
               ),
-            ),
+              const SizedBox(height: 28),
+              Text(
+                'سجّل دخول ${AppConfig.roleLabel}',
+                style: const TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.navy,
+                ),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'سجّل الدخول لمتابعة طلبات الخدمة الخاصة بك.',
+                style: TextStyle(fontSize: 14, color: AppColors.secondaryText),
+              ),
+              const SizedBox(height: 36),
+              _fieldLabel('البريد الإلكتروني'),
+              TextFormField(
+                controller: _emailController,
+                keyboardType: TextInputType.emailAddress,
+                textDirection: TextDirection.ltr,
+                decoration: const InputDecoration(
+                  hintText: 'example@email.com',
+                  prefixIcon: Icon(Icons.email_outlined),
+                ),
+                validator: (value) {
+                  final email = value?.trim() ?? '';
+                  if (email.isEmpty) return 'أدخل البريد الإلكتروني';
+                  if (!email.contains('@') || !email.contains('.')) {
+                    return 'صيغة البريد الإلكتروني غير صحيحة';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 20),
+              _fieldLabel('كلمة المرور'),
+              TextFormField(
+                controller: _passwordController,
+                obscureText: _obscurePassword,
+                textDirection: TextDirection.ltr,
+                decoration: InputDecoration(
+                  hintText: '••••••••',
+                  prefixIcon: const Icon(Icons.lock_outline),
+                  suffixIcon: IconButton(
+                    onPressed: () =>
+                        setState(() => _obscurePassword = !_obscurePassword),
+                    icon: Icon(
+                      _obscurePassword
+                          ? Icons.visibility_outlined
+                          : Icons.visibility_off_outlined,
+                    ),
+                  ),
+                ),
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'أدخل كلمة المرور';
+                  }
+                  if (value.length < 8) {
+                    return 'كلمة المرور يجب أن تكون 8 أحرف على الأقل';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 4),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: TextButton(
+                  onPressed: _loading ? null : _resetPassword,
+                  child: const Text('نسيت كلمة المرور؟'),
+                ),
+              ),
+              const SizedBox(height: 16),
+              SizedBox(
+                height: 54,
+                child: ElevatedButton(
+                  onPressed: _loading ? null : _logIn,
+                  child: _loading
+                      ? const SizedBox(
+                          width: 22,
+                          height: 22,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2.4,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Text(
+                          'تسجيل الدخول',
+                          style: TextStyle(fontSize: 16),
+                        ),
+                ),
+              ),
+              const SizedBox(height: 20),
+              Center(
+                child: RichText(
+                  text: TextSpan(
+                    style: const TextStyle(color: AppColors.navy, fontSize: 14),
+                    children: [
+                      const TextSpan(text: 'مزود خدمة جديد؟ '),
+                      TextSpan(
+                        text: 'سجّل الآن',
+                        style: const TextStyle(
+                          color: AppColors.blue,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        recognizer: (TapGestureRecognizer()
+                          ..onTap = _loading
+                              ? null
+                              : () => Navigator.of(context).push(
+                                  MaterialPageRoute<void>(
+                                    builder: (_) => ProviderRegistrationScreen(
+                                      authService: _authService,
+                                    ),
+                                  ),
+                                )),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
-      );
+      ),
+    ),
+  );
 }
