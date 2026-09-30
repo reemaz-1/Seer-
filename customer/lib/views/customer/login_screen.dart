@@ -3,6 +3,7 @@ import 'package:flutter/gestures.dart';
 import '../../services/auth_service.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/app_colors.dart';
+import '../../widgets/app_snackbar.dart';
 
 /// Log In screen — works for both apps; pass [role] to pick the
 /// matching color theme (Customer = Icon Navy, Provider = Fleet Blue).
@@ -56,19 +57,17 @@ class _LoginScreenState extends State<LoginScreen> {
     try {
       await _authService.sendPasswordResetEmail(email);
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('تم إرسال رابط إعادة التعيين إلى بريدك.')),
-      );
+      showAppMessage(context, 'تم إرسال رابط إعادة التعيين إلى بريدك.',
+          isError: false);
+          
     } on AuthException catch (e) {
       _showError(e.message);
     }
   }
 
-  void _showError(String message) {
+  void _showError(String message, {bool isError = true}) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
+    showAppMessage(context, message, isError: isError);
   }
 
   bool get _isCustomer => widget.role == AppRole.customer;

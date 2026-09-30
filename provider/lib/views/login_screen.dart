@@ -5,6 +5,7 @@ import '../config/app_config.dart';
 import '../services/auth_service.dart';
 import '../theme/app_colors.dart';
 import 'provider_registration_screen.dart';
+import '../widgets/app_snackbar.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key, this.authService});
@@ -52,17 +53,16 @@ class _LoginScreenState extends State<LoginScreen> {
     }
     try {
       await _authService.sendPasswordResetEmail(email);
-      _showMessage('تم إرسال رابط إعادة تعيين كلمة المرور.');
-    } on AuthException catch (error) {
+      _showMessage('تم إرسال رابط إعادة تعيين كلمة المرور.', isError: false);    } on AuthException catch (error) {
       _showMessage(error.message);
     }
   }
 
-  void _showMessage(String message) {
+    void _showMessage(String message, {bool isError = true}) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text(message)));
+    showAppMessage(context, message, isError: isError);
   }
+
 
   Widget _fieldLabel(String text) {
     return Padding(
