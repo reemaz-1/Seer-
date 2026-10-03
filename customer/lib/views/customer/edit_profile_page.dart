@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
  
 import '../../controllers/profile_controller.dart';
-import '../../core/app_colors.dart';
+import '../../theme/app_colors.dart'; 
 import '../../models/customer.dart';
  
 /// VIEW: edit personal information (user story #6).
@@ -59,10 +59,10 @@ class _EditProfilePageState extends State<EditProfilePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: CustomerColors.background,
       appBar: AppBar(
-        backgroundColor: AppColors.navy,
-        foregroundColor: AppColors.headerText,
+        backgroundColor: CustomerColors.darkPanel,
+        foregroundColor: Colors.white,
         title: const Text(
           'تعديل المعلومات الشخصية',
           style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
@@ -105,8 +105,8 @@ class _EditProfilePageState extends State<EditProfilePage> {
                   return FilledButton(
                     onPressed: saving ? null : _save,
                     style: FilledButton.styleFrom(
-                      backgroundColor: AppColors.accent,
-                      disabledBackgroundColor: AppColors.accentDisabled,
+                      backgroundColor: CustomerColors.accent,
+                      disabledBackgroundColor: CustomerColors.accent.withOpacity(0.3),
                       minimumSize: const Size.fromHeight(52),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(14),
@@ -170,7 +170,7 @@ class _LabeledField extends StatelessWidget {
             style: const TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w600,
-              color: AppColors.textSecondary,
+              color: CustomerColors.secondaryText,
             ),
           ),
           const SizedBox(height: 6),
@@ -181,17 +181,17 @@ class _LabeledField extends StatelessWidget {
             textDirection: ltr ? TextDirection.ltr : null,
             textInputAction: TextInputAction.next,
             autovalidateMode: AutovalidateMode.onUserInteraction,
-            style: const TextStyle(fontSize: 15, color: AppColors.textPrimary),
+            style: const TextStyle(fontSize: 15, color: CustomerColors.primaryText),
             decoration: InputDecoration(
               hintText: hint,
               hintTextDirection: ltr ? TextDirection.ltr : null,
               filled: true,
-              fillColor: AppColors.cardFill,
+              fillColor: CustomerColors.fieldFill,
               contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-              enabledBorder: border(AppColors.cardBorder),
-              focusedBorder: border(AppColors.accent, 1.5),
-              errorBorder: border(AppColors.danger),
-              focusedErrorBorder: border(AppColors.danger, 1.5),
+              enabledBorder: border(CustomerColors.cardBorder),
+              focusedBorder: border(CustomerColors.accent, 1.5),
+              errorBorder: border(AppStatusColors.error),
+              focusedErrorBorder: border(AppStatusColors.error, 1.5),
             ),
           ),
         ],
@@ -224,7 +224,7 @@ class _ReadOnlyField extends StatelessWidget {
             style: const TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w600,
-              color: AppColors.textSecondary,
+              color: CustomerColors.secondaryText,
             ),
           ),
           const SizedBox(height: 6),
@@ -232,8 +232,8 @@ class _ReadOnlyField extends StatelessWidget {
             width: double.infinity,
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
             decoration: BoxDecoration(
-              color: AppColors.background,
-              border: Border.all(color: AppColors.cardBorder),
+              color: CustomerColors.background,
+              border: Border.all(color: CustomerColors.cardBorder),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Row(
@@ -245,11 +245,11 @@ class _ReadOnlyField extends StatelessWidget {
                     textAlign: TextAlign.left,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontSize: 15, color: AppColors.textSecondary),
+                    style: const TextStyle(fontSize: 15, color: CustomerColors.secondaryText),
                   ),
                 ),
                 const SizedBox(width: 8),
-                const Icon(Icons.lock_outline, size: 18, color: AppColors.chevron),
+                const Icon(Icons.lock_outline, size: 18, color: CustomerColors.secondaryText),
               ],
             ),
           ),
@@ -257,7 +257,7 @@ class _ReadOnlyField extends StatelessWidget {
             padding: const EdgeInsets.only(top: 6, right: 4, left: 4),
             child: Text(
               note,
-              style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+              style: const TextStyle(fontSize: 12, color: CustomerColors.secondaryText),
             ),
           ),
         ],

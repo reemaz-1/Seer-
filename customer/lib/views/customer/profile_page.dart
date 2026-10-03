@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../controllers/profile_controller.dart';
-import '../../core/app_colors.dart';
+import '../../theme/app_colors.dart'; 
 import '../../models/customer.dart';
 import '../../models/vehicle.dart';
 import 'edit_profile_page.dart';
@@ -14,7 +14,6 @@ import 'vehicles_page.dart';
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key, required this.uid});
 
-  /// The logged-in customer's id (later: FirebaseAuth.instance.currentUser!.uid).
   final String uid;
 
   @override
@@ -116,7 +115,7 @@ class _ProfilePageState extends State<ProfilePage> {
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: TextButton.styleFrom(
-              foregroundColor: danger ? AppColors.danger : AppColors.accent,
+              foregroundColor: danger ? AppStatusColors.error : CustomerColors.accent,
             ),
             child: Text(confirmLabel),
           ),
@@ -137,7 +136,7 @@ class _ProfilePageState extends State<ProfilePage> {
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle.light, // white status bar icons on the navy header
       child: Scaffold(
-        backgroundColor: AppColors.background,
+        backgroundColor: CustomerColors.background,
         body: ListenableBuilder(
           listenable: _controller,
           builder: (context, _) {
@@ -151,19 +150,18 @@ class _ProfilePageState extends State<ProfilePage> {
                 );
               }
               return const Center(
-                child: CircularProgressIndicator(color: AppColors.accent),
+                child: CircularProgressIndicator(color: CustomerColors.accent),
               );
             }
 
             return RefreshIndicator(
-              color: AppColors.accent,
+              color: CustomerColors.accent,
               onRefresh: () => _controller.load(widget.uid),
               child: ListView(
                 physics: const AlwaysScrollableScrollPhysics(),
                 padding: EdgeInsets.zero,
                 children: [
                   _Header(customer: customer),
-                  // Pull the cards up so they overlap the header, like the design.
                   Transform.translate(
                     offset: const Offset(0, 0),
                     child: Padding(
@@ -240,7 +238,7 @@ class _Header extends StatelessWidget {
     final topInset = MediaQuery.paddingOf(context).top;
 
     return Container(
-      color: AppColors.navy,
+      color: CustomerColors.darkPanel,
       padding: EdgeInsets.fromLTRB(18, topInset + 12, 18, 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -252,7 +250,7 @@ class _Header extends StatelessWidget {
                 height: 56,
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
-                  color: AppColors.accent,
+                  color: CustomerColors.accent,
                   borderRadius: BorderRadius.circular(16),
                 ),
                 child: Text(
@@ -274,7 +272,7 @@ class _Header extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
-                        color: AppColors.headerText,
+                        color: Colors.white,
                         fontSize: 19,
                         fontWeight: FontWeight.w800,
                       ),
@@ -284,7 +282,7 @@ class _Header extends StatelessWidget {
                       customer.phone,
                       textDirection: TextDirection.ltr,
                       style: const TextStyle(
-                        color: AppColors.headerTextMuted,
+                        color: Colors.white70,
                         fontSize: 13,
                       ),
                     ),
@@ -314,14 +312,13 @@ class _SectionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Material (not Container) so the tap ripples inside the card are visible.
     return SizedBox(
       width: double.infinity,
       child: Material(
-        color: AppColors.cardFill,
+        color: CustomerColors.fieldFill,
         clipBehavior: Clip.antiAlias,
         shape: RoundedRectangleBorder(
-          side: const BorderSide(color: AppColors.cardBorder),
+          side: const BorderSide(color: CustomerColors.cardBorder),
           borderRadius: BorderRadius.circular(16),
         ),
         child: Padding(
@@ -344,7 +341,7 @@ class _SectionCard extends StatelessWidget {
                 style: const TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.w800,
-                  color: AppColors.textPrimary,
+                  color: CustomerColors.primaryText,
                 ),
               ),
               const Spacer(),
@@ -352,7 +349,7 @@ class _SectionCard extends StatelessWidget {
                 TextButton(
                   onPressed: onAction,
                   style: TextButton.styleFrom(
-                    foregroundColor: AppColors.accent,
+                    foregroundColor: CustomerColors.accent,
                     minimumSize: const Size(48, 40),
                     padding: const EdgeInsets.symmetric(horizontal: 8),
                   ),
@@ -379,30 +376,29 @@ class _FieldRow extends StatelessWidget {
 
   final String label;
   final String value;
-  final bool ltr; // true for phone numbers / emails
+  final bool ltr;
   final bool showDivider;
 
   @override
   Widget build(BuildContext context) {
-    // In RTL the "end" of the row is the left side.
     final isRtl = Directionality.of(context) == TextDirection.rtl;
 
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 11),
       decoration: showDivider
           ? const BoxDecoration(
-              border: Border(bottom: BorderSide(color: AppColors.cardBorder)),
+              border: Border(bottom: BorderSide(color: CustomerColors.cardBorder)),
             )
           : null,
       child: Row(
         children: [
           Text(
             label,
-              style: const TextStyle(
-  fontSize: 14,
-  fontWeight: FontWeight.w600,
-  color: AppColors.textPrimary,
-),
+            style: const TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: CustomerColors.primaryText,
+            ),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -414,7 +410,7 @@ class _FieldRow extends StatelessWidget {
               textAlign: isRtl ? TextAlign.left : TextAlign.right,
               style: const TextStyle(
                 fontSize: 14,
-                color: AppColors.textSecondary,
+                color: CustomerColors.secondaryText,
               ),
             ),
           ),
@@ -445,7 +441,7 @@ class _VehiclesList extends StatelessWidget {
             padding: EdgeInsets.symmetric(vertical: 10),
             child: Text(
               'أضف مركبتك لتتمكن من طلب الخدمات لها',
-              style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+              style: TextStyle(fontSize: 13, color: CustomerColors.secondaryText),
             ),
           ),
         for (var i = 0; i < vehicles.length; i++)
@@ -459,11 +455,11 @@ class _VehiclesList extends StatelessWidget {
           onPressed: onAdd,
           icon: const Icon(Icons.add, size: 18),
           label: const Text(
-              'إضافة مركبة',
-              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
-            ),
+            'إضافة مركبة',
+            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+          ),
           style: OutlinedButton.styleFrom(
-            foregroundColor: AppColors.accent,
+            foregroundColor: CustomerColors.accent,
             minimumSize: const Size.fromHeight(44),
             side: const BorderSide(color: Color(0xFFC7CEDC), width: 1.5),
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -494,7 +490,7 @@ class _VehicleTile extends StatelessWidget {
         padding: const EdgeInsets.symmetric(vertical: 10),
         decoration: showDivider
             ? const BoxDecoration(
-                border: Border(bottom: BorderSide(color: AppColors.cardBorder)),
+                border: Border(bottom: BorderSide(color: CustomerColors.cardBorder)),
               )
             : null,
         child: Row(
@@ -503,7 +499,7 @@ class _VehicleTile extends StatelessWidget {
               width: 40,
               height: 40,
               decoration: BoxDecoration(
-                color: AppColors.navy,
+                color: CustomerColors.darkPanel,
                 borderRadius: BorderRadius.circular(10),
               ),
               child: const Icon(Icons.directions_car_outlined, color: Colors.white, size: 20),
@@ -521,14 +517,13 @@ class _VehicleTile extends StatelessWidget {
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    'لوحة ${vehicle.plateNumber}',
-                    style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                    'لوحة ${vehicle.plateNumberArabic}',
+                    style: const TextStyle(fontSize: 12, color: CustomerColors.secondaryText),
                   ),
                 ],
               ),
             ),
-            // chevron_right flips automatically to point left in RTL
-            const Icon(Icons.chevron_right, color: AppColors.chevron),
+            const Icon(Icons.chevron_right, color: CustomerColors.secondaryText),
           ],
         ),
       ),
@@ -553,7 +548,7 @@ class _ActionRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = danger ? AppColors.danger : AppColors.textPrimary;
+    final color = danger ? AppStatusColors.error : CustomerColors.primaryText;
 
     return InkWell(
       onTap: onTap,
@@ -561,7 +556,7 @@ class _ActionRow extends StatelessWidget {
         padding: const EdgeInsets.symmetric(vertical: 10),
         decoration: showDivider
             ? const BoxDecoration(
-                border: Border(bottom: BorderSide(color: AppColors.cardBorder)),
+                border: Border(bottom: BorderSide(color: CustomerColors.cardBorder)),
               )
             : null,
         child: Row(
@@ -570,7 +565,7 @@ class _ActionRow extends StatelessWidget {
               width: 36,
               height: 36,
               decoration: BoxDecoration(
-                color: danger ? AppColors.dangerSoft : AppColors.background,
+                color: danger ? AppStatusColors.error.withOpacity(0.12) : CustomerColors.background,
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Icon(icon, size: 18, color: color),
@@ -582,7 +577,7 @@ class _ActionRow extends StatelessWidget {
                 style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: color),
               ),
             ),
-            if (!danger) const Icon(Icons.chevron_right, color: AppColors.chevron),
+            if (!danger) const Icon(Icons.chevron_right, color: CustomerColors.secondaryText),
           ],
         ),
       ),
@@ -604,17 +599,17 @@ class _ErrorView extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.wifi_off_rounded, size: 40, color: AppColors.textSecondary),
+            const Icon(Icons.wifi_off_rounded, size: 40, color: CustomerColors.secondaryText),
             const SizedBox(height: 12),
             Text(
               message,
               textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 14, color: AppColors.textSecondary),
+              style: const TextStyle(fontSize: 14, color: CustomerColors.secondaryText),
             ),
             const SizedBox(height: 16),
             FilledButton(
               onPressed: onRetry,
-              style: FilledButton.styleFrom(backgroundColor: AppColors.accent),
+              style: FilledButton.styleFrom(backgroundColor: CustomerColors.accent),
               child: const Text('إعادة المحاولة'),
             ),
           ],

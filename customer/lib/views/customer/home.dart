@@ -1,160 +1,169 @@
 import 'package:flutter/material.dart';
 
-class Home extends StatelessWidget {
-  const Home({super.key});
+import '../../theme/app_colors.dart'; 
+import '../../models/service_catalog.dart';
+import 'request_service_page.dart';
 
-  static const services = [
-    {'name': 'البطارية', 'icon': Icons.battery_charging_full},
-    {'name': 'الوقود', 'icon': Icons.local_gas_station},
-    {'name': 'الإطارات', 'icon': Icons.tire_repair},
-    {'name': 'السحب', 'icon': Icons.local_shipping_outlined},
-  ];
+/// VIEW: the customer home page.
+class Home extends StatelessWidget {
+  const Home({super.key, required this.uid});
+
+  final String uid;
+
+  static const _icons = <String, IconData>{
+    'battery': Icons.battery_charging_full,
+    'fuel': Icons.local_gas_station,
+    'tires': Icons.tire_repair,
+    'towing': Icons.local_shipping_outlined,
+  };
+
+  Future<void> _openService(BuildContext context, String categoryId) async {
+    final message = await Navigator.of(context).push<String>(
+      MaterialPageRoute(
+        builder: (_) => RequestServicePage(uid: uid, categoryId: categoryId),
+      ),
+    );
+    if (message == null || !context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        // AI Card
-        Container(
-          margin: const EdgeInsets.all(20),
-          padding: const EdgeInsets.all(20),
-
-          decoration: BoxDecoration(
-            color: const Color(0xFF0E1B33),
-            borderRadius: BorderRadius.circular(20),
-          ),
-
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              const Text(
-                'مو متأكد وش المشكلة؟',
-                textAlign: TextAlign.right,
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-
-              const SizedBox(height: 8),
-
-              const Text(
-                'صف المشكلة لمساعد Seer الذكي',
-                textAlign: TextAlign.right,
-                style: TextStyle(
-                  color: Color(0xFFE4E8F0),
-                  fontSize: 15,
-                ),
-              ),
-
-              const SizedBox(height: 18),
-
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-
-                decoration: BoxDecoration(
-                  border: Border.all(
-                    color: const Color(0xFF6B7385),
-                  ),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-
-                child: Row(
-                  textDirection: TextDirection.rtl,
-                  children: [
-                    const Expanded(
-                      child: Text(
-                        'صف المشكلة...',
-                        textAlign: TextAlign.right,
-                        style: TextStyle(
-                          color: Color(0xFFE4E8F0),
-                        ),
-                      ),
-                    ),
-
-                    IconButton(
-                      icon: const Icon(
-                        Icons.arrow_back,
-                        color: Color(0xFF1C63D6),
-                      ),
-                      onPressed: () {
-                        // Later: open the AI page
-                      },
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-
-        // Services
-        const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 20),
-          child: Align(
-            alignment: Alignment.centerRight,
+    return ColoredBox(
+      color: CustomerColors.background,
+      child: ListView(
+        padding: const EdgeInsets.only(bottom: 24),
+        children: [
+          _aiCard(),
+          const Padding(
+            padding: EdgeInsets.fromLTRB(16, 18, 16, 12),
             child: Text(
               'اطلب خدمة',
+              textAlign: TextAlign.right,
               style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF0E1B33),
+                fontSize: 19,
+                fontWeight: FontWeight.w800,
+                color: CustomerColors.primaryText,
               ),
             ),
           ),
-        ),
+          _servicesGrid(context),
+        ],
+      ),
+    );
+  }
 
-        const SizedBox(height: 12),
-
-        GridView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          padding: const EdgeInsets.symmetric(horizontal: 20),
-          itemCount: services.length,
-
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 2,
-            crossAxisSpacing: 12,
-            mainAxisSpacing: 12,
-            childAspectRatio: 1.8,
+  /// The AI assistant card (#11)
+  Widget _aiCard() {
+    return Container(
+      margin: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: CustomerColors.darkPanel,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const Text(
+            'مو متأكد وش المشكلة؟',
+            textAlign: TextAlign.right,
+            textDirection: TextDirection.rtl,
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+            ),
           ),
-
-          itemBuilder: (context, index) {
-            return Container(
-              decoration: BoxDecoration(
-                color: const Color(0xFFFFFFFF),
-                border: Border.all(
-                  color: const Color(0xFFE4E8F0),
+          const SizedBox(height: 8),
+          const Text(
+            'صف المشكلة لمساعد Seer الذكي',
+            textAlign: TextAlign.right,
+            textDirection: TextDirection.rtl,
+            style: TextStyle(
+              color: CustomerColors.cardBorder,
+              fontSize: 15,
+            ),
+          ),
+          const SizedBox(height: 18),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            decoration: BoxDecoration(
+              border: Border.all(color: CustomerColors.secondaryText),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Row(
+              textDirection: TextDirection.rtl,
+              children: [
+                const Expanded(
+                  child: Text(
+                    'صف المشكلة...',
+                    textAlign: TextAlign.right,
+                    textDirection: TextDirection.rtl,
+                    style: TextStyle(color: CustomerColors.cardBorder),
+                  ),
                 ),
-                borderRadius: BorderRadius.circular(16),
-              ),
+                IconButton(
+                  icon: const Icon(Icons.arrow_back, color: CustomerColors.accent),
+                  onPressed: () {
+                    // Later: open the AI page (#11)
+                  },
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    services[index]['icon'] as IconData,
-                    size: 36,
-                    color: const Color(0xFF1C63D6),
+  /// The services menu (#12)
+  Widget _servicesGrid(BuildContext context) {
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      itemCount: ServiceCatalog.categories.length,
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        crossAxisSpacing: 12,
+        mainAxisSpacing: 12,
+        childAspectRatio: 1.8,
+      ),
+      itemBuilder: (context, index) {
+        final category = ServiceCatalog.categories[index];
+
+        return Material(
+          color: CustomerColors.fieldFill,
+          clipBehavior: Clip.antiAlias,
+          shape: RoundedRectangleBorder(
+            side: const BorderSide(color: CustomerColors.cardBorder),
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: InkWell(
+            onTap: () => _openService(context, category.id),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  _icons[category.id] ?? Icons.build_outlined,
+                  size: 36,
+                  color: CustomerColors.accent,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  category.shortLabel,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: CustomerColors.primaryText,
                   ),
-
-                  const SizedBox(height: 8),
-
-                  Text(
-                    services[index]['name'] as String,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFF0E1B33),
-                    ),
-                  ),
-                ],
-              ),
-            );
-          },
-        ),
-      ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../controllers/vehicle_controller.dart';
-import '../../core/app_colors.dart';
+import '../../theme/app_colors.dart'; 
 import '../../models/vehicle.dart';
 import 'vehicle_form_page.dart';
 
@@ -46,10 +46,10 @@ class _VehiclesPageState extends State<VehiclesPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: CustomerColors.background,
       appBar: AppBar(
-        backgroundColor: AppColors.navy,
-        foregroundColor: AppColors.headerText,
+        backgroundColor: CustomerColors.darkPanel,
+        foregroundColor: Colors.white,
         title: const Text(
           'مركباتي',
           style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
@@ -62,7 +62,7 @@ class _VehiclesPageState extends State<VehiclesPage> {
 
           if (c.isLoading && c.vehicles.isEmpty) {
             return const Center(
-              child: CircularProgressIndicator(color: AppColors.accent),
+              child: CircularProgressIndicator(color: CustomerColors.accent),
             );
           }
           if (c.errorMessage != null && c.vehicles.isEmpty) {
@@ -88,7 +88,7 @@ class _VehiclesPageState extends State<VehiclesPage> {
             children: [
               Expanded(
                 child: RefreshIndicator(
-                  color: AppColors.accent,
+                  color: CustomerColors.accent,
                   onRefresh: c.load,
                   child: ListView.separated(
                     physics: const AlwaysScrollableScrollPhysics(),
@@ -126,10 +126,10 @@ class _VehicleCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: AppColors.cardFill,
+      color: CustomerColors.fieldFill,
       clipBehavior: Clip.antiAlias,
       shape: RoundedRectangleBorder(
-        side: const BorderSide(color: AppColors.cardBorder),
+        side: const BorderSide(color: CustomerColors.cardBorder),
         borderRadius: BorderRadius.circular(16),
       ),
       child: InkWell(
@@ -142,7 +142,7 @@ class _VehicleCard extends StatelessWidget {
                 width: 44,
                 height: 44,
                 decoration: BoxDecoration(
-                  color: AppColors.navy,
+                  color: CustomerColors.darkPanel,
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: const Icon(Icons.directions_car_outlined, color: Colors.white, size: 22),
@@ -159,19 +159,19 @@ class _VehicleCard extends StatelessWidget {
                       style: const TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w700,
-                        color: AppColors.textPrimary,
+                        color: CustomerColors.primaryText,
                       ),
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      'لوحة ${vehicle.plateNumber}',
-                      style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                      'لوحة ${vehicle.plateNumberArabic}',
+                      style: const TextStyle(fontSize: 13, color: CustomerColors.secondaryText),
                     ),
                   ],
                 ),
               ),
               // chevron_right flips automatically to point left in RTL
-              const Icon(Icons.chevron_right, color: AppColors.chevron),
+              const Icon(Icons.chevron_right, color:CustomerColors.secondaryText),
             ],
           ),
         ),
@@ -195,7 +195,7 @@ class _AddButton extends StatelessWidget {
         style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
       ),
       style: FilledButton.styleFrom(
-        backgroundColor: AppColors.accent,
+        backgroundColor: CustomerColors.accent,
         minimumSize: const Size.fromHeight(52),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       ),
@@ -231,10 +231,10 @@ class _MessageView extends StatelessWidget {
               width: 64,
               height: 64,
               decoration: BoxDecoration(
-                color: AppColors.cardFill,
+                color: CustomerColors.fieldFill,
                 borderRadius: BorderRadius.circular(18),
               ),
-              child: Icon(icon, size: 30, color: AppColors.textSecondary),
+              child: Icon(icon, size: 30, color: CustomerColors.secondaryText),
             ),
             const SizedBox(height: 16),
             Text(
@@ -242,14 +242,14 @@ class _MessageView extends StatelessWidget {
               style: const TextStyle(
                 fontSize: 17,
                 fontWeight: FontWeight.w800,
-                color: AppColors.textPrimary,
+                color: CustomerColors.primaryText,
               ),
             ),
             const SizedBox(height: 6),
             Text(
               message,
               textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 14, color: AppColors.textSecondary),
+              style: const TextStyle(fontSize: 14, color: CustomerColors.secondaryText),
             ),
             const SizedBox(height: 20),
             _SmallFilledButton(label: buttonLabel, onPressed: onPressed),
@@ -271,7 +271,7 @@ class _SmallFilledButton extends StatelessWidget {
     return FilledButton(
       onPressed: onPressed,
       style: FilledButton.styleFrom(
-        backgroundColor: AppColors.accent,
+        backgroundColor: CustomerColors.accent,
         minimumSize: const Size(180, 48),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       ),

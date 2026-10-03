@@ -21,7 +21,7 @@ class _CustomerMainState extends State<CustomerMain> {
 Widget _selectedPage() {
   switch (selectedIndex) {
     case 0:
-      return const Home();
+      return Home(uid: FirebaseAuth.instance.currentUser!.uid);
 
     case 1:
       return const TrackingPage();
@@ -35,7 +35,7 @@ Widget _selectedPage() {
       );
 
     default:
-      return const Home();
+      return Home(uid: FirebaseAuth.instance.currentUser!.uid);
   }
 }
 
