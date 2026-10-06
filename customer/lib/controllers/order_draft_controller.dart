@@ -5,6 +5,7 @@ import '../models/order.dart';
 import '../models/pricing_model.dart';
 import '../models/service_catalog.dart';
 import '../models/vehicle.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
  
 /// CONTROLLER: holds the service request while the customer is building it,
 /// and creates it at the end.
@@ -52,6 +53,28 @@ class OrderDraftController extends ChangeNotifier {
   String? selectedOptionId;
   Vehicle? selectedVehicle;
   String note = '';
+  // Locations selected while building this specific order.
+// Each new order draft gets its own pickup/drop-off locations.
+GeoPoint? pickupLocation;
+GeoPoint? dropoffLocation;
+
+/// Saves the vehicle's current location for all service requests (#15).
+void setPickupLocation(GeoPoint location) {
+  pickupLocation = location;
+  notifyListeners();
+}
+
+/// Saves the destination for towing requests only (#16).
+void setDropoffLocation(GeoPoint location) {
+  dropoffLocation = location;
+  notifyListeners();
+}
+
+/// Removes an old towing destination if this draft no longer needs one.
+void clearDropoffLocation() {
+  dropoffLocation = null;
+  notifyListeners();
+}
  
   ServiceCategory? get category => ServiceCatalog.categoryById(categoryId);
  
@@ -127,13 +150,21 @@ class OrderDraftController extends ChangeNotifier {
     note = value.trim();
   }
  
-  /// Returns null when the draft is ready, or the message to show.
-  String? validate() {
-    if (selectedOptionId == null) return 'اختر نوع الخدمة';
-    if (selectedVehicle == null) return 'اختر المركبة';
-    return null;
+/// Returns null when the draft is ready, or the message to show.
+String? validate() {
+  if (selectedOptionId == null) return 'اختر نوع الخدمة';
+  if (selectedVehicle == null) return 'اختر المركبة';
+
+  // Every service request needs the vehicle's current location (#15).
+  if (pickupLocation == null) return 'حدد موقع المركبة';
+
+  // Only towing requests require a destination (#16).
+  if (needsDropoff && dropoffLocation == null) {
+    return 'حدد موقع التوصيل';
   }
- 
+
+  return null;
+}
   /// Creates the order. Returns null on success, or a message to show.
   ///
   /// NOTE for whoever takes #18 and #22: this writes the order with status
@@ -166,11 +197,13 @@ class OrderDraftController extends ChangeNotifier {
         note: note,
         estimatedPrice: estimatedPrice,
         status: OrderStatus.pending,
-        // TODO(#15, #16): pass the chosen locations once those stories exist.
-        pickupLocation: null,
-        dropoffLocation: null,
+
+// Locations belong to this individual order.
+// Non-towing orders intentionally store no drop-off location.
+pickupLocation: pickupLocation,
+dropoffLocation: needsDropoff ? dropoffLocation : null,
       );
- 
+
       await _orderModel.createOrder(order);
       return null;
     } catch (e) {

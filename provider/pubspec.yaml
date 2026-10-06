@@ -41,6 +41,7 @@ dependencies:
   flutter_material_design_icons: ^3.1.0+7447
   flutter_localizations:
     sdk: flutter
+  url_launcher: ^6.3.3
 
 dev_dependencies:
   flutter_launcher_icons: ^0.14.3

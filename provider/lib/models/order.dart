@@ -2,6 +2,10 @@ import 'package:cloud_firestore/cloud_firestore.dart';
  
 /// The status values an order moves through. The provider app updates these
 /// in #44, so both apps must use exactly these strings.
+///
+/// This file is a copy of customer/lib/models/order.dart with the provider's
+/// database actions in OrderModel. Keep the two copies of ServiceOrder and
+/// OrderStatus identical.
 class OrderStatus {
   OrderStatus._();
  
@@ -168,31 +172,103 @@ dropoffLocation: map['dropoffLocation'] as GeoPoint?,
   }
 }
  
-/// Talks to the database.
+/// Talks to the database (provider side).
 class OrderModel {
   OrderModel({FirebaseFirestore? firestore})
       : _firestore = firestore ?? FirebaseFirestore.instance;
- 
+
   final FirebaseFirestore _firestore;
- 
+
   CollectionReference<Map<String, dynamic>> get _orders =>
       _firestore.collection('orders');
- 
-  /// How long a new order waits for a provider before it is cancelled.
-  static const Duration responseWindow = Duration(minutes: 2);
 
-  /// Creates the order and returns its new id.
-  /// createdAt is set by the server, so it does not depend on the phone clock.
-  /// expiresAt is written as a timestamp so both apps can compare against it
-  /// without recalculating the two-minute window.
-  Future<String> createOrder(ServiceOrder order) async {
-    final ref = await _orders.add({
-      ...order.toMap(),
-      'createdAt': FieldValue.serverTimestamp(),
-      'expiresAt': Timestamp.fromDate(DateTime.now().add(responseWindow)),
-      'paymentConfirmed': false,
+  /// The order this provider is working on now, or null when there is none.
+  /// Updates live, so the screen changes as soon as the order does (#42).
+  ///
+  /// Only equality filters are used, so Firestore needs no composite index.
+  Stream<ServiceOrder?> watchCurrentOrder(String providerId) {
+    return _orders
+        .where('providerId', isEqualTo: providerId)
+        .where('status', whereIn: OrderStatus.active)
+        .limit(1)
+        .snapshots()
+        .map((snapshot) => snapshot.docs.isEmpty
+            ? null
+            : ServiceOrder.fromMap(snapshot.docs.first.id, snapshot.docs.first.data()));
+  }
+
+  /// Moves the order one step forward (#44): only from [from] to [to].
+  ///
+  /// Runs in a transaction, so a double tap or an order that changed in the
+  /// meantime (for example cancelled by the customer) never skips a step.
+  /// Throws [StateError] when the order is no longer at [from].
+  Future<void> advanceStatus({
+    required String orderId,
+    required String from,
+    required String to,
+  }) async {
+    final ref = _orders.doc(orderId);
+    await _firestore.runTransaction((transaction) async {
+      final snapshot = await transaction.get(ref);
+      if (snapshot.data()?['status'] != from) {
+        throw StateError('Order is no longer $from');
+      }
+      transaction.update(ref, {
+        'status': to,
+        // When each step happened, e.g. arrivedAt, for history and reports.
+        '${to}At': FieldValue.serverTimestamp(),
+      });
     });
-    return ref.id;
+  }
+
+  /// Completes the order and confirms the payment in one step (#44, #46),
+  /// so an order can never be completed with the payment left unconfirmed.
+  Future<void> completeWithPayment({
+    required String orderId,
+    required num? amount,
+  }) async {
+    final ref = _orders.doc(orderId);
+    await _firestore.runTransaction((transaction) async {
+      final snapshot = await transaction.get(ref);
+      if (snapshot.data()?['status'] != OrderStatus.inProgress) {
+        throw StateError('Order is no longer ${OrderStatus.inProgress}');
+      }
+      transaction.update(ref, {
+        'status': OrderStatus.completed,
+        'paymentConfirmed': true,
+        'finalPrice': amount,
+        'completedAt': FieldValue.serverTimestamp(),
+        // The day as text (e.g. 2026-10-05) lets "today's orders" be counted
+        // with equality filters only, which needs no composite index.
+        'completedDay': dayKey(DateTime.now()),
+      });
+    });
+  }
+
+  /// Net earnings (#36): the total paid on this provider's completed
+  /// orders, added up by Firestore without downloading the orders.
+  Future<double> sumEarnings(String providerId) async {
+    final result = await _orders
+        .where('providerId', isEqualTo: providerId)
+        .where('status', isEqualTo: OrderStatus.completed)
+        .aggregate(sum('finalPrice'))
+        .get();
+    return result.getSum('finalPrice') ?? 0;
+  }
+
+  /// Number of orders this provider completed today (#36).
+  Future<int> countCompletedToday(String providerId) async {
+    final result = await _orders
+        .where('providerId', isEqualTo: providerId)
+        .where('completedDay', isEqualTo: dayKey(DateTime.now()))
+        .count()
+        .get();
+    return result.count ?? 0;
+  }
+
+  /// A date as "yyyy-MM-dd" in the phone's local time.
+  static String dayKey(DateTime date) {
+    String two(int n) => n.toString().padLeft(2, '0');
+    return '${date.year}-${two(date.month)}-${two(date.day)}';
   }
 }
- 

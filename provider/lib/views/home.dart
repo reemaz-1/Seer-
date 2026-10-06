@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
 import '../controllers/provider_availability_controller.dart';
+import '../controllers/provider_stats_controller.dart';
 
 class ProviderHome extends StatefulWidget {
   const ProviderHome({
@@ -23,6 +24,10 @@ bool isSavingAvailability = false;
 
 late final ProviderAvailabilityController _availabilityController;
 
+// Quick statistics (#36). Null until loaded; shown as 0 meanwhile.
+final ProviderStatsController _statsController = ProviderStatsController();
+ProviderStats? _stats;
+
 @override
 void initState() {
   super.initState();
@@ -30,6 +35,13 @@ void initState() {
     widget.authService ?? AuthService(),
   );
   _loadAvailability();
+  _loadStats();
+}
+
+Future<void> _loadStats() async {
+  final stats = await _statsController.load();
+  if (!mounted) return;
+  setState(() => _stats = stats);
 }
 
 Future<void> _loadAvailability() async {
@@ -194,9 +206,9 @@ Future<void> _changeAvailability(bool value) async {
 
               Expanded(
                 child: _buildStatCard(
-                  icon: Icons.check_circle_outline_rounded,
-                  value: '0',
-                  label: 'طلبات مكتملة',
+                  icon: Icons.payments_outlined,
+                  value: _stats?.earningsText ?? '0',
+                  label: 'صافي الأرباح (ر.س)',
                 ),
               ),
 
@@ -205,7 +217,7 @@ Future<void> _changeAvailability(bool value) async {
               Expanded(
                 child: _buildStatCard(
                   icon: Icons.receipt_long_rounded,
-                  value: '0',
+                  value: '${_stats?.completedToday ?? 0}',
                   label: 'طلبات اليوم',
                 ),
               ),
