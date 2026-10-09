@@ -55,3 +55,12 @@ collected.
 
 Before final team acceptance, repeat the scenarios on a physical Android phone,
 including location permission denial and background/resume behavior.
+
+## Pre-PR integration check
+
+Merged `origin/main` at `eb776b6` (the AI assistant update) into the feature
+branch without conflicts. After integration, all 52 customer tests and all 22
+provider request/location tests passed. The Firebase emulator group was skipped
+in this repeat run; its 25-test result above is from the earlier dedicated run.
+The customer debug APK rebuilt successfully, and customer analysis still showed
+only the same four deprecation notices. Live UI checks above preceded this merge.
