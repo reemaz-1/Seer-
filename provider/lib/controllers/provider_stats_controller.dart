@@ -1,6 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 
-import '../models/order.dart';
+import '../models/provider_order_model.dart';
 
 /// The numbers shown under "quick statistics" on the home page (#36).
 class ProviderStats {
@@ -20,11 +20,11 @@ class ProviderStats {
 
 /// CONTROLLER: loads the provider's quick statistics (#36).
 class ProviderStatsController {
-  ProviderStatsController({OrderModel? model, FirebaseAuth? auth})
-      : _model = model ?? OrderModel(),
-        _auth = auth ?? FirebaseAuth.instance;
+  ProviderStatsController({ProviderOrderModel? model, FirebaseAuth? auth})
+    : _model = model ?? ProviderOrderModel(),
+      _auth = auth ?? FirebaseAuth.instance;
 
-  final OrderModel _model;
+  final ProviderOrderModel _model;
   final FirebaseAuth _auth;
 
   /// Returns null when the user is signed out or the numbers cannot be

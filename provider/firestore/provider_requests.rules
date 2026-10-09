@@ -1,0 +1,59 @@
+// Reviewable provider-request rules. Merge this match into the team's deployed
+// rules; do NOT replace the complete application rules with this scoped file.
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Takes no arguments; returns whether the caller is an approved provider.
+    function isProvider() {
+      return request.auth != null
+        && request.auth.token.email_verified == true
+        && get(/databases/$(database)/documents/providers/$(request.auth.uid)).data.status == 'approved';
+    }
+    // The provider may publish only their own GPS point for customer matching.
+    match /providers/{providerId} {
+      allow update: if isProvider() && request.auth.uid == providerId
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['currentLocation'])
+        && request.resource.data.currentLocation is latlng;
+    }
+    match /orders/{orderId} {
+      // Takes no arguments; returns whether the caller received this request.
+      function isCandidate() {
+        return request.auth.uid in resource.data.get('candidateProviderIds', []);
+      }
+      // Takes no arguments; validates shared status/deadline and prior rejection.
+      function mayRespond() {
+        return isProvider() && isCandidate()
+          && resource.data.status == 'pending'
+          && resource.data.get('providerId', null) in [null, '']
+          && resource.data.expiresAt is timestamp
+          && resource.data.expiresAt > request.time
+          && !(request.auth.uid in resource.data.get('rejectedBy', []));
+      }
+      // Takes no arguments; allows only acceptance fields with server time.
+      function accepting() {
+        return request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['status', 'providerId', 'acceptedAt'])
+          && request.resource.data.status == 'accepted'
+          && request.resource.data.providerId == request.auth.uid
+          && request.resource.data.acceptedAt == request.time;
+      }
+      // Takes no arguments; allows adding only oneself, with final rejection
+      // exactly when all candidate ids have declined. Returns a boolean.
+      function rejecting() {
+        let previous = resource.data.get('rejectedBy', []).toSet();
+        let updated = request.resource.data.rejectedBy.toSet();
+        let allRejected = updated.hasAll(resource.data.candidateProviderIds.toSet());
+        return request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['status', 'rejectedBy'])
+          && request.resource.data.rejectedBy is list
+          && updated == previous.union([request.auth.uid].toSet())
+          && request.resource.data.rejectedBy.size() == updated.size()
+          && request.resource.data.status == (allRejected ? 'rejected' : 'pending');
+      }
+      // A candidate query uses arrayContains(uid); current orders use providerId.
+      allow read: if isProvider()
+        && (isCandidate() || resource.data.get('providerId', null) == request.auth.uid);
+      allow update: if mayRespond() && (accepting() || rejecting());
+    }
+  }
+}

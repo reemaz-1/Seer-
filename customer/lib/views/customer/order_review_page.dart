@@ -3,10 +3,12 @@ import 'package:flutter/material.dart';
 import 'order_details_page.dart';
 
 import '../../controllers/order_draft_controller.dart';
+import '../../controllers/address_controller.dart';
 import '../../theme/app_colors.dart'; 
 import '../../models/pricing_model.dart';
 import '../../widgets/vehicle_picker_sheet.dart';
 import '../../widgets/no_provider_dialog.dart';
+import '../../widgets/location_card.dart';
 
 /// VIEW: the order details before it is sent (#17).
 /// Everything here is read-only except the vehicle, which can still be
@@ -24,6 +26,7 @@ class OrderReviewPage extends StatefulWidget {
 
 class _OrderReviewPageState extends State<OrderReviewPage> {
   OrderDraftController get _controller => widget.controller;
+  final AddressController _addresses = AddressController();
 
   Future<void> _changeVehicle() async {
     final picked = await showVehiclePicker(
@@ -133,8 +136,16 @@ class _OrderReviewPageState extends State<OrderReviewPage> {
                       ),
                       const SizedBox(height: 12),
 
-                      // TODO(#15, #16): show the real locations once chosen.
-                      _Card(
+                      // Show the same saved GPS points that will be sent to the provider.
+                      if (_controller.pickupLocation != null)
+                        LocationCard(
+                          pickup: _controller.pickupLocation!,
+                          dropoff: _controller.needsDropoff
+                              ? _controller.dropoffLocation
+                              : null,
+                          controller: _addresses,
+                        )
+                      else _Card(
                         title: 'الموقع',
                         children: [
                           _Line(

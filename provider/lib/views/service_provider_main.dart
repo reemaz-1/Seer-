@@ -31,7 +31,7 @@ class _ServiceProviderMainState extends State<ServiceProviderMain> {
     authService: widget.authService,
   )
           : selectedIndex == 1
-          ? const ProviderOrders()
+          ? ProviderOrders(authService: widget.authService)
           : ProviderProfileScreen(authService: widget.authService),
 
       appBar: AppBar(
