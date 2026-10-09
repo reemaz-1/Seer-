@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../theme/app_colors.dart'; 
 import '../../models/service_catalog.dart';
 import 'request_service_page.dart';
+import 'ai_chat_page.dart';
 
 /// VIEW: the customer home page.
 class Home extends StatelessWidget {
@@ -31,6 +32,13 @@ class Home extends StatelessWidget {
     onOrderSent?.call();
   }
 
+  ///Opens the ai chat 
+  void _openAiChat(BuildContext context) {
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => AiChatPage(uid: uid)),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return ColoredBox(
@@ -38,7 +46,7 @@ class Home extends StatelessWidget {
       child: ListView(
         padding: const EdgeInsets.only(bottom: 24),
         children: [
-          _aiCard(),
+          _aiCard(context),
           const Padding(
             padding: EdgeInsets.fromLTRB(16, 18, 16, 12),
             child: Text(
@@ -58,11 +66,13 @@ class Home extends StatelessWidget {
   }
 
   /// The AI assistant card (#11)
-  Widget _aiCard() {
-    return Container(
-      margin: const EdgeInsets.all(20),
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
+  Widget _aiCard(BuildContext context) {
+    return GestureDetector(
+      onTap: () => _openAiChat(context),
+      child: Container(
+        margin: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
         color: CustomerColors.darkPanel,
         borderRadius: BorderRadius.circular(20),
       ),
@@ -109,14 +119,13 @@ class Home extends StatelessWidget {
                 ),
                 IconButton(
                   icon: const Icon(Icons.arrow_back, color: CustomerColors.accent),
-                  onPressed: () {
-                    // Later: open the AI page (#11)
-                  },
+                  onPressed: () => _openAiChat(context),
                 ),
               ],
             ),
           ),
         ],
+      ),
       ),
     );
   }
