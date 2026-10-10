@@ -5,6 +5,9 @@ import '../../models/chat_message.dart';
 import '../../theme/app_colors.dart';
 import '../../widgets/chat_bubble.dart';
 import '../../widgets/chat_input_bar.dart';
+import 'dart:typed_data';
+import '../../widgets/image_attach_button.dart';
+import 'package:flutter_image_compress/flutter_image_compress.dart';
 
 ///VIEW: the Ai assistant chat 
 /// opened from the AI card in the homw page
@@ -38,6 +41,11 @@ class _AiChatPageState extends State<AiChatPage> {
     );
   final _input = TextEditingController();
   final _scroll = ScrollController();
+  // Temporarily store the selected image and its bytes before sending.
+  XFile? _selectedImage;
+Uint8List? _selectedImageBytes;
+// Tracks whether the selected image was converted to JPEG.
+bool _selectedImageWasConverted = false;
 
   ///example shown before the first message; tapping one sends it.
   static const _examples = [
@@ -64,11 +72,122 @@ class _AiChatPageState extends State<AiChatPage> {
   }
 
 
-  void _send(String text){
-    if(text.trim().isEmpty) return;
-    _input.clear();
-    _chat.send(text);
+/// Sends the customer's text and optional image to the AI assistant.
+void _send(String text) {
+  final message = text.trim();
+
+  // Do not send an empty message unless an image is attached.
+  if (_chat.isBusy || (message.isEmpty && _selectedImageBytes == null)) {
+    return;
   }
+
+  // Save the image data before clearing the preview.
+  final imageBytes = _selectedImageBytes;
+
+  // Determine the image MIME type required by Gemini.
+  String imageMimeType = 'image/jpeg';
+
+  // Compressed or converted images are always JPEG.
+// Unprocessed PNG and WebP images keep their original format.
+if (_selectedImage != null) {
+  final extension = _selectedImage!.name.split('.').last.toLowerCase();
+
+  if (extension == 'png' && !(_selectedImageWasConverted)) {
+    imageMimeType = 'image/png';
+  } else if (extension == 'webp' && !(_selectedImageWasConverted)) {
+    imageMimeType = 'image/webp';
+  }
+}
+  
+
+  // Clear the text field and image preview after sending.
+  _input.clear();
+
+  setState(() {
+    _selectedImage = null;
+    _selectedImageBytes = null;
+    _selectedImageWasConverted = false;
+  });
+
+  // Forward the message and image to the existing chat controller.
+  _chat.send(
+    message,
+    imageBytes: imageBytes,
+    imageMimeType: imageMimeType,
+  );
+}
+
+
+/// Prepares a gallery or camera image for the AI assistant.
+/// Converts supported image formats to JPEG and compresses large files.
+Future<void> _onImageSelected(XFile image) async {
+  try {
+    final extension = image.name.split('.').last.toLowerCase();
+
+    // Reject unsupported formats before processing.
+    const supportedFormats = {
+      'jpg', 'jpeg', 'png', 'webp', 'heic', 'heif',
+    };
+
+    if (!supportedFormats.contains(extension)) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('نوع الصورة غير مدعوم')),
+      );
+      return;
+    }
+
+    // Convert the image to JPEG and reduce its size if necessary.
+    Uint8List bytes = await image.readAsBytes();
+    const maxSize = 7 * 1024 * 1024;
+// Track whether compression changes the image format to JPEG.
+bool wasConverted = false;
+    if (extension == 'heic' ||
+        extension == 'heif' ||
+        bytes.length > maxSize) {
+Uint8List compressed = bytes;
+
+      for (final quality in [85, 65, 45, 25]) {
+        compressed = await FlutterImageCompress.compressWithList(
+          bytes,
+          quality: quality,
+          format: CompressFormat.jpeg,
+        );
+
+        if (compressed.length <= maxSize) break;
+      }
+
+      if (compressed.length > maxSize) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('تعذر تصغير الصورة إلى أقل من 7 ميجابايت'),
+          ),
+        );
+        return;
+      }
+
+      bytes = compressed;
+      wasConverted = true;
+    }
+
+    if (!mounted) return;
+
+setState(() {
+  _selectedImage = image;
+  _selectedImageBytes = bytes;
+  _selectedImageWasConverted = wasConverted;
+});
+  } catch (e) {
+    debugPrint('Image processing failed: $e');
+
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('تعذر معالجة الصورة، حاول مرة أخرى')),
+    );
+  }
+}
+
 
   void _scrollToBottom(){
     WidgetsBinding.instance.addPostFrameCallback((_){
@@ -94,11 +213,50 @@ class _AiChatPageState extends State<AiChatPage> {
               Expanded(
                 child: _chat.messages.isEmpty ? _emptyState() : _messageList(),
               ),
-              ChatInputBar(
-                controller: _input,
-                enabled: !_chat.isBusy,
-                onSend: _send,
-              ),
+              // Display a preview only when the user has selected an image.
+              if (_selectedImageBytes != null)
+  Padding(
+    padding: const EdgeInsets.all(12),
+    child: Align(
+      alignment: Alignment.centerRight,
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: Image.memory(
+              _selectedImageBytes!,
+              width: 110,
+              height: 110,
+              fit: BoxFit.cover,
+            ),
+          ),
+          Positioned(
+            top: -8,
+            right: -8,
+            child: IconButton.filled(
+              tooltip: 'إزالة الصورة',
+              icon: const Icon(Icons.close, size: 18),
+              onPressed: () {
+                setState(() {
+                  _selectedImage = null;
+                  _selectedImageBytes = null;
+                });
+              },
+            ),
+          ),
+        ],
+      ),
+    ),
+  ),
+          ChatInputBar(
+  controller: _input,
+  enabled: !_chat.isBusy,
+  onSend: _send,
+  leading: ImageAttachButton(
+    onImageSelected: _onImageSelected,
+  ),
+),
             ],
           ),
         );
