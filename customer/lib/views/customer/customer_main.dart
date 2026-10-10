@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:google_nav_bar/google_nav_bar.dart';
 import 'profile_page.dart';
 import 'home.dart';
-import 'notifications.dart';
 import 'orders.dart';
 
 class CustomerMain extends StatefulWidget {
@@ -72,8 +71,9 @@ Widget _selectedPage() {
     return SizedBox(
       width: 110,
       child: Align(
-        alignment: Alignment.centerLeft,
+alignment: Alignment.centerRight,
         child: Text(
+          textAlign: TextAlign.right,
           greeting,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
@@ -95,46 +95,14 @@ Widget _selectedPage() {
       body: _selectedPage(),
 
       // Upper bar
-      appBar: AppBar(
+      // Show the main AppBar only on the Home tab.
+appBar: selectedIndex == 0
+    ? AppBar(
         backgroundColor: const Color(0xFF0E1B33),
         elevation: 0,
         centerTitle: true,
 
-        // Notification button on the right
-       leadingWidth: 56,
-leading: Padding(
-  padding: const EdgeInsets.only(right: 16),
-  child: Center(
-    child: Container(
-      width: 40,
-      height: 40,
-      decoration: BoxDecoration(
-        color: const Color(0xFF1C63D6),
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: IconButton(
-        padding: EdgeInsets.zero,
-        constraints: const BoxConstraints(
-          minWidth: 40,
-          minHeight: 40,
-        ),
-        iconSize: 20,
-        onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => const NotificationsPage(),
-            ),
-          );
-        },
-        icon: const Icon(
-          Icons.notifications_none,
-          color: Colors.white,
-        ),
-      ),
-    ),
-  ),
-),
+       
 
         // Logo in the center
         title: const Text(
@@ -147,16 +115,16 @@ leading: Padding(
           ),
         ),
 
-        // Real customer name on the left
-        actions: [
-          Padding(
-            padding: const EdgeInsets.only(left: 16),
-            child: Center(
-              child: _buildCustomerGreeting(),
-            ),
-          ),
-        ],
-      ),
+// Customer greeting on the right
+leadingWidth: 126,
+leading: Padding(
+  padding: const EdgeInsets.only(right: 16),
+  child: Center(
+    child: _buildCustomerGreeting(),
+  ),
+),
+       )
+    : null,
 
       // Bottom navigation bar
       bottomNavigationBar: Container(
