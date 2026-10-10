@@ -66,6 +66,7 @@ Future<void> _loadAvailability() async {
   }
 }
 
+/// Takes [value]; saves availability and shows location/save errors to the user.
 Future<void> _changeAvailability(bool value) async {
   setState(() => isSavingAvailability = true);
 
@@ -74,11 +75,13 @@ Future<void> _changeAvailability(bool value) async {
     if (!mounted) return;
 
     setState(() => isAvailable = value);
-  } catch (_) {
+  } catch (error) {
     if (!mounted) return;
 
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('تعذر حفظ حالة التوفر')),
+      SnackBar(content: Text(error is StateError
+          ? error.message.toString()
+          : 'تعذر حفظ حالة التوفر')),
     );
   } finally {
     if (mounted) {

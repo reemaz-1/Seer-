@@ -1,13 +1,11 @@
 import 'package:firebase_auth/firebase_auth.dart';
 
 import '../models/order.dart';
+import '../models/provider_order_model.dart';
 
 /// One step the provider can take on the current order (#44).
 class OrderStep {
-  const OrderStep({
-    required this.next,
-    required this.buttonLabel,
-  });
+  const OrderStep({required this.next, required this.buttonLabel});
 
   /// The status the order moves to.
   final String next;
@@ -18,11 +16,11 @@ class OrderStep {
 
 /// CONTROLLER: the current order screen (#42, #43, #44, #46).
 class CurrentOrderController {
-  CurrentOrderController({OrderModel? model, FirebaseAuth? auth})
-      : _model = model ?? OrderModel(),
-        _auth = auth ?? FirebaseAuth.instance;
+  CurrentOrderController({ProviderOrderModel? model, FirebaseAuth? auth})
+    : _model = model ?? ProviderOrderModel(),
+      _auth = auth ?? FirebaseAuth.instance;
 
-  final OrderModel _model;
+  final ProviderOrderModel _model;
   final FirebaseAuth _auth;
 
   /// The steps shown in the progress bar, in order.
