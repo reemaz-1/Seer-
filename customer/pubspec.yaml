@@ -46,6 +46,8 @@ dependencies:
   google_maps_flutter: ^2.18.2
   firebase_ai: ^2.3.0
   geocoding: ^5.0.0
+  flutter_map: ^8.3.2
+  latlong2: ^0.10.1
 
 dev_dependencies:
   flutter_launcher_icons: ^0.14.3

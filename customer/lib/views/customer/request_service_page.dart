@@ -10,6 +10,8 @@ import '../../widgets/vehicle_picker_sheet.dart';
 import 'order_review_page.dart';
 import 'vehicle_form_page.dart';
 import 'location_picker_page.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:latlong2/latlong.dart';
 
 /// VIEW: build a service request.
 /// Choose the service option (#13), the vehicle (#14) and an optional note
@@ -169,22 +171,51 @@ class _RequestServicePageState extends State<RequestServicePage> {
   }
 
   /// Opens the shared map screen to select the vehicle's pickup location.
-  Future<void> _selectPickupFromMap() async {
-    await Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => const LocationPickerPage(title: 'تحديد موقع المركبة'),
+ Future<void> _selectPickupFromMap() async {
+  final LatLng? selectedLocation = await Navigator.of(context).push<LatLng>(
+    MaterialPageRoute(
+      builder: (_) => const LocationPickerPage(
+        title: 'تحديد موقع المركبة',
       ),
-    );
-  }
+    ),
+  );
 
-  /// Opens the shared map screen to select the towing destination.
-  Future<void> _selectDropoffFromMap() async {
-    await Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => const LocationPickerPage(title: 'تحديد موقع التوصيل'),
+  if (!mounted || selectedLocation == null) return;
+  debugPrint(
+  '📍 PICKUP LOCATION: Latitude = ${selectedLocation.latitude}, '
+  'Longitude = ${selectedLocation.longitude}',
+);
+
+  _controller.setPickupLocation(
+    GeoPoint(selectedLocation.latitude, selectedLocation.longitude),
+  );
+
+}
+
+  
+/// Opens the shared map screen to select the towing destination.
+Future<void> _selectDropoffFromMap() async {
+  final LatLng? selectedLocation = await Navigator.of(context).push<LatLng>(
+    MaterialPageRoute(
+      builder: (_) => const LocationPickerPage(
+        title: 'تحديد موقع التوصيل',
       ),
-    );
-  }
+    ),
+  );
+
+  if (!mounted || selectedLocation == null) return;
+
+  debugPrint(
+    '📍 DROPOFF LOCATION: Latitude = ${selectedLocation.latitude}, '
+    'Longitude = ${selectedLocation.longitude}',
+  );
+
+  _controller.setDropoffLocation(
+    GeoPoint(selectedLocation.latitude, selectedLocation.longitude),
+  );
+
+}
+
 
   // ---------------- UI ----------------
 
