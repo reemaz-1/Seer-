@@ -7,6 +7,7 @@ import '../models/service_catalog.dart';
 import '../models/vehicle.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'matching_controller.dart';
+import '../models/notification_model.dart';
  
 /// CONTROLLER: holds the service request while the customer is building it,
 /// and creates it at the end.
@@ -40,6 +41,7 @@ class OrderDraftController extends ChangeNotifier {
   final PricingModel _pricingModel;
   final CustomerModel _customerModel;
   final MatchingController _matching = MatchingController();
+  final NotificationSender _notifications = NotificationSender();
  
   List<Vehicle> vehicles = [];
   bool isLoadingVehicles = true;
@@ -245,6 +247,19 @@ candidateProviderIds: candidates,
       );
 
       createdOrderId = await _orderModel.createOrder(order);
+
+      // #47: notify every matched provider. A failed notification never
+      // fails the order, because providers still see it in their list.
+      try {
+        await _notifications.notifyNewRequest(
+          orderId: createdOrderId!,
+          providerIds: candidates,
+          serviceLabel: option.label,
+          vehicleTitle: vehicle.title,
+        );
+      } catch (e) {
+        debugPrint('notifyNewRequest failed: $e');
+      }
       return null;
     } catch (e) {
       debugPrint('createOrder failed: $e'); // shows the real Firestore error

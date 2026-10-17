@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
+import '../services/device_alerts.dart';
 import '../controllers/provider_availability_controller.dart';
 import '../controllers/provider_stats_controller.dart';
 
@@ -53,6 +54,8 @@ Future<void> _loadAvailability() async {
       isAvailable = availability;
       isLoadingAvailability = false;
     });
+    // Already available from before: keep requests arriving in the background.
+    if (availability) DeviceAlerts.setAvailableMode(true);
   } catch (_) {
     if (!mounted) return;
 
@@ -75,6 +78,12 @@ Future<void> _changeAvailability(bool value) async {
     if (!mounted) return;
 
     setState(() => isAvailable = value);
+
+    // Notifications (#47): asked here, after the location step, so the two
+    // permission dialogs never overlap. While available, the app keeps
+    // listening in the background.
+    if (value) await DeviceAlerts.requestPermission();
+    await DeviceAlerts.setAvailableMode(value);
   } catch (error) {
     if (!mounted) return;
 

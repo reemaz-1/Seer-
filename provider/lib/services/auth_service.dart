@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
+import 'device_alerts.dart';
 
 class AuthException implements Exception {
   const AuthException(this.message);
@@ -193,6 +194,8 @@ class AuthService extends ChangeNotifier {
   }
 
   Future<void> logOut() async {
+    // Ends availability mode (#47) so its fixed notification goes away.
+    await DeviceAlerts.setAvailableMode(false);
     try {
       await _auth.signOut();
     } catch (error) {
