@@ -566,7 +566,7 @@ class _ActionRow extends StatelessWidget {
               width: 36,
               height: 36,
               decoration: BoxDecoration(
-                color: danger ? AppStatusColors.error.withOpacity(0.12) : CustomerColors.background,
+                color: danger ? AppStatusColors.error.withValues(alpha: 0.12) : CustomerColors.background,
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Icon(icon, size: 18, color: color),

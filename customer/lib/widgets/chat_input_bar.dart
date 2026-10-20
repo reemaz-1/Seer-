@@ -33,7 +33,7 @@ class ChatInputBar extends StatelessWidget{
         ),
         child: Row(
           children: [
-            if (leading != null) leading!,
+            ?leading,
             Expanded(
               child: TextField(
                 controller: controller,

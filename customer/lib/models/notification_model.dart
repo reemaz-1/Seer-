@@ -18,7 +18,7 @@ class NotificationType {
 /// addressed to one user by `recipientId`:
 ///
 ///   notifications (collection)
-///     <auto id> (document)
+///     `<auto id>` (document)
 ///       recipientId: provider uid
 ///       type:        'newRequest'
 ///       orderId:     the order it is about
