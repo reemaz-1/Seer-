@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
+
 import 'device_alerts.dart';
 
 class AuthException implements Exception {
@@ -18,6 +19,7 @@ class AuthService extends ChangeNotifier {
   final FirebaseAuth _auth;
   final FirebaseFirestore _firestore;
   bool _isAuthenticating = false;
+  bool verificationEmailSent = true;
   User? get currentUser => _auth.currentUser;
   Stream<User?> get authStateChanges => _auth.authStateChanges();
   bool get isAuthenticating => _isAuthenticating;
@@ -74,27 +76,16 @@ class AuthService extends ChangeNotifier {
       if (user == null) {
         throw const AuthException('تعذر تسجيل الدخول، حاول مرة أخرى.');
       }
-      // NEW: an unverified provider stays signed in so AuthGate can show
-      // the email verification screen. Account status is checked by
-      // AuthGate after the email is verified.
-      if (!user.emailVerified) {
-        return user;
-      }
       final data = (await _provider(
         user.uid,
       ).get(const GetOptions(source: Source.server))).data();
       switch (data?['status']) {
         case 'approved':
-          return user;
         case 'unverified':
-          // Verified the email but never opened the app afterwards, so the
-          // request was not sent yet. Send it now, then treat it as pending.
-          await submitForReviewIfVerified();
-          throw const AuthException('طلب تسجيلك قيد المراجعة من الإدارة.');
         case 'pending':
-          throw const AuthException('طلب تسجيلك قيد المراجعة من الإدارة.');
         case 'rejected':
-          throw const AuthException('تم رفض طلب تسجيلك. تواصل مع الإدارة.');
+          // AuthGate owns verification and application status navigation.
+          return user;
         default:
           throw const AuthException(
             'هذا الحساب غير مصرح له بالدخول إلى تطبيق مزود الخدمة.',
@@ -141,8 +132,10 @@ class AuthService extends ChangeNotifier {
       profileSaved = true;
       try {
         await createdUser.sendEmailVerification();
+        verificationEmailSent = true;
         return true;
       } on FirebaseAuthException {
+        verificationEmailSent = false;
         return false;
       }
     } catch (error) {
@@ -158,11 +151,29 @@ class AuthService extends ChangeNotifier {
       throw _asAuthException(error);
     } finally {
       try {
-        if (createdUser != null) await logOut();
+        if (createdUser != null && !profileSaved) await logOut();
       } finally {
         _setAuthenticating(false);
       }
     }
+  }
+
+  Future<void> sendEmailVerification() async {
+    final user = currentUser;
+    if (user == null) throw const AuthException('سجّل الدخول أولاً.');
+    if (!user.emailVerified) await user.sendEmailVerification();
+  }
+
+  Future<bool> refreshEmailVerified() async {
+    final user = currentUser;
+    if (user == null) return false;
+    await user.reload();
+    final fresh = currentUser;
+    if (fresh == null || fresh.uid != user.uid || !fresh.emailVerified) {
+      return false;
+    }
+    await fresh.getIdToken(true);
+    return true;
   }
 
   /// Sends the registration request to the admin by moving the provider
@@ -206,12 +217,15 @@ class AuthService extends ChangeNotifier {
   Future<void> sendPasswordResetEmail(String email) async {
     try {
       /** Confirm that the email belongs to this app before sending its reset link. */
-      final profiles = await _firestore.collection('providers')
+      final profiles = await _firestore
+          .collection('providers')
           .where('email', isEqualTo: email.trim())
           .limit(1)
           .get(const GetOptions(source: Source.server));
       if (profiles.docs.isEmpty) {
-        throw AuthException('هذا البريد ليس لحساب مزود الخدمة. يرجى استخدام التطبيق المخصص لهذا الحساب.');
+        throw AuthException(
+          'هذا البريد ليس لحساب مزود الخدمة. يرجى استخدام التطبيق المخصص لهذا الحساب.',
+        );
       }
       await _auth.sendPasswordResetEmail(
         email: email.trim(),

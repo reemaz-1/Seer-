@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
+
 import 'services/password_reset_link_handler.dart';
+
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_app_check/firebase_app_check.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+
 import 'services/auth_service.dart';
 
 import 'firebase_options.dart';
@@ -17,9 +20,7 @@ import 'theme/app_theme.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
   // App Check is not enforced yet. The debug provider fails in release
   // builds, so never let it stop the app from starting.
@@ -47,13 +48,13 @@ class _MyAppState extends State<MyApp> {
     return MaterialApp(
       navigatorKey: _navigatorKey,
       builder: (context, child) => PasswordResetLinkHandler(
-        navigatorKey: _navigatorKey, child: child ?? const SizedBox.shrink()),
+        navigatorKey: _navigatorKey,
+        child: child ?? const SizedBox.shrink(),
+      ),
       debugShowCheckedModeBanner: false,
       title: 'سير',
       locale: const Locale('ar'),
-      supportedLocales: const [
-        Locale('ar'),
-      ],
+      supportedLocales: const [Locale('ar')],
       localizationsDelegates: const [
         GlobalMaterialLocalizations.delegate,
         GlobalWidgetsLocalizations.delegate,
@@ -61,12 +62,11 @@ class _MyAppState extends State<MyApp> {
       ],
       theme: AppTheme.of(AppRole.customer),
       home: const AuthGate(),
-      routes: {
-        '/register': (context) => const CustomerRegistrationScreen(),
-      },
+      routes: {'/register': (context) => const CustomerRegistrationScreen()},
     );
   }
 }
+
 class AuthGate extends StatefulWidget {
   const AuthGate({super.key});
 
@@ -79,8 +79,8 @@ class _AuthGateState extends State<AuthGate> {
 
   // Created once so rebuilds don't resubscribe (which would reset the
   // login screen mid-login).
-  late final Stream<User?> _authChanges =
-      FirebaseAuth.instance.authStateChanges();
+  late final Stream<User?> _authChanges = FirebaseAuth.instance
+      .authStateChanges();
 
   // Cached per user so rebuilds don't open a new Firestore listener.
   String? _uid;
@@ -111,7 +111,8 @@ class _AuthGateState extends State<AuthGate> {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return _loading;
           }
-          final user = snapshot.data;
+          // reload() replaces currentUser; the stream may retain the old User.
+          final user = FirebaseAuth.instance.currentUser;
           if (user == null) _uid = null;
 
           // Stay on the login screen while logIn is still checking the
@@ -140,8 +141,7 @@ class _AuthGateState extends State<AuthGate> {
               if (!doc.exists) {
                 return const _NotCustomerScreen(
                   title: 'هذا الحساب ليس حساب عميل',
-                  message:
-                      'سجّل الدخول بحساب عميل، أو استخدم تطبيق مزود الخدمة إذا كان حسابك حساب مزود.',
+                  message: 'سجّل الدخول بحساب عميل، أو استخدم تطبيق مزود الخدمة إذا كان حسابك حساب مزود.',
                 );
               }
               if (!user.emailVerified) {
