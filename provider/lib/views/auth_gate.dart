@@ -57,6 +57,7 @@ class _AuthGateState extends State<AuthGate> {
     final user = _auth.currentUser;
     setState(() {
       if (user?.uid != _user?.uid) {
+        _reviewFailed = false;
         _profile = user == null ? null : _auth.watchProvider(user.uid);
       }
       _user = user;
@@ -135,7 +136,8 @@ class _AuthGateState extends State<AuthGate> {
               return _status(
                 icon: Icons.wifi_off_rounded,
                 title: 'تعذر إرسال الطلب',
-                message: 'تعذر إرسال طلبك للإدارة. تحقق من الاتصال وحاول مرة أخرى.',
+                message:
+                    'تعذر إرسال طلبك للإدارة. تحقق من الاتصال وحاول مرة أخرى.',
                 retry: () => setState(() => _reviewFailed = false),
               );
             }
@@ -153,8 +155,7 @@ class _AuthGateState extends State<AuthGate> {
             return _status(
               icon: Icons.hourglass_top_rounded,
               title: 'طلبك قيد المراجعة',
-              message:
-                  'تم استلام طلبك بنجاح، وهو بانتظار موافقة الإدارة. يمكنك تسجيل الدخول بعد اعتماد الطلب.',
+              message: 'تم التحقق من بريدك وإرسال طلبك للإدارة. طلبك قيد المراجعة، وستنتقل تلقائيًا عند اعتماده. يمكنك العودة لاحقًا لمتابعة حالته.',
             );
           case 'rejected':
             return _status(
@@ -177,9 +178,12 @@ class _AuthGateState extends State<AuthGate> {
   void _submitForReview() {
     if (_submittingReview) return;
     _submittingReview = true;
-    _auth.submitForReviewIfVerified().catchError((Object _) {
-      if (mounted) setState(() => _reviewFailed = true);
-    }).whenComplete(() => _submittingReview = false);
+    _auth
+        .submitForReviewIfVerified()
+        .catchError((Object _) {
+          if (mounted) setState(() => _reviewFailed = true);
+        })
+        .whenComplete(() => _submittingReview = false);
   }
 
   // Same look as the registration success screen: navy circle icon,
@@ -189,95 +193,94 @@ class _AuthGateState extends State<AuthGate> {
     required String title,
     required String message,
     VoidCallback? retry,
-  }) =>
-      Scaffold(
-        backgroundColor: AppColors.background,
-        body: SafeArea(
-          child: Center(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(24),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Center(
-                    child: Container(
-                      width: 96,
-                      height: 96,
-                      decoration: const BoxDecoration(
-                        color: AppColors.blue,
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(icon, size: 48, color: Colors.white),
-                    ),
+  }) => Scaffold(
+    backgroundColor: AppColors.background,
+    body: SafeArea(
+      child: Center(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Center(
+                child: Container(
+                  width: 96,
+                  height: 96,
+                  decoration: const BoxDecoration(
+                    color: AppColors.blue,
+                    shape: BoxShape.circle,
                   ),
-                  const SizedBox(height: 28),
-                  Text(
-                    title,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.navy,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    message,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      fontSize: 15,
-                      height: 1.6,
-                      color: AppColors.secondaryText,
-                    ),
-                  ),
-                  const SizedBox(height: 36),
-                  if (retry != null) ...[
-                    SizedBox(
-                      height: 54,
-                      child: ElevatedButton(
-                        onPressed: retry,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.blue,
-                          foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                        child: const Text(
-                          'إعادة المحاولة',
-                          style: TextStyle(fontSize: 16),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                  ],
-                  SizedBox(
-                    height: 54,
-                    child: OutlinedButton.icon(
-                      onPressed: () =>
-                          LogoutButton.confirm(context, authService: _auth),
-                      icon: const Icon(Icons.logout_rounded),
-                      label: const Text(
-                        'تسجيل خروج',
-                        style: TextStyle(fontSize: 16),
-                      ),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: AppColors.navy,
-                        backgroundColor: Colors.white,
-                        side: const BorderSide(color: AppColors.cardBorder),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
+                  child: Icon(icon, size: 48, color: Colors.white),
+                ),
               ),
-            ),
+              const SizedBox(height: 28),
+              Text(
+                title,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.navy,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                message,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 15,
+                  height: 1.6,
+                  color: AppColors.secondaryText,
+                ),
+              ),
+              const SizedBox(height: 36),
+              if (retry != null) ...[
+                SizedBox(
+                  height: 54,
+                  child: ElevatedButton(
+                    onPressed: retry,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.blue,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: const Text(
+                      'إعادة المحاولة',
+                      style: TextStyle(fontSize: 16),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+              ],
+              SizedBox(
+                height: 54,
+                child: OutlinedButton.icon(
+                  onPressed: () =>
+                      LogoutButton.confirm(context, authService: _auth),
+                  icon: const Icon(Icons.logout_rounded),
+                  label: const Text(
+                    'تسجيل خروج',
+                    style: TextStyle(fontSize: 16),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.navy,
+                    backgroundColor: Colors.white,
+                    side: const BorderSide(color: AppColors.cardBorder),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
-      );
+      ),
+    ),
+  );
 }
 
 class _LoadingScreen extends StatelessWidget {

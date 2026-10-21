@@ -143,7 +143,7 @@ void main() {
       verifyNever(() => auth.signOut());
     });
 
-    for (final status in ['pending', 'rejected', 'suspended', 'unknown', '']) {
+    for (final status in ['suspended', 'unknown', '']) {
       test('$status provider cannot retain an authenticated session', () async {
         profile = {'status': status};
 
@@ -157,6 +157,34 @@ void main() {
         verify(() => auth.signOut()).called(1);
       });
     }
+
+    for (final status in ['unverified', 'pending', 'rejected']) {
+      test(
+        '$status provider retains a session for the account status flow',
+        () async {
+          profile = {'status': status};
+          expect(
+            await service.logIn(email: email, password: password),
+            same(user),
+          );
+          expect(service.currentUser, same(user));
+          verifyNever(() => auth.signOut());
+        },
+      );
+    }
+
+    test(
+      'an unverified customer cannot enter the provider verification flow',
+      () async {
+        when(() => user.emailVerified).thenReturn(false);
+        profile = null;
+        await expectLater(
+          service.logIn(email: email, password: password),
+          throwsA(isA<AuthException>()),
+        );
+        expect(service.currentUser, isNull);
+      },
+    );
 
     test('an account without a provider profile is signed out', () async {
       profile = null;
@@ -211,45 +239,42 @@ void main() {
   });
 
   group('provider registration', () {
-    test(
-      'saves a pending application before verification and signs out',
-      () async {
-        final verificationSent = await service.registerProvider(
-          email: ' $email ',
+    test('saves an unverified application and retains the session for verification', () async {
+      final verificationSent = await service.registerProvider(
+        email: ' $email ',
+        password: password,
+        profile: {
+          ...registrationProfile,
+          'email': 'untrusted@example.com',
+          'status': 'approved',
+          'createdAt': 'untrusted timestamp',
+        },
+      );
+
+      final saved =
+          verify(() => document.set(captureAny())).captured.single
+              as Map<String, dynamic>;
+      expect(saved['email'], email);
+      expect(saved['status'], 'unverified');
+      expect(saved['createdAt'], isA<FieldValue>());
+      for (final entry in registrationProfile.entries) {
+        expect(saved[entry.key], entry.value);
+      }
+      expect(operations, ['create', 'save', 'verify']);
+      expect(verificationSent, isTrue);
+      expect(service.currentUser, same(user));
+      expect(service.isAuthenticating, isFalse);
+      verify(
+        () => auth.createUserWithEmailAndPassword(
+          email: email,
           password: password,
-          profile: {
-            ...registrationProfile,
-            'email': 'untrusted@example.com',
-            'status': 'approved',
-            'createdAt': 'untrusted timestamp',
-          },
-        );
-
-        final saved =
-            verify(() => document.set(captureAny())).captured.single
-                as Map<String, dynamic>;
-        expect(saved['email'], email);
-        expect(saved['status'], 'pending');
-        expect(saved['createdAt'], isA<FieldValue>());
-        for (final entry in registrationProfile.entries) {
-          expect(saved[entry.key], entry.value);
-        }
-        expect(operations, ['create', 'save', 'verify', 'signOut']);
-        expect(verificationSent, isTrue);
-        expect(service.currentUser, isNull);
-        expect(service.isAuthenticating, isFalse);
-        verify(
-          () => auth.createUserWithEmailAndPassword(
-            email: email,
-            password: password,
-          ),
-        ).called(1);
-        verifyNever(() => user.delete());
-      },
-    );
+        ),
+      ).called(1);
+      verifyNever(() => user.delete());
+    });
 
     test(
-      'verification failure preserves the saved pending application',
+      'verification failure preserves the application and session for retry',
       () async {
         when(() => user.sendEmailVerification()).thenAnswer((_) async {
           operations.add('verify');
@@ -263,8 +288,9 @@ void main() {
         );
 
         expect(verificationSent, isFalse);
-        expect(operations, ['create', 'save', 'verify', 'signOut']);
-        expect(service.currentUser, isNull);
+        expect(operations, ['create', 'save', 'verify']);
+        expect(service.currentUser, same(user));
+        expect(service.verificationEmailSent, isFalse);
         verify(() => document.set(any())).called(1);
         verifyNever(() => user.delete());
       },
@@ -349,6 +375,46 @@ void main() {
       verifyNever(() => user.sendEmailVerification());
     },
   );
+
+  group('email verification refresh', () {
+    test('uses the reloaded user and refreshes its token', () async {
+      final fresh = _MockUser();
+      currentUser = user;
+      when(() => user.emailVerified).thenReturn(false);
+      when(() => user.reload()).thenAnswer((_) async {
+        currentUser = fresh;
+      });
+      when(() => fresh.uid).thenReturn(uid);
+      when(() => fresh.emailVerified).thenReturn(true);
+      when(() => fresh.getIdToken(true)).thenAnswer((_) async => 'fresh-token');
+
+      expect(await service.refreshEmailVerified(), isTrue);
+      verify(() => fresh.getIdToken(true)).called(1);
+      verifyNever(() => user.getIdToken(any()));
+    });
+
+    test('an unverified user does not complete verification', () async {
+      currentUser = user;
+      when(() => user.emailVerified).thenReturn(false);
+      when(() => user.reload()).thenAnswer((_) async {});
+      expect(await service.refreshEmailVerified(), isFalse);
+      verifyNever(() => user.getIdToken(any()));
+    });
+
+    test(
+      'a different account after reload does not complete verification',
+      () async {
+        final other = _MockUser();
+        currentUser = user;
+        when(() => user.reload()).thenAnswer((_) async {
+          currentUser = other;
+        });
+        when(() => other.uid).thenReturn('another-provider');
+        expect(await service.refreshEmailVerified(), isFalse);
+        verifyNever(() => other.getIdToken(any()));
+      },
+    );
+  });
 
   group('provider profile isolation', () {
     test('reads and updates only the currently signed-in UID', () async {

@@ -100,7 +100,7 @@ void main() {
       profile: profile,
     );
     expect(verificationSent, isTrue);
-    expect(service.currentUser, isNull);
+    expect(service.currentUser, isNotNull);
     expect(service.isAuthenticating, isFalse);
 
     // Inspect the just-created account through the real SDK; the application
@@ -174,7 +174,7 @@ void main() {
 
   group('real Firebase Auth and Firestore provider flow', () {
     test(
-      'registration saves a pending profile, signs out, and rejects duplicates',
+      'registration retains an unverified session and rejects duplicates',
       () async {
         final email = nextEmail();
         final uid = await registerAccount(
@@ -197,7 +197,7 @@ void main() {
             .get(const GetOptions(source: Source.server));
         final saved = snapshot.data()!;
         expect(saved['email'], email);
-        expect(saved['status'], 'pending');
+        expect(saved['status'], 'unverified');
         expect(saved['createdAt'], isA<Timestamp>());
         for (final field in _profile.entries) {
           expect(saved[field.key], field.value);
@@ -218,24 +218,18 @@ void main() {
     );
 
     test(
-      'pending and rejected providers are signed out after login is denied',
+      'pending and rejected providers retain sessions to view their status',
       () async {
         final email = nextEmail();
         final uid = await registerAccount(email);
-        await expectLater(
-          service.logIn(email: email, password: _password),
-          _authErrorContaining('قيد المراجعة'),
-        );
-        expect(service.currentUser, isNull);
-        expect(service.isAuthenticating, isFalse);
-
-        await _setStatus(uid, 'rejected');
-        await expectLater(
-          service.logIn(email: email, password: _password),
-          _authErrorContaining('رفض طلب'),
-        );
-        expect(service.currentUser, isNull);
-        expect(service.isAuthenticating, isFalse);
+        for (final status in ['pending', 'rejected']) {
+          await _setStatus(uid, status);
+          final user = await service.logIn(email: email, password: _password);
+          expect(user.uid, uid);
+          expect(service.currentUser, isNotNull);
+          expect(service.isAuthenticating, isFalse);
+          await service.logOut();
+        }
       },
     );
 

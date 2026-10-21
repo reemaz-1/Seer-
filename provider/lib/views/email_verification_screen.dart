@@ -1,4 +1,5 @@
-import 'package:firebase_auth/firebase_auth.dart';
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../services/auth_service.dart';
@@ -23,49 +24,103 @@ class EmailVerificationScreen extends StatefulWidget {
       _EmailVerificationScreenState();
 }
 
-class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
+class _EmailVerificationScreenState extends State<EmailVerificationScreen>
+    with WidgetsBindingObserver {
   bool _isSending = false;
   bool _isChecking = false;
+  bool _completed = false;
+  bool _canResend = true;
   String? _message;
+  Timer? _pollTimer;
+  Timer? _resendTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    if (!widget.authService.verificationEmailSent) {
+      _message = 'تم إنشاء حسابك، لكن تعذر إرسال الرابط. اضغط إعادة إرسال رابط التحقق.';
+    }
+    _startPolling();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _checkVerified(silent: true);
+    });
+  }
+
+  void _startPolling() {
+    _pollTimer?.cancel();
+    _pollTimer = Timer.periodic(const Duration(seconds: 5), (_) {
+      _checkVerified(silent: true);
+    });
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _startPolling();
+      _checkVerified(silent: true);
+    } else {
+      _pollTimer?.cancel();
+    }
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _pollTimer?.cancel();
+    _resendTimer?.cancel();
+    super.dispose();
+  }
 
   Future<void> _resendEmail() async {
+    if (_isSending || !_canResend || _completed) return;
     setState(() {
       _isSending = true;
       _message = null;
     });
     try {
-      await FirebaseAuth.instance.currentUser?.sendEmailVerification();
+      await widget.authService.sendEmailVerification();
+      if (!mounted) return;
+      setState(() {
+        _message = 'تم إرسال رابط التحقق من جديد. تحقق أيضًا من البريد غير المرغوب فيه.';
+        _canResend = false;
+      });
+      _resendTimer = Timer(const Duration(minutes: 1), () {
+        if (mounted) setState(() => _canResend = true);
+      });
+    } catch (_) {
       if (mounted) {
-        setState(() => _message = 'تم إرسال رابط التحقق من جديد إلى بريدك.');
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() => _message = 'تعذر إرسال الرابط، حاول مرة أخرى.');
+        setState(() => _message = 'تعذر إرسال الرابط، حاول مرة أخرى بعد قليل.');
       }
     } finally {
       if (mounted) setState(() => _isSending = false);
     }
   }
 
-  Future<void> _checkVerified() async {
+  Future<void> _checkVerified({bool silent = false}) async {
+    if (!mounted || _isChecking || _completed) return;
     setState(() {
       _isChecking = true;
-      _message = null;
+      if (!silent) _message = null;
     });
     try {
-      await FirebaseAuth.instance.currentUser?.reload();
-      final verified =
-          FirebaseAuth.instance.currentUser?.emailVerified ?? false;
+      final verified = await widget.authService.refreshEmailVerified();
+      if (!mounted) return;
       if (verified) {
+        _completed = true;
+        _pollTimer?.cancel();
         widget.onVerified();
-        return;
+      } else if (!silent) {
+        setState(
+          () => _message =
+              'لم يكتمل التحقق بعد. افتح أحدث رابط أرسلناه ثم حاول مجددًا.',
+        );
       }
-      if (mounted) {
-        setState(() => _message = 'لم يتم التحقق من بريدك بعد.');
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() => _message = 'تعذر التحقق الآن، حاول مرة أخرى.');
+    } catch (_) {
+      if (mounted && !silent) {
+        setState(
+          () => _message = 'تعذر التحقق الآن. تحقق من اتصالك وحاول مرة أخرى.',
+        );
       }
     } finally {
       if (mounted) setState(() => _isChecking = false);
@@ -74,7 +129,7 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final email = FirebaseAuth.instance.currentUser?.email ?? '';
+    final email = widget.authService.currentUser?.email ?? '';
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
@@ -160,7 +215,7 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
               ),
               const SizedBox(height: 12),
               const Text(
-                'افتح الرابط ثم اضغط "تحققت من بريدي". بعدها يمكنك متابعة حالة طلب التسجيل.',
+                'الخطوة 1: افتح رابط التحقق ثم عد إلى التطبيق؛ سنتحقق تلقائيًا. الخطوة 2: يُرسل طلبك للإدارة، ويمكنك متابعة حالته هنا حتى اعتماده.',
                 textAlign: TextAlign.center,
                 style: TextStyle(fontSize: 14, color: AppColors.secondaryText),
               ),
@@ -205,7 +260,7 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
               SizedBox(
                 height: 54,
                 child: ElevatedButton(
-                  onPressed: _isChecking ? null : _checkVerified,
+                  onPressed: _isChecking ? null : () => _checkVerified(),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.blue,
                     foregroundColor: Colors.white,
@@ -234,7 +289,7 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
               SizedBox(
                 height: 54,
                 child: OutlinedButton(
-                  onPressed: _isSending ? null : _resendEmail,
+                  onPressed: _isSending || !_canResend ? null : _resendEmail,
                   style: OutlinedButton.styleFrom(
                     foregroundColor: AppColors.navy,
                     backgroundColor: Colors.white,
@@ -252,9 +307,11 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
                             color: AppColors.blue,
                           ),
                         )
-                      : const Text(
-                          'إعادة إرسال رابط التحقق',
-                          style: TextStyle(fontSize: 16),
+                      : Text(
+                          _canResend
+                              ? 'إعادة إرسال رابط التحقق'
+                              : 'انتظر دقيقة لإعادة الإرسال',
+                          style: const TextStyle(fontSize: 16),
                         ),
                 ),
               ),
