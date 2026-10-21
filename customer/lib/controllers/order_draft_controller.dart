@@ -144,10 +144,39 @@ void clearDropoffLocation() {
   /// The price of one option, used in the list of options.
   num? priceOf(String optionId) => prices.basePriceFor(optionId);
  
-  /// What the customer is charged for the chosen option, before any distance
-  /// fee. null when this service has no price yet.
-  num? get estimatedPrice =>
+  /// The fixed price of the chosen option, before any distance fee.
+  /// null when this service has no price yet.
+  num? get basePrice =>
       selectedOptionId == null ? null : prices.basePriceFor(selectedOptionId!);
+
+  /// Straight-line distance in km between the pickup and the drop-off.
+  /// Towing only, and null until both locations are chosen.
+  double? get towingDistanceKm {
+    final pickup = pickupLocation;
+    final dropoff = dropoffLocation;
+    if (!needsDropoff || pickup == null || dropoff == null) return null;
+    return MatchingController.distanceKm(
+      pickup.latitude,
+      pickup.longitude,
+      dropoff.latitude,
+      dropoff.longitude,
+    );
+  }
+
+  /// The towing distance fee in riyals (distance x price per km). null when
+  /// this is not a towing request or a location is still missing.
+  num? get distanceFee {
+    final km = towingDistanceKm;
+    return km == null ? null : (km * prices.towingPerKm).round();
+  }
+
+  /// What the customer is charged: the base price plus the distance fee when
+  /// there is one. null when this service has no price yet.
+  num? get estimatedPrice {
+    final base = basePrice;
+    if (base == null) return null;
+    return base + (distanceFee ?? 0);
+  }
  
   /// Towing also costs per kilometre, which needs the distance from #15/#76,
   /// so the customer is told the shown price is not the whole amount yet.

@@ -435,13 +435,14 @@ Future<void> _selectDropoffFromMap() async {
                       ),
                     ],
                   ),
-                  if (_controller.priceDependsOnDistance)
+                  if (_controller.priceDependsOnDistance &&
+                      _controller.distanceFee == null)
                     const Padding(
                       padding: EdgeInsets.only(top: 4),
                       child: Align(
                         alignment: Alignment.centerRight,
                         child: Text(
-                          'يُضاف رسم المسافة بعد تحديد الموقع',
+                          'تُضاف رسوم المسافة بعد تحديد الموقع',
                           style: TextStyle(
                             fontSize: 12,
                             color: CustomerColors.secondaryText,

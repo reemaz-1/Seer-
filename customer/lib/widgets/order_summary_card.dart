@@ -70,7 +70,7 @@ class OrderSummaryCard extends StatelessWidget {
               emphasised: true,
             ),
             if (summary.priceDependsOnDistance)
-              _line('رسم المسافة', 'يُحسب بعد تحديد الموقع', muted: true),
+              _line('رسوم المسافة', 'تُحسب بعد تحديد الموقع', muted: true),
             if (summary.note.isNotEmpty) _line('ملاحظة', summary.note),
             if (state == SummaryState.waiting) ..._requestActions(),
             if (state == SummaryState.sent) ..._sentActions(),

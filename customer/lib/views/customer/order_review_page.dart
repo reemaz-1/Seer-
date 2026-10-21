@@ -111,10 +111,13 @@ class _OrderReviewPageState extends State<OrderReviewPage> {
                             last: !_controller.priceDependsOnDistance,
                           ),
                           if (_controller.priceDependsOnDistance)
-                            const _Line(
-                              label: 'رسم المسافة',
-                              value: 'يُحسب بعد تحديد الموقع',
-                              muted: true,
+                            _Line(
+                              label: 'رسوم المسافة',
+                              value: _controller.distanceFee == null
+                                  ? 'تُحسب بعد تحديد الموقع'
+                                  : '${formatPrice(_controller.distanceFee)} '
+                                      '(${_controller.towingDistanceKm!.toStringAsFixed(1)} كم)',
+                              muted: _controller.distanceFee == null,
                               last: true,
                             ),
                         ],
