@@ -3,10 +3,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import '../controllers/provider_registration_controller.dart';
 
-/**
- * Handles a Firebase password-reset link inside the Provider app.
- * The same password policy as registration is used before calling Firebase.
- */
+// Handles a Firebase password-reset link inside the Provider app.
+// The same password policy as registration is used before calling Firebase.
 class ResetPasswordScreen extends StatefulWidget {
   const ResetPasswordScreen({super.key, required this.code});
   final String code;
@@ -32,11 +30,9 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
     _verify();
   }
 
-  /**
-   * Checks the reset code, then checks that the email belongs to a provider
-   * profile. A valid Firebase Auth email alone does not prove the app role.
-   * A failed Firestore lookup blocks the reset rather than guessing the role.
-   */
+  // Checks the reset code, then checks that the email belongs to a provider
+  // profile. A valid Firebase Auth email alone does not prove the app role.
+  // A failed Firestore lookup blocks the reset rather than guessing the role.
   Future<void> _verify() async {
     try {
       final email = await FirebaseAuth.instance.verifyPasswordResetCode(widget.code);
@@ -61,10 +57,8 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
     }
   }
 
-  /**
-   * Validates the registration password policy locally. Firebase is called
-   * only when the password and its confirmation both pass validation.
-   */
+  // Validates the registration password policy locally. Firebase is called
+  // only when the password and its confirmation both pass validation.
   Future<void> _save() async {
     if (_busy || !_verified || !_formKey.currentState!.validate()) return;
     setState(() { _busy = true; _error = null; });
@@ -92,7 +86,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
     }
   }
 
-  /** Displays the same five live password requirements used at registration. */
+  //Displays the same five live password requirements used at registration.
   Widget _requirement(String label, bool valid) => Padding(
         padding: const EdgeInsets.symmetric(vertical: 3),
         child: Row(children: [

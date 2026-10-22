@@ -95,7 +95,7 @@ class _RegistrationRequestsListScreenState
                               vertical: 8,
                             ),
                             leading: CircleAvatar(
-                              backgroundColor: accent.withOpacity(0.1),
+                              backgroundColor: accent.withValues(alpha: 0.1),
                               child: Text(
                                 r.firstName.isNotEmpty
                                     ? r.firstName[0]

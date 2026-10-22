@@ -66,7 +66,7 @@ class _ProviderNotificationsState extends State<ProviderNotifications> {
                 return ListView.separated(
                   padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
                   itemCount: items.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 10),
+                  separatorBuilder: (_, _) => const SizedBox(height: 10),
                   itemBuilder: (context, index) {
                     final n = items[index];
                     return _NotificationTile(

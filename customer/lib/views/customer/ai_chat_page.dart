@@ -92,7 +92,7 @@ void _send(String text) {
   String imageMimeType = 'image/jpeg';
 
   // Compressed or converted images are always JPEG.
-// Unprocessed PNG and WebP images keep their original format.
+  // Unprocessed PNG and WebP images keep their original format.
 if (_selectedImage != null) {
   final extension = _selectedImage!.name.split('.').last.toLowerCase();
 
@@ -375,11 +375,9 @@ setState(() {
   /// Returns: nothing. The request page opens the order after it is sent.
   final Set<String> _openingSuggestions = <String>{};
 
-  /**
-   * Opens the editable request form once per suggestion.
-   * After successful submission, the returned Firestore order ID updates
-   * the same chat card. Closing the form without sending keeps it available.
-   */
+  // Opens the editable request form once per suggestion.
+  // After successful submission, the returned Firestore order ID updates
+  // the same chat card. Closing the form without sending keeps it available.
   Future<void> _openRequestForm(ChatMessage message) async {
     final summary = message.summary;
     if (summary == null || message.summaryState != SummaryState.waiting ||

@@ -372,11 +372,9 @@ class AiToolHandler {
     }
   }
 
-  /**
-   * Records that the request form submitted this pending suggestion.
-   * Clearing pendingSummary stops place_order from submitting it again,
-   * while lastPlaced informs Gemini that the order was already sent.
-   */
+  // Records that the request form submitted this pending suggestion.
+  // Clearing pendingSummary stops place_order from submitting it again,
+  // while lastPlaced informs Gemini that the order was already sent.
   void markExternallyPlaced(String summaryId) {
     final summary = pendingSummary;
     if (summary == null || summary.id != summaryId) return;
