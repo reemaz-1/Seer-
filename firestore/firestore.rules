@@ -198,5 +198,43 @@ service cloud.firestore {
       allow update: if (mayRespond() && (accepting() || rejecting())) || cancelling() || progressing();
       allow delete: if false;
     }
+
+        match /complaints/{complaintId} {
+      // Takes no inputs; returns the order data a new complaint refers to.
+      function relatedOrder() {
+        return get(/databases/$(database)/documents/orders/$(request.resource.data.orderId)).data;
+      }
+      // Takes no inputs; checks a new customer complaint about a completed order (#30).
+      function validCreation() {
+        let c = request.resource.data;
+        return isCustomer()
+          && c.keys().hasOnly(['complainantId', 'complainantType', 'againstId', 'orderId',
+            'description', 'status', 'createdAt', 'resolvedAt'])
+          && c.complainantId == request.auth.uid
+          && c.complainantType == 'customer'
+          && c.status == 'pending'
+          && c.createdAt == request.time
+          && c.resolvedAt == null
+          && c.description is string
+          && c.description.size() >= 10 && c.description.size() <= 500
+          // One complaint per order: the document id is fixed by the order id.
+          && complaintId == c.orderId + '_customer'
+          && exists(/databases/$(database)/documents/orders/$(c.orderId))
+          && relatedOrder().customerId == request.auth.uid
+          && relatedOrder().status == 'completed'
+          && relatedOrder().providerId == c.againstId;
+      }
+      // Takes no inputs; lets the admin close a pending complaint (#55).
+      function resolving() {
+        return isAdmin() && resource.data.status == 'pending'
+          && changesOnly(['status', 'resolvedAt'])
+          && request.resource.data.status == 'resolved'
+          && request.resource.data.resolvedAt == request.time;
+      }
+      allow read: if isAdmin() || owns(resource.data.complainantId);
+      allow create: if validCreation();
+      allow update: if resolving();
+      allow delete: if false;
+    }
   }
 }
