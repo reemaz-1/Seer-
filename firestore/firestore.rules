@@ -199,17 +199,18 @@ service cloud.firestore {
       allow delete: if false;
     }
 
-        match /complaints/{complaintId} {
+    match /complaints/{complaintId} {
       // Takes no inputs; returns the order data a new complaint refers to.
       function relatedOrder() {
         return get(/databases/$(database)/documents/orders/$(request.resource.data.orderId)).data;
       }
-      // Takes no inputs; checks a new customer complaint about a completed order (#30).
+      // Takes no inputs; checks a new customer complaint about an assigned or completed order (#30).
       function validCreation() {
         let c = request.resource.data;
         return isCustomer()
           && c.keys().hasOnly(['complainantId', 'complainantType', 'againstId', 'orderId',
-            'description', 'status', 'createdAt', 'resolvedAt'])
+            'description', 'status', 'createdAt', 'resolvedAt', 'customerName', 'customerPhone',
+            'providerName', 'serviceLabel', 'vehicleTitle', 'orderPrice', 'orderStatus'])
           && c.complainantId == request.auth.uid
           && c.complainantType == 'customer'
           && c.status == 'pending'
@@ -217,11 +218,19 @@ service cloud.firestore {
           && c.resolvedAt == null
           && c.description is string
           && c.description.size() >= 10 && c.description.size() <= 500
+          // Snapshot fields are optional, but when present they must have the right type and size.
+          && c.get('customerName', '') is string && c.get('customerName', '').size() <= 100
+          && c.get('customerPhone', '') is string && c.get('customerPhone', '').size() <= 20
+          && c.get('providerName', '') is string && c.get('providerName', '').size() <= 100
+          && c.get('serviceLabel', '') is string && c.get('serviceLabel', '').size() <= 150
+          && c.get('vehicleTitle', '') is string && c.get('vehicleTitle', '').size() <= 100
+          && c.get('orderPrice', 0) is number
+          && c.get('orderStatus', '') is string
           // One complaint per order: the document id is fixed by the order id.
           && complaintId == c.orderId + '_customer'
           && exists(/databases/$(database)/documents/orders/$(c.orderId))
           && relatedOrder().customerId == request.auth.uid
-          && relatedOrder().status == 'completed'
+          && relatedOrder().status in ['accepted', 'onTheWay', 'arrived', 'inProgress', 'completed']
           && relatedOrder().providerId == c.againstId;
       }
       // Takes no inputs; lets the admin close a pending complaint (#55).
@@ -231,9 +240,8 @@ service cloud.firestore {
           && request.resource.data.status == 'resolved'
           && request.resource.data.resolvedAt == request.time;
       }
-      allow read: if isAdmin() || (signedIn() && (resource == null ||
-      owns(resource.data.complainantId))); 
-      allow create: if validCreation();cd S
+      allow read: if isAdmin() || (signedIn() && (resource == null || owns(resource.data.complainantId)));
+      allow create: if validCreation();
       allow update: if resolving();
       allow delete: if false;
     }
