@@ -2,9 +2,22 @@ import 'package:flutter/material.dart';
 import '../controllers/admin_users_controller.dart';
 import '../models/admin_users_model.dart';
 
-class AdminUsers extends StatelessWidget {
-const AdminUsers({super.key});
-final AdminUsersController _controller = const AdminUsersController();
+class AdminUsers extends StatefulWidget {
+  const AdminUsers({super.key});
+
+  @override
+  State<AdminUsers> createState() => _AdminUsersState();
+}
+
+class _AdminUsersState extends State<AdminUsers> {
+  final AdminUsersController _controller = const AdminUsersController();
+  String _searchQuery = '';
+
+  late final Stream<List<AdminUserData>> _customersStream =
+    _controller.getCustomers();
+
+late final Stream<List<AdminUserData>> _providersStream =
+    _controller.getApprovedProviders();
 
   static const Color navy = Color(0xFF0E1B33);
   static const Color accent = Color(0xFF1C63D6);
@@ -21,7 +34,7 @@ final AdminUsersController _controller = const AdminUsersController();
 
         // Listen to the customers collection
         child: StreamBuilder<List<AdminUserData>>(
-          stream: _controller.getCustomers(),
+          stream: _customersStream,
           builder: (context, customerSnapshot) {
             if (customerSnapshot.connectionState ==
                 ConnectionState.waiting) {
@@ -38,7 +51,7 @@ final AdminUsersController _controller = const AdminUsersController();
 
             // Listen to approved service providers
             return StreamBuilder<List<AdminUserData>>(
-              stream: _controller.getApprovedProviders(),
+              stream: _providersStream,
               builder: (context, providerSnapshot) {
                 if (providerSnapshot.connectionState ==
                     ConnectionState.waiting) {
@@ -53,11 +66,24 @@ final AdminUsersController _controller = const AdminUsersController();
                   );
                 }
 
-                final customers =
-                    customerSnapshot.data ?? [];
+                bool matchesSearch(AdminUserData user) {
+  final query = _searchQuery.trim().toLowerCase();
+  if (query.isEmpty) return true;
 
-                final providers =
-                    providerSnapshot.data ?? [];
+  return '${user.firstName} ${user.lastName}'
+          .toLowerCase()
+          .contains(query) ||
+      user.email.toLowerCase().contains(query) ||
+      user.phone.contains(query);
+}
+
+final customers = (customerSnapshot.data ?? [])
+    .where(matchesSearch)
+    .toList();
+
+final providers = (providerSnapshot.data ?? [])
+    .where(matchesSearch)
+    .toList();
 
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -72,6 +98,24 @@ final AdminUsersController _controller = const AdminUsersController();
                     ),
 
                     const SizedBox(height: 20),
+                    TextField(
+  onChanged: (value) {
+    setState(() {
+      _searchQuery = value;
+    });
+  },
+  decoration: InputDecoration(
+    hintText: 'ابحث بالاسم أو البريد الإلكتروني أو رقم الجوال',
+    prefixIcon: const Icon(Icons.search),
+    border: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+    ),
+    filled: true,
+    fillColor: Colors.white,
+  ),
+),
+
+const SizedBox(height: 20),
 
                     if (customers.isEmpty && providers.isEmpty)
                       const Expanded(
