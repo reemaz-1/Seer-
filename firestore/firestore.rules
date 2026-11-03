@@ -231,7 +231,8 @@ service cloud.firestore {
           && request.resource.data.status == 'resolved'
           && request.resource.data.resolvedAt == request.time;
       }
-      allow read: if isAdmin() || owns(resource.data.complainantId);
+      allow read: if isAdmin() || (signedIn() && (resource == null ||
+      owns(resource.data.complainantId))); 
       allow create: if validCreation();
       allow update: if resolving();
       allow delete: if false;
