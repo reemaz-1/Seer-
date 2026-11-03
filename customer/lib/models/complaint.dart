@@ -34,6 +34,13 @@ class Complaint {
     required this.status,
     this.createdAt,
     this.resolvedAt,
+    this.customerName,
+    this.customerPhone,
+    this.providerName,
+    this.serviceLabel,
+    this.vehicleTitle,
+    this.orderPrice,
+    this.orderStatus,
   });
 
   /// The Firestore document id.
@@ -63,7 +70,31 @@ class Complaint {
   /// Set by the admin when the complaint is resolved (#55).
   final DateTime? resolvedAt;
 
-   /// Parses document [id] and Firestore [map]; returns a typed complaint.
+  // ---- Order snapshot: copied at submit time so the admin sees the order
+  // ---- as it was, even if it changes later. All optional (null = unknown).
+
+  /// Customer's name at the time of the complaint.
+  final String? customerName;
+
+  /// Customer's phone at the time of the complaint.
+  final String? customerPhone;
+
+  /// Assigned provider's name at the time of the complaint.
+  final String? providerName;
+
+  /// Service label, e.g. "بطارية - تفعيل".
+  final String? serviceLabel;
+
+  /// Vehicle title, e.g. "تويوتا كامري 2022".
+  final String? vehicleTitle;
+
+  /// Final price if known, otherwise the estimated price.
+  final num? orderPrice;
+
+  /// The order status when the complaint was sent.
+  final String? orderStatus;
+
+  /// Parses document [id] and Firestore [map]; returns a typed complaint.
   factory Complaint.fromMap(String id, Map<String, dynamic> map) {
     return Complaint(
       id: id,
@@ -75,11 +106,20 @@ class Complaint {
       status: (map['status'] ?? ComplaintStatus.pending) as String,
       createdAt: (map['createdAt'] as Timestamp?)?.toDate(),
       resolvedAt: (map['resolvedAt'] as Timestamp?)?.toDate(),
+      customerName: map['customerName'] as String?,
+      customerPhone: map['customerPhone'] as String?,
+      providerName: map['providerName'] as String?,
+      serviceLabel: map['serviceLabel'] as String?,
+      vehicleTitle: map['vehicleTitle'] as String?,
+      orderPrice: map['orderPrice'] as num?,
+      orderStatus: map['orderStatus'] as String?,
     );
   }
 
   /// Converts a new complaint to a Firestore map.
   /// createdAt uses the server time; resolvedAt stays null until resolved.
+  /// Snapshot fields are written only when they have a value, because the
+  /// security rules accept a missing field but not a null one.
   Map<String, dynamic> toMap() {
     return {
       'complainantId': complainantId,
@@ -90,6 +130,13 @@ class Complaint {
       'status': status,
       'createdAt': FieldValue.serverTimestamp(),
       'resolvedAt': null,
+      if (customerName != null) 'customerName': customerName,
+      if (customerPhone != null) 'customerPhone': customerPhone,
+      if (providerName != null) 'providerName': providerName,
+      if (serviceLabel != null) 'serviceLabel': serviceLabel,
+      if (vehicleTitle != null) 'vehicleTitle': vehicleTitle,
+      if (orderPrice != null) 'orderPrice': orderPrice,
+      if (orderStatus != null) 'orderStatus': orderStatus,
     };
   }
 }

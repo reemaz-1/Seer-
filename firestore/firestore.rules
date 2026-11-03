@@ -233,7 +233,7 @@ service cloud.firestore {
       }
       allow read: if isAdmin() || (signedIn() && (resource == null ||
       owns(resource.data.complainantId))); 
-      allow create: if validCreation();
+      allow create: if validCreation();cd S
       allow update: if resolving();
       allow delete: if false;
     }
