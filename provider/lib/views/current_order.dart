@@ -10,6 +10,8 @@ import '../theme/order_colors.dart';
 import '../widgets/order_display.dart';
 import '../widgets/plate_number_view.dart';
 import '../widgets/app_snackbar.dart';
+import 'package:cloud_firestore/cloud_firestore.dart' show GeoPoint;
+import 'route_to_customer_page.dart';
 
 /// The order the provider is working on now (#42, #43), with the button
 /// that moves it to its next status (#44) and the payment confirmation
@@ -120,22 +122,41 @@ class _ProviderCurrentOrderState extends State<ProviderCurrentOrder> {
                 ],
               ),
               const SizedBox(height: 12),
-              if (order.pickupLocation != null)
-                Container(
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(14),
+              if (order.pickupLocation != null) ...[
+                LocationCard(
+                  pickup: order.pickupLocation!,
+                  dropoff: order.dropoffLocation,
+                  controller: _addresses,
+                ),
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  height: 50,
+                  child: ElevatedButton.icon(
+                    icon: const Icon(Icons.alt_route),
+                    label: const Text('عرض المسار إلى العميل'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.blue,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(25),
+                      ),
+                    ),
+                    onPressed: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => RouteToCustomerPage(
+                          customerLocation: order.pickupLocation!,
+                          customerName: order.customerName.isEmpty
+                              ? 'العميل'
+                              : order.customerName,
+                        ),
+                      ),
+                    ),
                   ),
-                  child: LocationCard(
-                    pickup: order.pickupLocation!,
-                    dropoff: order.dropoffLocation,
-                    controller: _addresses,
-                  ),
-                )
-              else
-                _section(title: 'الموقع', children: [
-                  _infoRow(Icons.location_on_outlined, 'الموقع غير محدد'),
-                ]),
+                ),
+              ] else
+                _infoRow(Icons.location_on_outlined, 'الموقع غير محدد'),
               if (order.note.trim().isNotEmpty) ...[
                 const SizedBox(height: 12),
                 _section(

@@ -38,6 +38,7 @@ class LocationCard extends StatelessWidget {
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
+            color: Colors.white,
             borderRadius: BorderRadius.circular(14),
             border: Border.all(color: CustomerColors.cardBorder),
           ),
