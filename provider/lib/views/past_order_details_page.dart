@@ -45,7 +45,13 @@ class PastOrderDetailsPage extends StatelessWidget {
         foregroundColor: CustomerColors.primaryText,
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+        // Extra bottom space for the phone's navigation bar.
+        padding: EdgeInsets.fromLTRB(
+          20,
+          4,
+          20,
+          24 + MediaQuery.paddingOf(context).bottom,
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
