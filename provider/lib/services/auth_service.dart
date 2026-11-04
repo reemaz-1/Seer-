@@ -81,7 +81,7 @@ class AuthService extends ChangeNotifier {
       ).get(const GetOptions(source: Source.server))).data();
       if (data?['isSuspended'] == true) {
         throw const AuthException(
-          'تم إيقاف حسابك من قبل الإدارة. للاستفسار أو طلب إعادة التفعيل، يرجى التواصل مع بريد دعم سير.',
+          'تم إيقاف حسابك من قبل الإدارة. للاستفسار أو طلب إعادة التفعيل، تواصل مع دعم سير: ss222a@icloud.com',
         );
       }
       switch (data?['status']) {

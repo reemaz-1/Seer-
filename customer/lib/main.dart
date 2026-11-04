@@ -160,7 +160,7 @@ class _AuthGateState extends State<AuthGate> {
                 }
                 return const _NotCustomerScreen(
                   title: 'تم إيقاف حسابك',
-                  message: 'تم إيقاف حسابك من قبل الإدارة. يرجى التواصل مع دعم سير.',
+                  message: 'تم إيقاف حسابك من قبل الإدارة. للتواصل مع دعم سير: ss222a@icloud.com',
                 );
               }
               if (!user.emailVerified) {

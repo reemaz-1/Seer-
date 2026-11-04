@@ -70,7 +70,7 @@ class AuthService {
       }
       if (doc.data()?['isSuspended'] == true) {
         await _auth.signOut();
-        throw AuthException('تم إيقاف حسابك من قبل الإدارة. يرجى التواصل مع دعم سير.');
+        throw AuthException('تم إيقاف حسابك من قبل الإدارة. للتواصل مع دعم سير: ss222a@icloud.com');
       }
 
       return user;

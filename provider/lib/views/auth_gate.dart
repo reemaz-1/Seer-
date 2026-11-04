@@ -145,7 +145,7 @@ class _AuthGateState extends State<AuthGate> {
           return _status(
             icon: Icons.block_rounded,
             title: 'تم إيقاف حسابك',
-            message: 'تم إيقاف حسابك من قبل الإدارة. للاستفسار أو طلب إعادة التفعيل، يرجى التواصل مع بريد دعم سير.',
+            message: 'تم إيقاف حسابك من قبل الإدارة. للاستفسار أو طلب إعادة التفعيل، تواصل مع دعم سير: ss222a@icloud.com',
           );
         }
         switch (data?['status']) {
