@@ -60,7 +60,7 @@ class PlateNumberView extends StatelessWidget {
   static const _ksa = ['K', 'S', 'A'];
   static const _dividerWidth = 1.2;
   static const _ksaWidth = 20.0;
-  static const _cellPadding = EdgeInsets.symmetric(horizontal: 6, vertical: 3);
+  static const _cellPadding = EdgeInsets.symmetric(horizontal: 4, vertical: 3);
 
   /// Splits a saved plate into its digits and letters.
   ///
@@ -89,11 +89,10 @@ class PlateNumberView extends StatelessWidget {
       .map((ch) => kWesternToEasternDigits[ch] ?? ch)
       .join();
 
-  /// Spaces out the characters of a plate part.
-  ///
-  /// Parameters: [value] is the digits or letters.
-  /// Returns: the characters joined by single spaces.
-  static String _spaced(String value) => value.characters.join(' ');
+  /// Takes the characters of a plate part and a [count]; returns exactly
+  /// [count] characters, padded with empty cells, so both rows line up.
+  static List<String> _padded(List<String> chars, int count) =>
+      [for (var i = 0; i < count; i++) i < chars.length ? chars[i] : ''];
 
   /// Builds one cell of the plate.
   ///
@@ -128,10 +127,17 @@ class PlateNumberView extends StatelessWidget {
     );
   }
 
+  /// Takes no inputs; returns the line between the digits and the letters,
+  /// stretched to the full height of its row.
+  Widget _columnDivider() => TableCell(
+    verticalAlignment: TableCellVerticalAlignment.fill,
+    child: _divider(vertical: true),
+  );
+
   /// Builds the plate.
   ///
-  /// The four cells sit in a [Table] so each column takes the width of
-  /// its content; this keeps the plate compact next to other widgets.
+  /// Every character has its own column in a [Table], so the Arabic and
+  /// Latin rows always line up and never read in opposite directions.
   ///
   /// Parameters: [context] is the build context.
   /// Returns: a bordered white plate laid out left to right.
@@ -141,6 +147,17 @@ class PlateNumberView extends StatelessWidget {
       color: CustomerColors.primaryText,
       width: _dividerWidth,
     );
+    final digitChars = digits.characters.toList();
+    final arabicChars = arabicLetters.characters.toList();
+    final englishChars = englishLetters.characters.toList();
+    final digitCount = digitChars.length;
+    final letterCount = arabicChars.length > englishChars.length
+        ? arabicChars.length
+        : englishChars.length;
+    // Letters are entered from right to left, so the first letter is drawn
+    // on the right.
+    final arabicRow = _padded(arabicChars, letterCount).reversed.toList();
+    final englishRow = _padded(englishChars, letterCount).reversed.toList();
 
     return Directionality(
       textDirection: TextDirection.ltr,
@@ -159,24 +176,33 @@ class PlateNumberView extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              // One column per character, laid out like the plate input:
+              // digits from left to right and letters from right to left, so
+              // every Eastern digit sits above its Western digit and every
+              // Arabic letter above its Latin letter.
               Table(
                 defaultColumnWidth: const IntrinsicColumnWidth(),
+                columnWidths: {
+                  digitCount: const FixedColumnWidth(_dividerWidth),
+                },
                 defaultVerticalAlignment: TableCellVerticalAlignment.middle,
-                border: const TableBorder(
-                  horizontalInside: line,
-                  verticalInside: line,
-                ),
+                border: const TableBorder(horizontalInside: line),
                 children: [
                   TableRow(
                     children: [
-                      _cell(_spaced(_toEasternDigits(digits)), 15),
-                      _cell(_spaced(arabicLetters), 15),
+                      for (final digit in digitChars)
+                        _cell(_toEasternDigits(digit), 15),
+                      _columnDivider(),
+                      for (final letter in arabicRow)
+                        _cell(letter, 15),
                     ],
                   ),
                   TableRow(
                     children: [
-                      _cell(_spaced(digits), 12),
-                      _cell(_spaced(englishLetters), 12),
+                      for (final digit in digitChars) _cell(digit, 12),
+                      _columnDivider(),
+                      for (final letter in englishRow)
+                        _cell(letter, 12),
                     ],
                   ),
                 ],

@@ -181,80 +181,85 @@ class _OrderDetailsBody extends StatelessWidget {
     final finalPrice = order.finalPrice;
     final note = order.note.trim();
 
-    return Column(
-      children: [
-        Expanded(
-          child: ListView(
-            padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
-            children: [
-              _OrderHeader(order: order),
-              if (OrderStatusBanner.hasMessage(order.status) &&
-                  order.status != OrderStatus.completed) ...[
-                const SizedBox(height: 16),
-                OrderStatusBanner(
-                  status: order.status,
-                  onReorder: () => RequestServicePage.reorder(
-                    context,
-                    uid: controller.uid,
-                    order: order,
-                  ),
-                ),
-              ],
-              if (_TrackingSection.isVisibleFor(order.status)) ...[
-                const SizedBox(height: 16),
-                _TrackingSection(status: order.status),
-              ],
-              const SizedBox(height: 16),
-              if (order.status == OrderStatus.completed)
-                OrderCompletedCard(order: order)
-              else
-                _OrderTimeline(order: order),
-              if (providerId != null && providerId.isNotEmpty) ...[
-                const SizedBox(height: 14),
-                _ProviderCard(providerId: providerId, controller: controller),
-                // Complaint button, or the status card if one was already sent (#30).
-                ComplaintSection(order: order, uid: controller.uid),
-              ],
-              if (order.pickupLocation != null) ...[
-                const SizedBox(height: 14),
-                LocationCard(
-                  pickup: order.pickupLocation!,
-                  dropoff: order.dropoffLocation,
-                  controller: _addresses,
-                ),
-              ],
-              const SizedBox(height: 14),
-              _InfoCard(
-                rows: [
-                  _InfoRow(label: _vehicleLabel, value: order.vehicleTitle),
-                  _InfoRow(label: _plateLabel, value: order.vehiclePlateArabic),
-                  _InfoRow(
-                    label: _dateLabel,
-                    value: OrderFormat.date(order.createdAt),
-                  ),
-                  _InfoRow(
-                    label: _timeLabel,
-                    value: OrderFormat.time(order.createdAt),
-                  ),
-                  if (note.isNotEmpty) _InfoRow(label: _noteLabel, value: note),
-                  _InfoRow(
-                    label: _estimatedPriceLabel,
-                    value: OrderFormat.price(order.estimatedPrice),
-                    highlight: finalPrice == null,
-                  ),
-                  if (finalPrice != null)
-                    _InfoRow(
-                      label: _finalPriceLabel,
-                      value: OrderFormat.price(finalPrice),
-                      highlight: true,
+    // SafeArea keeps the last section and the cancel bar above the phone's
+    // navigation bar.
+    return SafeArea(
+      top: false,
+      child: Column(
+        children: [
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+              children: [
+                _OrderHeader(order: order),
+                if (OrderStatusBanner.hasMessage(order.status) &&
+                    order.status != OrderStatus.completed) ...[
+                  const SizedBox(height: 16),
+                  OrderStatusBanner(
+                    status: order.status,
+                    onReorder: () => RequestServicePage.reorder(
+                      context,
+                      uid: controller.uid,
+                      order: order,
                     ),
+                  ),
                 ],
-              ),
-            ],
+                if (_TrackingSection.isVisibleFor(order.status)) ...[
+                  const SizedBox(height: 16),
+                  _TrackingSection(status: order.status),
+                ],
+                const SizedBox(height: 16),
+                if (order.status == OrderStatus.completed)
+                  OrderCompletedCard(order: order)
+                else
+                  _OrderTimeline(order: order),
+                if (providerId != null && providerId.isNotEmpty) ...[
+                  const SizedBox(height: 14),
+                  _ProviderCard(providerId: providerId, controller: controller),
+                  // Complaint button, or the status card if one was already sent (#30).
+                  ComplaintSection(order: order, uid: controller.uid),
+                ],
+                if (order.pickupLocation != null) ...[
+                  const SizedBox(height: 14),
+                  LocationCard(
+                    pickup: order.pickupLocation!,
+                    dropoff: order.dropoffLocation,
+                    controller: _addresses,
+                  ),
+                ],
+                const SizedBox(height: 14),
+                _InfoCard(
+                  rows: [
+                    _InfoRow(label: _vehicleLabel, value: order.vehicleTitle),
+                    _InfoRow(label: _plateLabel, value: order.vehiclePlateArabic),
+                    _InfoRow(
+                      label: _dateLabel,
+                      value: OrderFormat.date(order.createdAt),
+                    ),
+                    _InfoRow(
+                      label: _timeLabel,
+                      value: OrderFormat.time(order.createdAt),
+                    ),
+                    if (note.isNotEmpty) _InfoRow(label: _noteLabel, value: note),
+                    _InfoRow(
+                      label: _estimatedPriceLabel,
+                      value: OrderFormat.price(order.estimatedPrice),
+                      highlight: finalPrice == null,
+                    ),
+                    if (finalPrice != null)
+                      _InfoRow(
+                        label: _finalPriceLabel,
+                        value: OrderFormat.price(finalPrice),
+                        highlight: true,
+                      ),
+                  ],
+                ),
+              ],
+            ),
           ),
-        ),
-        CancelOrderSection(order: order, controller: controller),
-      ],
+          CancelOrderSection(order: order, controller: controller),
+        ],
+      ),
     );
   }
 }

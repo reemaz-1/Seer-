@@ -129,40 +129,32 @@ leading: Padding(
       // Bottom navigation bar
       bottomNavigationBar: Container(
         color: const Color(0xFFFFFFFF),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(
-            horizontal: 15,
-            vertical: 20,
-          ),
-          child: Directionality(
-            textDirection: TextDirection.rtl,
-            child: GNav(
-              backgroundColor: Colors.transparent,
-              color: const Color(0xFF6B7385),
-              activeColor: const Color(0xFF1C63D6),
-              tabBackgroundColor: const Color(0xFFEAF1FC),
-              padding: const EdgeInsets.all(16),
-              gap: 8,
-              selectedIndex: selectedIndex,
-              onTabChange: (index) {
-                setState(() {
-                  selectedIndex = index;
-                });
-              },
-              tabs: const [
-                GButton(
-                  icon: Icons.home_rounded,
-                  text: 'الصفحة الرئيسية',
-                ),
-                GButton(
-                  icon: Icons.receipt_long_rounded,
-                  text: 'الطلبات',
-                ),
-                GButton(
-                  icon: Icons.person_rounded,
-                  text: 'الحساب',
-                ),
-              ],
+        // SafeArea keeps the tabs above the phone's navigation bar.
+        child: SafeArea(
+          top: false,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 20),
+            child: Directionality(
+              textDirection: TextDirection.rtl,
+              child: GNav(
+                backgroundColor: Colors.transparent,
+                color: const Color(0xFF6B7385),
+                activeColor: const Color(0xFF1C63D6),
+                tabBackgroundColor: const Color(0xFFEAF1FC),
+                padding: const EdgeInsets.all(16),
+                gap: 8,
+                selectedIndex: selectedIndex,
+                onTabChange: (index) {
+                  setState(() {
+                    selectedIndex = index;
+                  });
+                },
+                tabs: const [
+                  GButton(icon: Icons.home_rounded, text: 'الصفحة الرئيسية'),
+                  GButton(icon: Icons.receipt_long_rounded, text: 'الطلبات'),
+                  GButton(icon: Icons.person_rounded, text: 'الحساب'),
+                ],
+              ),
             ),
           ),
         ),
