@@ -30,8 +30,17 @@ class AppNotification {
   /// When the order stops waiting for an answer.
   final DateTime? expiresAt;
 
+  /// The type of a new request matched to this provider (#47).
+  static const typeNewRequest = 'newRequest';
+
+  /// The type sent when the customer cancels an accepted order (#20).
+  static const typeOrderCancelled = 'orderCancelled';
+
   /// True while the provider can still answer the request.
   bool isActive(DateTime now) => expiresAt != null && expiresAt!.isAfter(now);
+
+  /// True when the customer cancelled an order this provider had accepted.
+  bool get isCancellation => type == typeOrderCancelled;
 
   factory AppNotification.fromMap(String id, Map<String, dynamic> map) {
     return AppNotification(

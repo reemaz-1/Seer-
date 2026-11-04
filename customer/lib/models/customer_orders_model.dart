@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import 'notification_model.dart';
 import 'order.dart';
 
 /// Summary of the service provider assigned to an order (#26).
@@ -191,6 +192,12 @@ class CustomerOrdersModel {
         if (providerSnapshot.data()?['activeOrderId'] == orderId) {
           transaction.update(providerRef, {'activeOrderId': FieldValue.delete()});
         }
+        // Tell the provider who accepted it, so the order does not just
+        // disappear from their screen.
+        transaction.set(
+          firestore.collection('notifications').doc(),
+          NotificationSender.orderCancelledData(order),
+        );
       }
       transaction.update(ref, {
         'status': OrderStatus.cancelled,
