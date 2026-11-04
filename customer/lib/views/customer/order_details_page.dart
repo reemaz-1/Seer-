@@ -8,6 +8,7 @@ import '../../widgets/order_display.dart';
 import '../../widgets/order_status_banner.dart';
 import '../../widgets/cancel_order_section.dart';
 import '../../widgets/order_completed_card.dart';
+import '../../widgets/complaint_section.dart';
 import '../../widgets/location_card.dart';
 import '../../controllers/address_controller.dart';
 import '../../widgets/plate_number_view.dart';
@@ -103,6 +104,11 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
           elevation: 0,
           scrolledUnderElevation: 0,
           actions: [
+            // Complaint button, pinned in the top bar (#30).
+            ComplaintHelpButton(
+              order: widget.initialOrder,
+              controller: widget.controller,
+              ),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Center(
@@ -206,6 +212,8 @@ class _OrderDetailsBody extends StatelessWidget {
               if (providerId != null && providerId.isNotEmpty) ...[
                 const SizedBox(height: 14),
                 _ProviderCard(providerId: providerId, controller: controller),
+                // Complaint button, or the status card if one was already sent (#30).
+                ComplaintSection(order: order, uid: controller.uid),
               ],
               if (order.pickupLocation != null) ...[
                 const SizedBox(height: 14),
