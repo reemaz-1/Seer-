@@ -107,8 +107,11 @@ service cloud.firestore {
           && (changesOnly(profileFields()) || submitForReview() || updateMatching()))
         || (isAdmin() && resource.data.status == 'pending'
           && request.resource.data.status in ['approved', 'rejected'] && changesOnly(['status']))
-        || (isAdmin() && changesOnly(['isSuspended'])
-          && request.resource.data.isSuspended is bool);
+        || (isAdmin() && changesOnly(['isSuspended', 'isAvailable', 'activeOrderId'])
+          && request.resource.data.isSuspended is bool
+          && request.resource.data.get('isAvailable', false) == false)
+        || (isAdmin() && changesOnly(['activeOrderId'])
+          && !('activeOrderId' in request.resource.data));
     }
     match /orders/{orderId} {
       // Takes no inputs; checks membership in the customer's candidate list.
@@ -200,10 +203,29 @@ service cloud.firestore {
           && (step('accepted', 'onTheWay', 'onTheWayAt') || step('onTheWay', 'arrived', 'arrivedAt')
             || step('arrived', 'inProgress', 'inProgressAt') || completing());
       }
-      allow read: if (owns(resource.data.customerId) && isCustomer())
+      allow read: if isAdmin() || (owns(resource.data.customerId) && isCustomer())
         || (isProvider() && (isCandidate() || resource.data.get('providerId', null) == request.auth.uid));
       allow create: if validCreation();
-      allow update: if (mayRespond() && (accepting() || rejecting())) || cancelling() || progressing();
+      allow update: if (mayRespond() && (accepting() || rejecting())) || cancelling() || progressing()
+        || (isAdmin() && resource.data.status in ['pending', 'accepted']
+          && changesOnly(['status', 'cancelledAt'])
+          && request.resource.data.status == 'cancelled'
+          && request.resource.data.cancelledAt == request.time);
+      allow delete: if false;
+    }
+
+    match /notifications/{notificationId} {
+      // Existing customer-to-provider new-request notifications, with order validation.
+      allow create: if (isCustomer()
+          && request.resource.data.type == 'newRequest'
+          && request.resource.data.orderId is string
+          && exists(/databases/$(database)/documents/orders/$(request.resource.data.orderId))
+          && get(/databases/$(database)/documents/orders/$(request.resource.data.orderId)).data.customerId == request.auth.uid
+          && request.resource.data.recipientId in get(/databases/$(database)/documents/orders/$(request.resource.data.orderId)).data.candidateProviderIds)
+        || (isAdmin() && request.resource.data.type == 'adminCancellation');
+      allow read: if signedIn() && resource.data.recipientId == request.auth.uid;
+      allow update: if signedIn() && resource.data.recipientId == request.auth.uid
+        && changesOnly(['read']) && request.resource.data.read is bool;
       allow delete: if false;
     }
 

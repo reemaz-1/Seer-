@@ -31,12 +31,52 @@ class _AdminUsersState extends State<AdminUsers> {
     if (_updatingId != null) return;
     final suspend = !user.isSuspended;
     final action = suspend ? 'إيقاف' : 'إعادة تفعيل';
+    List<AdminOpenOrder> openOrders = const [];
+    if (suspend) {
+      setState(() => _updatingId = '${user.type}:${user.id}');
+      try {
+        openOrders = await _controller.getOpenOrders(user);
+      } catch (_) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text('تعذر تحميل الطلبات. لم يتم إيقاف الحساب.'),
+          ));
+        }
+        return;
+      } finally {
+        if (mounted) setState(() => _updatingId = null);
+      }
+    }
+    if (!mounted) return;
+    final blocked = openOrders.any((o) => o.blocksSuspension);
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: Text('تأكيد $action الحساب'),
-        content: Text(
-          'هل تريد $action حساب ${user.name.isEmpty ? user.email : user.name}؟',
+        content: SizedBox(
+          width: 430,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('هل تريد $action حساب ${user.name.isEmpty ? user.email : user.name}؟'),
+              if (suspend) ...[
+                const SizedBox(height: 12),
+                const Text('الطلبات الحالية:', style: TextStyle(fontWeight: FontWeight.bold)),
+                if (openOrders.isEmpty) const Text('لا توجد طلبات حالية'),
+                for (final order in openOrders)
+                  Text('طلب #${order.id.length > 8 ? order.id.substring(0, 8) : order.id} — ${order.status}'),
+                if (blocked) ...[
+                  const SizedBox(height: 12),
+                  const Text('لا يمكن إيقاف الحساب حتى تنتهي الطلبات قيد التنفيذ.',
+                      style: TextStyle(color: Colors.red)),
+                ] else if (openOrders.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  const Text('سيتم إلغاء طلبات Pending وAccepted وإشعار الطرف الآخر.'),
+                ],
+              ],
+            ],
+          ),
         ),
         actions: [
           TextButton(
@@ -44,7 +84,7 @@ class _AdminUsersState extends State<AdminUsers> {
             child: const Text('إلغاء'),
           ),
           FilledButton(
-            onPressed: () => Navigator.of(dialogContext).pop(true),
+            onPressed: blocked ? null : () => Navigator.of(dialogContext).pop(true),
             child: Text('تأكيد $action'),
           ),
         ],
@@ -58,6 +98,11 @@ class _AdminUsersState extends State<AdminUsers> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(suspend ? 'تم إيقاف الحساب' : 'تمت إعادة تفعيل الحساب')),
+      );
+    } on AdminSuspensionBlocked {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('تغيّرت حالة الطلب. يجب إنهاء الطلبات الجارية أولًا.')),
       );
     } catch (_) {
       if (!mounted) return;

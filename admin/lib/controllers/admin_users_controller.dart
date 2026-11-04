@@ -7,6 +7,9 @@ class AdminUsersController {
   Stream<List<AdminUserData>> getApprovedProviders() =>
       AdminUsersModel.streamApprovedProviders();
 
+  Future<List<AdminOpenOrder>> getOpenOrders(AdminUserData user) =>
+      AdminUsersModel.getOpenOrders(user);
+
   Future<void> setSuspended(AdminUserData user, bool suspended) =>
       AdminUsersModel.setSuspended(user, suspended);
 }

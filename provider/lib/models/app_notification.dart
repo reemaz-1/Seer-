@@ -31,7 +31,8 @@ class AppNotification {
   final DateTime? expiresAt;
 
   /// True while the provider can still answer the request.
-  bool isActive(DateTime now) => expiresAt != null && expiresAt!.isAfter(now);
+  bool isActive(DateTime now) => type == 'adminCancellation' ||
+      (expiresAt != null && expiresAt!.isAfter(now));
 
   factory AppNotification.fromMap(String id, Map<String, dynamic> map) {
     return AppNotification(

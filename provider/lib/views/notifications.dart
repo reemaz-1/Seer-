@@ -36,6 +36,10 @@ class _ProviderNotificationsState extends State<ProviderNotifications> {
   }
 
   void _open(AppNotification notification) {
+    if (notification.type == 'adminCancellation') {
+      widget.controller?.markRead(notification);
+      return;
+    }
     if (!notification.isActive(DateTime.now())) {
       showAppMessage(context, 'هذا الطلب لم يعد متاحاً.', type: AppMessageType.info);
       return;
@@ -167,7 +171,9 @@ class _NotificationTile extends StatelessWidget {
                     ],
                     const SizedBox(height: 6),
                     Text(
-                      active
+                      notification.type == 'adminCancellation'
+                          ? 'إشعار إلغاء · ${_timeAgo(notification.createdAt)}'
+                          : active
                           ? 'متاح الآن · ${_timeAgo(notification.createdAt)}'
                           : 'انتهى وقت الطلب · ${_timeAgo(notification.createdAt)}',
                       style: TextStyle(
