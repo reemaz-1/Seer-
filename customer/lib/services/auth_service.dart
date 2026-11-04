@@ -68,6 +68,10 @@ class AuthService {
           'هذا الحساب ليس حساب عميل. إذا كنت مزود خدمة، استخدم تطبيق مزود الخدمة.',
         );
       }
+      if (doc.data()?['isSuspended'] == true) {
+        await _auth.signOut();
+        throw AuthException('تم إيقاف حسابك من قبل الإدارة. يرجى التواصل مع دعم سير.');
+      }
 
       return user;
     } on FirebaseAuthException catch (e) {

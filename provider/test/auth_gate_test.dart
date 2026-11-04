@@ -398,4 +398,22 @@ void main() {
     expect(find.text('ريم المزود'), findsOneWidget);
     verify(() => session.service.getProviderProfile()).called(1);
   });
+testWidgets(
+  'suspended provider is automatically signed out',
+  (tester) async {
+    await session.mount(tester, signedIn: true);
+
+    session.emitProfile({
+      'status': 'pending',
+      'isSuspended': true,
+    });
+
+    await tester.pumpAndSettle();
+
+    verify(() => session.service.logOut()).called(1);
+    expect(find.byType(LoginScreen), findsOneWidget);
+    expect(find.byType(ServiceProviderMain), findsNothing);
+  },
+);
+
 }

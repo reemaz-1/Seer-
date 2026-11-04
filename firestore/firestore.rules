@@ -16,12 +16,14 @@ service cloud.firestore {
     // Takes no inputs; checks whether the caller has a customer profile.
     function isCustomer() {
       return signedIn()
-        && exists(/databases/$(database)/documents/customers/$(request.auth.uid));
+        && exists(/databases/$(database)/documents/customers/$(request.auth.uid))
+        && get(/databases/$(database)/documents/customers/$(request.auth.uid)).data.get('isSuspended', false) != true;
     }
     // Takes no inputs; checks verified email and administrator approval.
     function isProvider() {
       return signedIn() && request.auth.token.email_verified == true
-        && get(/databases/$(database)/documents/providers/$(request.auth.uid)).data.status == 'approved';
+        && get(/databases/$(database)/documents/providers/$(request.auth.uid)).data.status == 'approved'
+        && get(/databases/$(database)/documents/providers/$(request.auth.uid)).data.get('isSuspended', false) != true;
     }
     // Takes allowed field names; returns whether only those fields changed.
     function changesOnly(fields) {
@@ -48,12 +50,15 @@ service cloud.firestore {
         && request.resource.data.phone is string
         && request.resource.data.email == request.auth.token.email
         && request.resource.data.createdAt == request.time;
-      allow update: if owns(uid)
+      allow update: if (owns(uid)
+        && resource.data.get('isSuspended', false) != true
         && changesOnly(['firstName', 'lastName', 'phone', 'email'])
         && request.resource.data.firstName is string
         && request.resource.data.lastName is string
         && request.resource.data.phone is string
-        && request.resource.data.email is string;
+        && request.resource.data.email is string)
+        || (isAdmin() && changesOnly(['isSuspended'])
+          && request.resource.data.isSuspended is bool);
       match /vehicles/{vehicleId} {
         // Takes no inputs; validates exactly the fields written by Vehicle.toMap.
         function validVehicle() {
@@ -62,8 +67,8 @@ service cloud.firestore {
             && v.brand is string && v.model is string && v.year is int
             && v.color is string && v.plateNumberArabic is string && v.plateNumberLatin is string;
         }
-        allow read, delete: if owns(uid);
-        allow create, update: if owns(uid) && validVehicle();
+        allow read, delete: if owns(uid) && isCustomer();
+        allow create, update: if owns(uid) && isCustomer() && validVehicle();
       }
     }
     match /providers/{uid} {
@@ -98,9 +103,12 @@ service cloud.firestore {
         && request.resource.data.status == 'unverified'
         && request.resource.data.email == request.auth.token.email
         && request.resource.data.createdAt == request.time;
-      allow update: if (owns(uid) && (changesOnly(profileFields()) || submitForReview() || updateMatching()))
+      allow update: if (owns(uid) && resource.data.get('isSuspended', false) != true
+          && (changesOnly(profileFields()) || submitForReview() || updateMatching()))
         || (isAdmin() && resource.data.status == 'pending'
-          && request.resource.data.status in ['approved', 'rejected'] && changesOnly(['status']));
+          && request.resource.data.status in ['approved', 'rejected'] && changesOnly(['status']))
+        || (isAdmin() && changesOnly(['isSuspended'])
+          && request.resource.data.isSuspended is bool);
     }
     match /orders/{orderId} {
       // Takes no inputs; checks membership in the customer's candidate list.
@@ -163,7 +171,7 @@ service cloud.firestore {
       }
       // Takes no inputs; enforces customer cancellation and expiry with server time.
       function cancelling() {
-        return owns(resource.data.customerId) && changesOnly(['status', 'cancelledAt'])
+        return owns(resource.data.customerId) && isCustomer() && changesOnly(['status', 'cancelledAt'])
           && request.resource.data.cancelledAt == request.time
           && ((request.resource.data.status == 'cancelled'
               && (resource.data.status == 'pending'
@@ -192,7 +200,7 @@ service cloud.firestore {
           && (step('accepted', 'onTheWay', 'onTheWayAt') || step('onTheWay', 'arrived', 'arrivedAt')
             || step('arrived', 'inProgress', 'inProgressAt') || completing());
       }
-      allow read: if owns(resource.data.customerId)
+      allow read: if (owns(resource.data.customerId) && isCustomer())
         || (isProvider() && (isCandidate() || resource.data.get('providerId', null) == request.auth.uid));
       allow create: if validCreation();
       allow update: if (mayRespond() && (accepting() || rejecting())) || cancelling() || progressing();
@@ -240,7 +248,7 @@ service cloud.firestore {
           && request.resource.data.status == 'resolved'
           && request.resource.data.resolvedAt == request.time;
       }
-      allow read: if isAdmin() || (signedIn() && (resource == null || owns(resource.data.complainantId)));
+      allow read: if isAdmin() || (isCustomer() && (resource == null || owns(resource.data.complainantId)));
       allow create: if validCreation();
       allow update: if resolving();
       allow delete: if false;

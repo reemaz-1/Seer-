@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../controllers/admin_users_controller.dart';
 import '../models/admin_users_model.dart';
 
@@ -13,11 +14,11 @@ class _AdminUsersState extends State<AdminUsers> {
   final AdminUsersController _controller = const AdminUsersController();
   String _searchQuery = '';
 
-  late final Stream<List<AdminUserData>> _customersStream =
-    _controller.getCustomers();
+  late final Stream<List<AdminUserData>> _customersStream = _controller
+      .getCustomers();
 
-late final Stream<List<AdminUserData>> _providersStream =
-    _controller.getApprovedProviders();
+  late final Stream<List<AdminUserData>> _providersStream = _controller
+      .getApprovedProviders();
 
   static const Color navy = Color(0xFF0E1B33);
   static const Color accent = Color(0xFF1C63D6);
@@ -36,11 +37,8 @@ late final Stream<List<AdminUserData>> _providersStream =
         child: StreamBuilder<List<AdminUserData>>(
           stream: _customersStream,
           builder: (context, customerSnapshot) {
-            if (customerSnapshot.connectionState ==
-                ConnectionState.waiting) {
-              return const Center(
-                child: CircularProgressIndicator(),
-              );
+            if (customerSnapshot.connectionState == ConnectionState.waiting) {
+              return const Center(child: CircularProgressIndicator());
             }
 
             if (customerSnapshot.hasError) {
@@ -55,9 +53,7 @@ late final Stream<List<AdminUserData>> _providersStream =
               builder: (context, providerSnapshot) {
                 if (providerSnapshot.connectionState ==
                     ConnectionState.waiting) {
-                  return const Center(
-                    child: CircularProgressIndicator(),
-                  );
+                  return const Center(child: CircularProgressIndicator());
                 }
 
                 if (providerSnapshot.hasError) {
@@ -67,23 +63,23 @@ late final Stream<List<AdminUserData>> _providersStream =
                 }
 
                 bool matchesSearch(AdminUserData user) {
-  final query = _searchQuery.trim().toLowerCase();
-  if (query.isEmpty) return true;
+                  final query = _searchQuery.trim().toLowerCase();
+                  if (query.isEmpty) return true;
 
-  return '${user.firstName} ${user.lastName}'
-          .toLowerCase()
-          .contains(query) ||
-      user.email.toLowerCase().contains(query) ||
-      user.phone.contains(query);
-}
+                  return '${user.firstName} ${user.lastName}'
+                          .toLowerCase()
+                          .contains(query) ||
+                      user.email.toLowerCase().contains(query) ||
+                      user.phone.contains(query);
+                }
 
-final customers = (customerSnapshot.data ?? [])
-    .where(matchesSearch)
-    .toList();
+                final customers = (customerSnapshot.data ?? [])
+                    .where(matchesSearch)
+                    .toList();
 
-final providers = (providerSnapshot.data ?? [])
-    .where(matchesSearch)
-    .toList();
+                final providers = (providerSnapshot.data ?? [])
+                    .where(matchesSearch)
+                    .toList();
 
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -99,23 +95,24 @@ final providers = (providerSnapshot.data ?? [])
 
                     const SizedBox(height: 20),
                     TextField(
-  onChanged: (value) {
-    setState(() {
-      _searchQuery = value;
-    });
-  },
-  decoration: InputDecoration(
-    hintText: 'ابحث بالاسم أو البريد الإلكتروني أو رقم الجوال',
-    prefixIcon: const Icon(Icons.search),
-    border: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(12),
-    ),
-    filled: true,
-    fillColor: Colors.white,
-  ),
-),
+                      onChanged: (value) {
+                        setState(() {
+                          _searchQuery = value;
+                        });
+                      },
+                      decoration: InputDecoration(
+                        hintText:
+                            'ابحث بالاسم أو البريد الإلكتروني أو رقم الجوال',
+                        prefixIcon: const Icon(Icons.search),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        filled: true,
+                        fillColor: Colors.white,
+                      ),
+                    ),
 
-const SizedBox(height: 20),
+                    const SizedBox(height: 20),
 
                     if (customers.isEmpty && providers.isEmpty)
                       const Expanded(
@@ -152,8 +149,7 @@ const SizedBox(height: 20),
                                 return _buildUserCard(
                                   icon: Icons.person_outline,
                                   type: 'عميل',
-                                  name:
-                                      '${data.firstName} ${data.lastName}',
+                                  name: '${data.firstName} ${data.lastName}',
                                   email: data.email.isEmpty
                                       ? 'غير متوفر'
                                       : data.email,
@@ -185,8 +181,7 @@ const SizedBox(height: 20),
                                 return _buildUserCard(
                                   icon: Icons.build_outlined,
                                   type: 'مزود خدمة',
-                                  name:
-                                      '${data.firstName} ${data.lastName}',
+                                  name: '${data.firstName} ${data.lastName}',
                                   email: data.email.isEmpty
                                       ? 'غير متوفر'
                                       : data.email,
@@ -225,19 +220,14 @@ const SizedBox(height: 20),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: const Color(0xFFE4E8F0),
-        ),
+        border: Border.all(color: const Color(0xFFE4E8F0)),
       ),
       child: Row(
         children: [
           CircleAvatar(
             radius: 24,
             backgroundColor: accent.withValues(alpha: 0.1),
-            child: Icon(
-              icon,
-              color: accent,
-            ),
+            child: Icon(icon, color: accent),
           ),
 
           const SizedBox(width: 16),
@@ -269,24 +259,18 @@ const SizedBox(height: 20),
 
                 Text(
                   'البريد الإلكتروني: $email',
-                  style: const TextStyle(
-                    color: secondaryText,
-                  ),
+                  style: const TextStyle(color: secondaryText),
                 ),
 
                 Text(
                   'رقم الجوال: $phone',
-                  style: const TextStyle(
-                    color: secondaryText,
-                  ),
+                  style: const TextStyle(color: secondaryText),
                 ),
 
                 if (extra != null && extra.trim().isNotEmpty)
                   Text(
                     'المركبة: $extra',
-                    style: const TextStyle(
-                      color: secondaryText,
-                    ),
+                    style: const TextStyle(color: secondaryText),
                   ),
               ],
             ),

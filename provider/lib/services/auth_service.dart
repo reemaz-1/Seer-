@@ -79,6 +79,11 @@ class AuthService extends ChangeNotifier {
       final data = (await _provider(
         user.uid,
       ).get(const GetOptions(source: Source.server))).data();
+      if (data?['isSuspended'] == true) {
+        throw const AuthException(
+          'تم إيقاف حسابك من قبل الإدارة. للاستفسار أو طلب إعادة التفعيل، يرجى التواصل مع بريد دعم سير.',
+        );
+      }
       switch (data?['status']) {
         case 'approved':
         case 'unverified':
