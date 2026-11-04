@@ -5,6 +5,7 @@ import 'edit_vehicle_screen.dart';
 import 'edit_services_screen.dart';
 import '../services/auth_service.dart';
 import '../widgets/logout_button.dart';
+import '../widgets/plate_number_view.dart';
 import '../models/service_provider.dart';
 import '../controllers/provider_profile_controller.dart';
 
@@ -139,8 +140,12 @@ class _ProviderProfileScreenState extends State<ProviderProfileScreen>{
                 rows: {
                   'المركبة': data.vehicle,
                   'لون المركبة' :data.vehicleColor,
-                  'رقم اللوحة (عربي)': data.plateNumberArabic,
-                  'رقم اللوحة (لاتيني)': data.plateNumberLatin,
+                  // Drawn like the real plate, so each Arabic character sits
+                  // above its Latin one instead of two lines of text.
+                  'رقم اللوحة': PlateNumberView.fromStored(
+                    arabic: data.plateNumberArabic,
+                    latin: data.plateNumberLatin,
+                  ),
                   'رقم الرخصة': data.licenseNumber,
                 },
                 onEdit: () async{
@@ -246,7 +251,7 @@ class _ProviderProfileScreenState extends State<ProviderProfileScreen>{
 
   Widget _buildInfoCard({
     required String title,
-    required Map<String, String> rows,
+    required Map<String, Object> rows,
     required VoidCallback onEdit,
   })//end _bulidInfoCard
 
@@ -292,15 +297,7 @@ class _ProviderProfileScreenState extends State<ProviderProfileScreen>{
                   const SizedBox(width: 12),
                   Expanded(
                     flex: 3,
-                    child: Text(
-                      rows.values.elementAt(i),
-                      textAlign: TextAlign.end,
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.secondaryText,
-                      ),
-                    ),
+                    child: _infoValue(rows.values.elementAt(i)),
                   ),
                 ],
               ),
@@ -312,6 +309,23 @@ class _ProviderProfileScreenState extends State<ProviderProfileScreen>{
       ),
     );
   }//end _buildInfoCard
+
+  /// Takes a row [value]; returns it as text, or the widget itself (such as
+  /// the plate) placed at the end of the row.
+  Widget _infoValue(Object value) {
+    if (value is Widget) {
+      return Align(alignment: AlignmentDirectional.centerEnd, child: value);
+    }
+    return Text(
+      '$value',
+      textAlign: TextAlign.end,
+      style: const TextStyle(
+        fontSize: 14,
+        fontWeight: FontWeight.w600,
+        color: AppColors.secondaryText,
+      ),
+    );
+  }
 
 
 Widget _buildServicesCard(ServiceProviderData provider){
