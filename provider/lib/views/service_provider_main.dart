@@ -62,14 +62,16 @@ class _ServiceProviderMainState extends State<ServiceProviderMain>
     if (!_inForeground) return;
     final missed = _missedWhileAway;
     _missedWhileAway = null;
-    if (missed != null && missed.isActive(DateTime.now())) {
+    if (missed != null &&
+        (missed.isActive(DateTime.now()) || missed.isCancellation)) {
       // The system notification already made its sound.
       _showBanner(missed, withSound: false);
     }
   }
 
-  /// New request: a banner while the app is open, a system notification
-  /// (status bar and lock screen) while it is in the background.
+  /// New request or cancelled order: a banner while the app is open, a
+  /// system notification (status bar and lock screen) while it is in the
+  /// background.
   void _onNewNotification(AppNotification notification) {
     if (_inForeground) {
       _showBanner(notification);
@@ -101,7 +103,8 @@ class _ServiceProviderMainState extends State<ServiceProviderMain>
       withSound: withSound,
       onTap: () {
         _notifications?.markRead(notification);
-        _openAvailableRequests();
+        // A cancelled order has nothing left to open.
+        if (!notification.isCancellation) _openAvailableRequests();
       },
     );
   }
