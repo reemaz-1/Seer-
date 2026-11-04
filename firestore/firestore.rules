@@ -204,15 +204,13 @@ service cloud.firestore {
       function relatedOrder() {
         return get(/databases/$(database)/documents/orders/$(request.resource.data.orderId)).data;
       }
-      // Takes no inputs; checks a new customer complaint about an assigned or completed order (#30).
-      function validCreation() {
+      // Takes no inputs; checks the fields shared by every new complaint.
+      function validFields() {
         let c = request.resource.data;
-        return isCustomer()
-          && c.keys().hasOnly(['complainantId', 'complainantType', 'againstId', 'orderId',
+        return c.keys().hasOnly(['complainantId', 'complainantType', 'againstId', 'orderId',
             'description', 'status', 'createdAt', 'resolvedAt', 'customerName', 'customerPhone',
             'providerName', 'serviceLabel', 'vehicleTitle', 'orderPrice', 'orderStatus'])
           && c.complainantId == request.auth.uid
-          && c.complainantType == 'customer'
           && c.status == 'pending'
           && c.createdAt == request.time
           && c.resolvedAt == null
@@ -226,12 +224,33 @@ service cloud.firestore {
           && c.get('vehicleTitle', '') is string && c.get('vehicleTitle', '').size() <= 100
           && c.get('orderPrice', 0) is number
           && c.get('orderStatus', '') is string
+          && exists(/databases/$(database)/documents/orders/$(c.orderId));
+      }
+      // Takes no inputs; checks a new customer complaint about an assigned or completed order (#30).
+      function validCustomerComplaint() {
+        let c = request.resource.data;
+        return isCustomer()
+          && c.complainantType == 'customer'
           // One complaint per order: the document id is fixed by the order id.
           && complaintId == c.orderId + '_customer'
-          && exists(/databases/$(database)/documents/orders/$(c.orderId))
           && relatedOrder().customerId == request.auth.uid
           && relatedOrder().status in ['accepted', 'onTheWay', 'arrived', 'inProgress', 'completed']
           && relatedOrder().providerId == c.againstId;
+      }
+      // Takes no inputs; checks a new provider complaint about the customer of a finished order (#49).
+      function validProviderComplaint() {
+        let c = request.resource.data;
+        return isProvider()
+          && c.complainantType == 'provider'
+          // One complaint per order from each side: the id is fixed by the order id.
+          && complaintId == c.orderId + '_provider'
+          && relatedOrder().providerId == request.auth.uid
+          && relatedOrder().status in ['completed', 'cancelled']
+          && relatedOrder().customerId == c.againstId;
+      }
+      // Takes no inputs; accepts a valid complaint from either side.
+      function validCreation() {
+        return validFields() && (validCustomerComplaint() || validProviderComplaint());
       }
       // Takes no inputs; lets the admin close a pending complaint (#55).
       function resolving() {

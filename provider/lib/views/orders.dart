@@ -136,7 +136,7 @@ class _ProviderOrdersState extends State<ProviderOrders>
                 onAccepted: () => _tabs.animateTo(1),
               ),
               const ProviderCurrentOrder(),
-              const ProviderHistory(),
+              ProviderHistory(addresses: _addresses),
             ],
           ),
         ),
