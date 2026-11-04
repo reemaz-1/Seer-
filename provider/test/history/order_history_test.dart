@@ -3,11 +3,13 @@ import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:provider/controllers/complaint_controller.dart';
 import 'package:provider/controllers/order_history_controller.dart';
 import 'package:provider/models/order.dart';
 import 'package:provider/views/history.dart';
 import 'package:provider/views/past_order_details_page.dart';
 
+import '../complaints/complaint_fakes.dart';
 import '../requests/request_fakes.dart';
 
 /// Gives the history screen a controllable list instead of Firestore.
@@ -102,6 +104,10 @@ void main() {
               child: ProviderHistory(
                 controller: history,
                 addresses: FakeAddresses(),
+                complaints: ComplaintController(
+                  uid: 'p1',
+                  model: FakeComplaintModel(),
+                ),
               ),
             ),
           ),

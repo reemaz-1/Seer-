@@ -1,26 +1,32 @@
 import 'package:flutter/material.dart';
 
 import '../controllers/address_controller.dart';
+import '../controllers/complaint_controller.dart';
 import '../controllers/order_history_controller.dart';
 import '../models/order.dart';
 import '../theme/order_colors.dart';
+import '../widgets/complaint_section.dart';
 import '../widgets/location_card.dart';
 import '../widgets/order_display.dart';
 import '../widgets/plate_number_view.dart';
 
 /// The details of one previous order (#41): the service, customer, vehicle,
-/// location, dates and payment. A finished order no longer changes, so the
-/// page shows the order it was opened with.
+/// location, dates and payment, and a way to complain about the customer
+/// (#49). A finished order no longer changes, so the page shows the order
+/// it was opened with.
 class PastOrderDetailsPage extends StatelessWidget {
-  /// Takes the finished [order] and the [addresses] used to show its location.
+  /// Takes the finished [order], the [addresses] used to show its location
+  /// and an optional [complaints] controller, mainly used in tests.
   const PastOrderDetailsPage({
     super.key,
     required this.order,
     required this.addresses,
+    this.complaints,
   });
 
   final ServiceOrder order;
   final AddressController addresses;
+  final ComplaintController? complaints;
 
   @override
   Widget build(BuildContext context) => Directionality(
@@ -89,6 +95,8 @@ class PastOrderDetailsPage extends StatelessWidget {
             _datesSection(),
             const SizedBox(height: 12),
             _paymentSection(),
+            const SizedBox(height: 20),
+            ComplaintSection(order: order, controller: complaints),
           ],
         ),
       ),

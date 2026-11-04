@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../controllers/address_controller.dart';
+import '../controllers/complaint_controller.dart';
 import '../controllers/order_history_controller.dart';
 import '../models/order.dart';
 import '../theme/order_colors.dart';
@@ -11,12 +12,18 @@ import 'past_order_details_page.dart';
 /// customer cancelled after this provider accepted them, newest first.
 /// Tapping an order opens its details (#41).
 class ProviderHistory extends StatefulWidget {
-  /// Takes an optional [controller] and [addresses]; mainly used in tests
-  /// and to share the address cache with the other tabs.
-  const ProviderHistory({super.key, this.controller, this.addresses});
+  /// Takes an optional [controller], [addresses] and [complaints]; mainly
+  /// used in tests and to share the address cache with the other tabs.
+  const ProviderHistory({
+    super.key,
+    this.controller,
+    this.addresses,
+    this.complaints,
+  });
 
   final OrderHistoryController? controller;
   final AddressController? addresses;
+  final ComplaintController? complaints;
 
   @override
   State<ProviderHistory> createState() => _ProviderHistoryState();
@@ -71,8 +78,11 @@ class _ProviderHistoryState extends State<ProviderHistory> {
   void _openDetails(ServiceOrder order) {
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) =>
-            PastOrderDetailsPage(order: order, addresses: _addresses),
+        builder: (_) => PastOrderDetailsPage(
+          order: order,
+          addresses: _addresses,
+          complaints: widget.complaints,
+        ),
       ),
     );
   }
