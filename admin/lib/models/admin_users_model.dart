@@ -81,14 +81,26 @@ class AdminUsersModel {
           .map((doc) => AdminUserData.fromMap(doc.id, 'provider', doc.data()))
           .toList());
 
-  static Future<List<AdminOpenOrder>> getOpenOrders(AdminUserData user) async {
+  static Future<List<AdminOpenOrder>> getOpenOrders(AdminUserData user, {bool includeExpiredPending = false}) async {
     final orders = FirebaseFirestore.instance.collection('orders');
     final query = user.type == 'customer'
         ? orders.where('customerId', isEqualTo: user.id)
         : orders.where('providerId', isEqualTo: user.id);
     final snapshot = await query.get();
     const open = {'pending', 'accepted', 'onTheWay', 'arrived', 'inProgress'};
-    return snapshot.docs.where((d) => open.contains(d.data()['status'])).map((d) {
+    final now = DateTime.now();
+    return snapshot.docs.where((d) {
+      final data = d.data();
+      if (!open.contains(data['status'])) return false;
+      // An expired pending request is not CURRENT even if its stored status
+      // was never auto-cancelled because the Customer app was closed.
+      // Keep it when suspending so it can still be cleaned up safely.
+      if (!includeExpiredPending && data['status'] == 'pending') {
+        final expiry = data['expiresAt'];
+        if (expiry is Timestamp && !expiry.toDate().isAfter(now)) return false;
+      }
+      return true;
+    }).map((d) {
       final data = d.data();
       return AdminOpenOrder(
         d.id,
@@ -110,7 +122,7 @@ class AdminUsersModel {
       await accountRef.update({'isSuspended': false});
       return;
     }
-    final preview = await getOpenOrders(user);
+    final preview = await getOpenOrders(user, includeExpiredPending: true);
     if (preview.any((o) => o.blocksSuspension)) {
       throw const AdminSuspensionBlocked();
     }

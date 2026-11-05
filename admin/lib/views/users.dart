@@ -27,6 +27,23 @@ class _AdminUsersState extends State<AdminUsers> {
   static const Color background = Color(0xFFF7F9FC);
   static const Color secondaryText = Color(0xFF6B7385);
 
+  static String _orderStatusArabic(String status) {
+    switch (status) {
+      case 'pending':
+        return 'بانتظار القبول';
+      case 'accepted':
+        return 'تم القبول';
+      case 'onTheWay':
+        return 'المزود في الطريق';
+      case 'arrived':
+        return 'وصل المزود';
+      case 'inProgress':
+        return 'الخدمة قيد التنفيذ';
+      default:
+        return status;
+    }
+  }
+
   Future<void> _confirmChange(AdminUserData user) async {
     if (_updatingId != null) return;
     final suspend = !user.isSuspended;
@@ -51,43 +68,93 @@ class _AdminUsersState extends State<AdminUsers> {
     final blocked = openOrders.any((o) => o.blocksSuspension);
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text('تأكيد $action الحساب'),
-        content: SizedBox(
-          width: 430,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('هل تريد $action حساب ${user.name.isEmpty ? user.email : user.name}؟'),
-              if (suspend) ...[
-                const SizedBox(height: 12),
-                const Text('الطلبات الحالية:', style: TextStyle(fontWeight: FontWeight.bold)),
-                if (openOrders.isEmpty) const Text('لا توجد طلبات حالية'),
-                for (final order in openOrders)
-                  Text('طلب #${order.id.length > 8 ? order.id.substring(0, 8) : order.id} — ${order.status}'),
-                if (blocked) ...[
-                  const SizedBox(height: 12),
-                  const Text('لا يمكن إيقاف الحساب حتى تنتهي الطلبات قيد التنفيذ.',
-                      style: TextStyle(color: Colors.red)),
-                ] else if (openOrders.isNotEmpty) ...[
-                  const SizedBox(height: 12),
-                  const Text('سيتم إلغاء طلبات Pending وAccepted وإشعار الطرف الآخر.'),
+      builder: (dialogContext) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: AlertDialog(
+          title: Text('تأكيد $action الحساب', textAlign: TextAlign.right),
+          content: SizedBox(
+            width: 440,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    'هل تريد $action حساب ${user.name.isEmpty ? user.email : user.name}؟',
+                    textAlign: TextAlign.right,
+                  ),
+                  if (suspend) ...[
+                    const SizedBox(height: 16),
+                    const Text('الطلبات الحالية',
+                        textAlign: TextAlign.right,
+                        style: TextStyle(fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 8),
+                    if (openOrders.isEmpty)
+                      const Text('لا توجد طلبات نشطة حاليًا'),
+                    for (final order in openOrders)
+                      Container(
+                        margin: const EdgeInsets.only(bottom: 8),
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF3F6FB),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                'طلب #${order.id.length > 8 ? order.id.substring(0, 8) : order.id}',
+                                textDirection: TextDirection.ltr,
+                                textAlign: TextAlign.right,
+                                style: const TextStyle(fontWeight: FontWeight.w600),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Flexible(
+                              child: Text(
+                                _orderStatusArabic(order.status),
+                                textAlign: TextAlign.left,
+                                style: TextStyle(
+                                  color: order.blocksSuspension
+                                      ? Colors.red.shade700
+                                      : const Color(0xFF1C63D6),
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    if (blocked) ...[
+                      const SizedBox(height: 8),
+                      const Text(
+                        'لا يمكن إيقاف الحساب الآن. يجب إنهاء الطلبات قيد التنفيذ أولًا.',
+                        textAlign: TextAlign.right,
+                        style: TextStyle(color: Colors.red),
+                      ),
+                    ] else if (openOrders.isNotEmpty) ...[
+                      const SizedBox(height: 8),
+                      const Text(
+                        'سيتم إلغاء الطلبات التي لم تبدأ خدماتها وإشعار الطرف الآخر.',
+                        textAlign: TextAlign.right,
+                      ),
+                    ],
+                  ],
                 ],
-              ],
-            ],
+              ),
+            ),
           ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('رجوع'),
+            ),
+            FilledButton(
+              onPressed: blocked ? null : () => Navigator.of(dialogContext).pop(true),
+              child: Text('تأكيد $action'),
+            ),
+          ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('إلغاء'),
-          ),
-          FilledButton(
-            onPressed: blocked ? null : () => Navigator.of(dialogContext).pop(true),
-            child: Text('تأكيد $action'),
-          ),
-        ],
       ),
     );
     if (!mounted || confirmed != true) return;
