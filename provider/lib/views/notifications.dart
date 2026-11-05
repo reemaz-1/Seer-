@@ -38,6 +38,20 @@ class _ProviderNotificationsState extends State<ProviderNotifications> {
   void _open(AppNotification notification) {
     if (notification.type == 'adminCancellation') {
       widget.controller?.markRead(notification);
+      showAppMessage(
+        context,
+        notification.body,
+        type: AppMessageType.info,
+      );
+      return;
+    }
+
+    if (notification.isCancellation) {
+      showAppMessage(
+        context,
+        notification.body,
+        type: AppMessageType.info,
+      );
       return;
     }
     if (!notification.isActive(DateTime.now())) {
@@ -100,6 +114,16 @@ class _NotificationTile extends StatelessWidget {
   final bool active;
   final VoidCallback onTap;
 
+bool get cancelled =>
+    notification.isCancellation ||
+    notification.type == 'adminCancellation';
+
+  /// Takes no inputs; returns the short state shown under the notification.
+  String _statusText() {
+    if (cancelled) return 'تم الإلغاء';
+    return active ? 'متاح الآن' : 'انتهى وقت الطلب';
+  }
+
   @override
   Widget build(BuildContext context) {
     return Material(
@@ -121,13 +145,23 @@ class _NotificationTile extends StatelessWidget {
                 width: 38,
                 height: 38,
                 decoration: BoxDecoration(
-                  color: active ? AppColors.blue : AppColors.cardBorder,
+                  color: cancelled
+                      ? const Color(0xFFFDECEC)
+                      : active
+                      ? AppColors.blue
+                      : AppColors.cardBorder,
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Icon(
-                  Icons.build_circle_outlined,
+                  cancelled
+                      ? Icons.cancel_outlined
+                      : Icons.build_circle_outlined,
                   size: 20,
-                  color: active ? Colors.white : AppColors.secondaryText,
+                  color: cancelled
+                      ? AppColors.error
+                      : active
+                      ? Colors.white
+                      : AppColors.secondaryText,
                 ),
               ),
               const SizedBox(width: 12),
@@ -171,14 +205,14 @@ class _NotificationTile extends StatelessWidget {
                     ],
                     const SizedBox(height: 6),
                     Text(
-                      notification.type == 'adminCancellation'
-                          ? 'إشعار إلغاء · ${_timeAgo(notification.createdAt)}'
-                          : active
-                          ? 'متاح الآن · ${_timeAgo(notification.createdAt)}'
-                          : 'انتهى وقت الطلب · ${_timeAgo(notification.createdAt)}',
+                      '${_statusText()} · ${_timeAgo(notification.createdAt)}',
                       style: TextStyle(
                         fontSize: 12,
-                        color: active ? AppColors.blue : AppColors.secondaryText,
+                        color: cancelled
+                            ? AppColors.error
+                            : active
+                            ? AppColors.blue
+                            : AppColors.secondaryText,
                       ),
                     ),
                   ],

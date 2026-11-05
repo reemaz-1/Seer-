@@ -59,49 +59,51 @@ class RequestActions extends StatelessWidget {
                         ),
                       ),
                     ),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: Row(
-                        children: [
-                          if (controller.isBusy(order.id))
-                            const SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(
-                                color: Colors.white,
-                                strokeWidth: 2,
-                              ),
-                            )
-                          else
-                            const Icon(
-                              Icons.check_rounded,
+                    // Icon and label in the middle of the button.
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (controller.isBusy(order.id))
+                          const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
                               color: Colors.white,
+                              strokeWidth: 2,
                             ),
-                          const SizedBox(width: 8),
-                          const Expanded(
-                            child: Text(
-                              'قبول الطلب',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                              ),
+                          )
+                        else
+                          const Icon(Icons.check_rounded, color: Colors.white),
+                        const SizedBox(width: 8),
+                        const Text(
+                          'قبول الطلب',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ],
+                    ),
+                    // The remaining time stays at the end of the button.
+                    PositionedDirectional(
+                      end: 16,
+                      top: 0,
+                      bottom: 0,
+                      child: Center(
+                        child: Directionality(
+                          textDirection: TextDirection.ltr,
+                          child: Text(
+                            controller.countdown(order),
+                            key: const ValueKey('request-countdown'),
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                              fontFeatures: [FontFeature.tabularFigures()],
                             ),
                           ),
-                          Directionality(
-                            textDirection: TextDirection.ltr,
-                            child: Text(
-                              controller.countdown(order),
-                              key: const ValueKey('request-countdown'),
-                              style: const TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                                fontFeatures: [FontFeature.tabularFigures()],
-                              ),
-                            ),
-                          ),
-                        ],
+                        ),
                       ),
                     ),
                   ],

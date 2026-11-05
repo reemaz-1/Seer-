@@ -34,6 +34,24 @@ class ProviderOrderModel {
         );
   }
 
+  /// The orders this provider has finished (#40): completed ones, and ones
+  /// the customer cancelled after this provider accepted them. Updates live.
+  ///
+  /// Only equality filters are used, so Firestore needs no composite index;
+  /// the list is sorted on the phone by the controller.
+  Stream<List<ServiceOrder>> watchPastOrders(String providerId) {
+    return _orders
+        .where('providerId', isEqualTo: providerId)
+        .where('status', whereIn: OrderStatus.past)
+        .snapshots()
+        .map(
+          (snapshot) => [
+            for (final doc in snapshot.docs)
+              ServiceOrder.fromMap(doc.id, doc.data()),
+          ],
+        );
+  }
+
   /// Moves the order one step forward (#44): only from [from] to [to].
   ///
   /// Runs in a transaction, so a double tap or an order that changed in the

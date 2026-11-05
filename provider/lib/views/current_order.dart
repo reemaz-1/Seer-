@@ -386,35 +386,41 @@ class _ProviderCurrentOrderState extends State<ProviderCurrentOrder> {
   Widget _actionBar(ServiceOrder order, OrderStep step) {
     final bool completes = step.next == OrderStatus.completed;
     return Container(
-      padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
       decoration: const BoxDecoration(
         color: Colors.white,
         border: Border(top: BorderSide(color: AppColors.cardBorder)),
       ),
-      child: SizedBox(
-        width: double.infinity,
-        height: 52,
-        child: ElevatedButton(
-          onPressed: _saving
-              ? null
-              : () => completes ? _complete(order) : _advance(order),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: completes ? AppColors.success : AppColors.blue,
-            foregroundColor: Colors.white,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
+      // SafeArea keeps the button above the phone's navigation bar.
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
+          child: SizedBox(
+            width: double.infinity,
+            height: 52,
+            child: ElevatedButton(
+              onPressed: _saving
+                  ? null
+                  : () => completes ? _complete(order) : _advance(order),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: completes ? AppColors.success : AppColors.blue,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              child: _saving
+                  ? const SizedBox(
+                      width: 22,
+                      height: 22,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2.5,
+                        color: Colors.white,
+                      ),
+                    )
+                  : Text(step.buttonLabel, style: const TextStyle(fontSize: 16)),
             ),
           ),
-          child: _saving
-              ? const SizedBox(
-                  width: 22,
-                  height: 22,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2.5,
-                    color: Colors.white,
-                  ),
-                )
-              : Text(step.buttonLabel, style: const TextStyle(fontSize: 16)),
         ),
       ),
     );
@@ -444,18 +450,28 @@ class _ProviderCurrentOrderState extends State<ProviderCurrentOrder> {
                 ? 'هل استلمت المبلغ من العميل؟'
                 : 'هل استلمت مبلغ ${_priceText(order.estimatedPrice)} من العميل؟',
           ),
+          // The main answer on top and the way back under it, both across
+          // the full width so they are centered.
+          actionsPadding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
           actions: [
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(false),
-              child: const Text('إلغاء'),
-            ),
-            ElevatedButton(
-              onPressed: () => Navigator.of(dialogContext).pop(true),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.success,
-                foregroundColor: Colors.white,
-              ),
-              child: const Text('نعم، استلمت'),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                ElevatedButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(true),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.success,
+                    foregroundColor: Colors.white,
+                    minimumSize: const Size.fromHeight(48),
+                  ),
+                  child: const Text('نعم، استلمت'),
+                ),
+                const SizedBox(height: 4),
+                TextButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(false),
+                  child: const Text('إلغاء'),
+                ),
+              ],
             ),
           ],
         ),
