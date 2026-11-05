@@ -10,7 +10,6 @@ import '../theme/order_colors.dart';
 import '../widgets/order_display.dart';
 import '../widgets/plate_number_view.dart';
 import '../widgets/app_snackbar.dart';
-import 'package:cloud_firestore/cloud_firestore.dart' show GeoPoint;
 import 'route_to_customer_page.dart';
 
 /// The order the provider is working on now (#42, #43), with the button
@@ -28,6 +27,8 @@ class ProviderCurrentOrder extends StatefulWidget {
 class _ProviderCurrentOrderState extends State<ProviderCurrentOrder> {
   late final CurrentOrderController _controller =
       widget.controller ?? CurrentOrderController();
+  // The app-level ServiceProviderMain owns GPS tracking across tab changes.
+  // This screen only displays the current order and its actions.
   late final Stream<ServiceOrder?> _order = _controller.watchCurrentOrder();
 
   /// True while a status update is being saved, so the button cannot be
@@ -122,12 +123,27 @@ class _ProviderCurrentOrderState extends State<ProviderCurrentOrder> {
                 ],
               ),
               const SizedBox(height: 12),
-              if (order.pickupLocation != null) ...[
-                LocationCard(
-                  pickup: order.pickupLocation!,
-                  dropoff: order.dropoffLocation,
-                  controller: _addresses,
-                ),
+              if (order.pickupLocation != null)
+                Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: LocationCard(
+                    pickup: order.pickupLocation!,
+                    dropoff: order.dropoffLocation,
+                    controller: _addresses,
+                  ),
+                )
+              else
+                _section(title: 'الموقع', children: [
+                  _infoRow(Icons.location_on_outlined, 'الموقع غير محدد'),
+                ]),
+              // Dima's in-app route, available while the provider is going
+              // to the customer. The #27 GPS lifecycle stays app-owned.
+              if (order.pickupLocation != null &&
+                  (order.status == OrderStatus.accepted ||
+                      order.status == OrderStatus.onTheWay)) ...[
                 const SizedBox(height: 12),
                 SizedBox(
                   width: double.infinity,
@@ -142,10 +158,10 @@ class _ProviderCurrentOrderState extends State<ProviderCurrentOrder> {
                         borderRadius: BorderRadius.circular(25),
                       ),
                     ),
-                    onPressed: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(
+                    onPressed: () => Navigator.of(context).push(
+                      MaterialPageRoute<void>(
                         builder: (_) => RouteToCustomerPage(
+                          orderId: order.id,
                           customerLocation: order.pickupLocation!,
                           customerName: order.customerName.isEmpty
                               ? 'العميل'
@@ -155,8 +171,7 @@ class _ProviderCurrentOrderState extends State<ProviderCurrentOrder> {
                     ),
                   ),
                 ),
-              ] else
-                _infoRow(Icons.location_on_outlined, 'الموقع غير محدد'),
+              ],
               if (order.note.trim().isNotEmpty) ...[
                 const SizedBox(height: 12),
                 _section(

@@ -470,7 +470,7 @@ packages:
     source: hosted
     version: "0.15.7"
   http:
-    dependency: "direct dev"
+    dependency: "direct main"
     description:
       name: http
       sha256: "87721a4a50b19c7f1d49001e51409bddc46303966ce89a65af4f4e6004896412"
@@ -629,14 +629,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "9.5.0"
-  open_route_service:
-    dependency: "direct main"
-    description:
-      name: open_route_service
-      sha256: "6792a019120b8c75cbec0e990bb2583483624c10634c949cf8c0e5e0aa463c56"
-      url: "https://pub.dev"
-    source: hosted
-    version: "1.2.9"
   package_config:
     dependency: transitive
     description:

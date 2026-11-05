@@ -1,5 +1,9 @@
+import 'dart:async';
+
 import 'package:cloud_firestore/cloud_firestore.dart' show GeoPoint;
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 
@@ -8,21 +12,19 @@ import '../theme/app_colors.dart';
 
 /// VIEW: the route from the provider to the customer (#45).
 ///
-/// Uses flutter_map with Stadia Maps tiles, the same map the customer app's
-/// location picker uses, so no Google Maps key is needed. The tiles key is
-/// passed when running the app:
-///
-///   flutter run --dart-define=STADIA_API_KEY=your_key_here
-///
-/// Without that key the page falls back to the standard OpenStreetMap tiles,
-/// which is fine for testing.
+/// Uses flutter_map with Stadia tiles and Valhalla road routing,
+/// matching the Customer tracking map. Pass the Stadia key via
+/// --dart-define-from-file when launching the app. Without a key, map tiles
+/// fall back to OpenStreetMap, but road-route calculations require the key.
 class RouteToCustomerPage extends StatefulWidget {
   const RouteToCustomerPage({
     super.key,
+    required this.orderId,
     required this.customerLocation,
     required this.customerName,
   });
 
+  final String orderId;
   /// The order's pickupLocation.
   final GeoPoint customerLocation;
   final String customerName;
@@ -33,23 +35,38 @@ class RouteToCustomerPage extends StatefulWidget {
 
 class _RouteToCustomerPageState extends State<RouteToCustomerPage> {
   static const String _stadiaKey = String.fromEnvironment('STADIA_API_KEY');
+  static const String _legacyKey =
+      String.fromEnvironment('STADIA_MAPS_API_KEY');
+  static String get _key => _stadiaKey.isNotEmpty ? _stadiaKey : _legacyKey;
 
   late final RouteToCustomerController _controller =
-      RouteToCustomerController(customerLocation: widget.customerLocation);
+      RouteToCustomerController(
+        orderId: widget.orderId,
+        customerLocation: widget.customerLocation,
+      );
   final MapController _mapController = MapController();
 
   bool _mapReady = false;
+  Timer? _freshnessTimer;
+
+  // Bright sky blue that contrasts visibly with Provider navy and blue.
+  // A white road-edge outline keeps
+  // the route readable above yellow/orange streets without altering routing.
+  static const Color _routeBlue = Color(0xFF38A8FF);
+  static const Color _routeOutline = Colors.white;
+  static const double _minZoom = 3;
+  static const double _maxZoom = 19;
 
   /// The map zooms to show both points once, when the first route arrives,
-  /// and again only when the refresh button is pressed, so it does not jump
-  /// around while the provider is driving.
+  /// and again only when the user chooses "Show full route", so it does not
+  /// jump around while the provider is driving.
   bool _fittedOnce = false;
 
-  String get _tileUrl => _stadiaKey.isNotEmpty
-      ? 'https://tiles.stadiamaps.com/tiles/osm_bright/{z}/{x}/{y}.png?api_key=$_stadiaKey'
+  String get _tileUrl => _key.isNotEmpty
+      ? 'https://tiles.stadiamaps.com/tiles/osm_bright/{z}/{x}/{y}.png?api_key=$_key'
       : 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
 
-  String get _attribution => _stadiaKey.isNotEmpty
+  String get _attribution => _key.isNotEmpty
       ? '© Stadia Maps, © OpenStreetMap contributors'
       : '© OpenStreetMap contributors';
 
@@ -57,11 +74,17 @@ class _RouteToCustomerPageState extends State<RouteToCustomerPage> {
   void initState() {
     super.initState();
     _controller.addListener(_onControllerChanged);
+    _freshnessTimer = Timer.periodic(const Duration(seconds: 15), (_) {
+      if (!mounted) return;
+      _controller.refreshEstimateIfNeeded();
+      if (_controller.route != null) setState(() {});
+    });
     _controller.start();
   }
 
   @override
   void dispose() {
+    _freshnessTimer?.cancel();
     _controller.removeListener(_onControllerChanged);
     _controller.dispose();
     _mapController.dispose();
@@ -99,33 +122,132 @@ class _RouteToCustomerPageState extends State<RouteToCustomerPage> {
     );
   }
 
-  Future<void> _refresh() async {
-    // Reads the GPS again, then rebuilds the route from the new position.
-    await _controller.start();
-    if (mounted) _fitBothPoints();
+  /// Manual camera controls do not trigger new route requests or GPS reads.
+  /// The route remains in the same geographic position when rotating.
+  void _zoomBy(double difference) {
+    if (!_mapReady) return;
+    final camera = _mapController.camera;
+    final zoom = (camera.zoom + difference)
+        .clamp(_minZoom, _maxZoom)
+        .toDouble();
+    _mapController.move(camera.center, zoom);
   }
 
-  Future<void> _startNavigation() async {
-    var opened = false;
-    try {
-      opened = await _controller.openNavigation();
-    } catch (_) {
-      opened = false;
+  void _rotateClockwise() {
+    if (!_mapReady) return;
+    final nextAngle = (_mapController.camera.rotation + 45) % 360;
+    _mapController.rotate(nextAngle);
+  }
+
+  void _northUp() {
+    if (!_mapReady) return;
+    _mapController.rotate(0);
+  }
+
+  void _focusOnProvider() {
+    if (!_mapReady) return;
+    final provider = _controller.provider;
+    if (provider == null) {
+      _fitBothPoints();
+      return;
     }
-    if (!opened && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('تعذّر فتح تطبيق الخرائط.')),
-      );
-    }
+    final zoom = _mapController.camera.zoom < 16
+        ? 16.0
+        : _mapController.camera.zoom;
+    _mapController.move(provider, zoom);
+  }
+
+  Widget _cameraButton({
+    required IconData icon,
+    required String tooltip,
+    required VoidCallback onPressed,
+  }) {
+    return Material(
+      color: Colors.white,
+      elevation: 3,
+      shadowColor: Colors.black26,
+      borderRadius: BorderRadius.circular(12),
+      child: IconButton(
+        onPressed: onPressed,
+        tooltip: tooltip,
+        icon: Icon(icon, color: AppColors.navy),
+        iconSize: 23,
+        constraints: const BoxConstraints(minHeight: 46, minWidth: 46),
+      ),
+    );
+  }
+
+  /// Google-Maps-like camera controls, entirely inside the SEER app.
+  Widget _cameraControls() {
+    return Positioned(
+      top: 14,
+      right: 14,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _cameraButton(
+            icon: Icons.add_rounded,
+            tooltip: 'تكبير الخريطة',
+            onPressed: () => _zoomBy(1),
+          ),
+          const SizedBox(height: 8),
+          _cameraButton(
+            icon: Icons.remove_rounded,
+            tooltip: 'تصغير الخريطة',
+            onPressed: () => _zoomBy(-1),
+          ),
+          const SizedBox(height: 8),
+          _cameraButton(
+            icon: Icons.rotate_right_rounded,
+            tooltip: 'تدوير الخريطة 45 درجة',
+            onPressed: _rotateClockwise,
+          ),
+          const SizedBox(height: 8),
+          _cameraButton(
+            icon: Icons.explore_outlined,
+            tooltip: 'إعادة اتجاه الخريطة إلى الشمال',
+            onPressed: _northUp,
+          ),
+          const SizedBox(height: 20),
+          _cameraButton(
+            icon: Icons.my_location_rounded,
+            tooltip: 'التركيز على موقع المزود',
+            onPressed: _focusOnProvider,
+          ),
+        ],
+      ),
+    );
   }
 
   String get _distanceText {
     final route = _controller.route;
-    if (route == null) return 'جارٍ حساب المسار...';
+    if (route != null &&
+        (_controller.locationIsStale || _controller.routeEstimateOutdated)) {
+      return 'المسافة المتبقية: غير محدّثة';
+    }
+    if (route == null) {
+      return _controller.error != null
+          ? 'المسافة المتبقية: —'
+          : 'جارٍ حساب المسار...';
+    }
     final km = route.distanceKm.toStringAsFixed(1);
-    return route.isRoadRoute
-        ? 'المسافة بالطريق: $km كم'
-        : 'المسافة التقريبية (خط مستقيم): $km كم';
+    if (route.distanceKm < 1) {
+      return 'المسافة المتبقية: ${route.distanceMeters.round()} م';
+    }
+    return 'المسافة المتبقية: $km كم';
+  }
+
+  String get _etaText {
+    final route = _controller.route;
+    if (route != null &&
+        (_controller.locationIsStale || _controller.routeEstimateOutdated)) {
+      return 'وقت الوصول المتوقع: غير محدّث';
+    }
+    if (route == null) return 'وقت الوصول المتوقع: —';
+    final minutes = (route.travelSeconds / 60).ceil();
+    return minutes == 0
+        ? 'وقت الوصول المتوقع: أقل من دقيقة'
+        : 'وقت الوصول المتوقع: $minutes دقيقة';
   }
 
   @override
@@ -133,10 +255,16 @@ class _RouteToCustomerPageState extends State<RouteToCustomerPage> {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
+        backgroundColor: AppColors.background,
         appBar: AppBar(
           title: const Text('المسار إلى العميل'),
-          backgroundColor: AppColors.navy,
-          foregroundColor: Colors.white,
+          // Match Provider's light Fleet Blue screens, not Customer's navy header.
+          backgroundColor: AppColors.background,
+          foregroundColor: AppColors.navy,
+          surfaceTintColor: Colors.transparent,
+          elevation: 0,
+          scrolledUnderElevation: 0,
+          systemOverlayStyle: SystemUiOverlayStyle.dark,
           centerTitle: true,
         ),
         body: ListenableBuilder(
@@ -148,6 +276,7 @@ class _RouteToCustomerPageState extends State<RouteToCustomerPage> {
                   child: Stack(
                     children: [
                       _map(),
+                      _cameraControls(),
                       if (_controller.isLoading && _controller.error == null)
                         const Center(child: CircularProgressIndicator()),
                       if (_controller.error != null) _errorCard(),
@@ -172,6 +301,11 @@ class _RouteToCustomerPageState extends State<RouteToCustomerPage> {
       options: MapOptions(
         initialCenter: _controller.customer,
         initialZoom: 13,
+        minZoom: _minZoom,
+        maxZoom: _maxZoom,
+        interactionOptions: const InteractionOptions(
+          flags: InteractiveFlag.all,
+        ),
         onMapReady: () {
           _mapReady = true;
           _onControllerChanged();
@@ -185,14 +319,19 @@ class _RouteToCustomerPageState extends State<RouteToCustomerPage> {
         if (route != null)
           PolylineLayer(
             polylines: [
+              // Draw a white casing first, then the brighter SEER route.
+              // This is one road route, not an alternate path.
               Polyline(
                 points: route.points,
-                strokeWidth: 5,
-                color: AppColors.blue,
-                // Dashed when it is only a straight line.
-                pattern: route.isRoadRoute
-                    ? const StrokePattern.solid()
-                    : StrokePattern.dashed(segments: const [12, 8]),
+                strokeWidth: 12,
+                color: _routeOutline,
+                pattern: const StrokePattern.solid(),
+              ),
+              Polyline(
+                points: route.points,
+                strokeWidth: 7,
+                color: _routeBlue,
+                pattern: const StrokePattern.solid(),
               ),
             ],
           ),
@@ -214,7 +353,7 @@ class _RouteToCustomerPageState extends State<RouteToCustomerPage> {
                 height: 22,
                 child: Container(
                   decoration: BoxDecoration(
-                    color: AppColors.blue,
+                    color: _routeBlue,
                     shape: BoxShape.circle,
                     border: Border.all(color: Colors.white, width: 3),
                     boxShadow: const [
@@ -299,46 +438,46 @@ class _RouteToCustomerPageState extends State<RouteToCustomerPage> {
                 color: AppColors.navy,
               ),
             ),
+            const SizedBox(height: 6),
+            Text(
+              _etaText,
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: AppColors.navy,
+              ),
+            ),
+            if ((_controller.locationIsStale ||
+                    _controller.routeEstimateOutdated) &&
+                _controller.route != null) ...[
+              const SizedBox(height: 7),
+              Text(
+                _controller.locationIsStale
+                    ? 'آخر موقع معروف؛ بانتظار تحديث GPS من المزود.'
+                    : 'المسار تقريبي وسيُحدّث بعد تحرك المزود.',
+                style: const TextStyle(fontSize: 12, color: AppColors.navy),
+              ),
+            ],
             const SizedBox(height: 14),
-            Row(
-              children: [
-                Expanded(
-                  child: SizedBox(
-                    height: 50,
-                    child: ElevatedButton.icon(
-                      onPressed: _startNavigation,
-                      icon: const Icon(Icons.navigation_outlined),
-                      label: const Text('ابدأ الملاحة'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.blue,
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(25),
-                        ),
-                      ),
-                    ),
+            SizedBox(
+              width: double.infinity,
+              height: 50,
+              child: ElevatedButton.icon(
+                onPressed: _mapReady ? _fitBothPoints : null,
+                icon: const Icon(Icons.zoom_out_map_rounded),
+                label: const Text('عرض المسار كاملًا'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.blue,
+                  foregroundColor: Colors.white,
+                  textStyle: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(25),
                   ),
                 ),
-                const SizedBox(width: 10),
-                SizedBox(
-                  height: 50,
-                  width: 64,
-                  child: Tooltip(
-                    message: 'تحديث المسار',
-                    child: OutlinedButton(
-                      onPressed: _refresh,
-                      style: OutlinedButton.styleFrom(
-                        padding: EdgeInsets.zero,
-                        foregroundColor: AppColors.blue,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(25),
-                        ),
-                      ),
-                      child: const Icon(Icons.alt_route),
-                    ),
-                  ),
-                ),
-              ],
+              ),
             ),
           ],
         ),

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:google_nav_bar/google_nav_bar.dart';
 
@@ -10,6 +12,9 @@ import '../controllers/notification_controller.dart';
 import '../models/app_notification.dart';
 import '../widgets/notification_banner.dart';
 import '../services/device_alerts.dart';
+import '../controllers/current_order_controller.dart';
+import '../models/order.dart';
+import '../services/active_order_tracking_service.dart';
 
 class ServiceProviderMain extends StatefulWidget {
   const ServiceProviderMain({super.key, this.authService, this.firstName = ''});
@@ -23,6 +28,13 @@ class ServiceProviderMain extends StatefulWidget {
 class _ServiceProviderMainState extends State<ServiceProviderMain>
     with WidgetsBindingObserver {
   int selectedIndex = 0;
+
+  // Owns one GPS sharing service for the entire signed-in provider session.
+  // It survives navigation among Home, Orders and Profile.
+  final ActiveOrderTrackingService _tracking = ActiveOrderTrackingService();
+  StreamSubscription<ServiceOrder?>? _trackingOrderSubscription;
+  Timer? _trackingOrderRetryTimer;
+  int _orderStreamFailures = 0;
 
   // In-app notifications (#47): live list, bell badge and banner.
   NotificationController? _notifications;
@@ -53,13 +65,59 @@ class _ServiceProviderMainState extends State<ServiceProviderMain>
       _notifications = NotificationController(providerId: uid)
         ..onNew = _onNewNotification
         ..start();
+
+      _watchTrackingOrder();
     }
+  }
+
+  // Firestore may end the order watcher after an authentication or network
+  // failure. Reattach it with bounded backoff rather than leaving GPS without
+  // a working status observer. Security rules still reject writes after arrival.
+  void _watchTrackingOrder() {
+    if (!mounted || _trackingOrderSubscription != null) return;
+    _trackingOrderRetryTimer?.cancel();
+    _trackingOrderRetryTimer = null;
+    _trackingOrderSubscription = CurrentOrderController()
+        .watchCurrentOrder()
+        .listen(
+      (order) {
+        _orderStreamFailures = 0;
+        unawaited(_tracking.syncOrder(order));
+      },
+      onError: (Object error) {
+        debugPrint('Tracking order watcher error: $error');
+        _trackingOrderSubscription = null;
+        // Fail closed: without a reliable order-state watcher, do not keep
+        // sharing the provider's GPS. Recovery will restart the trip only if
+        // the refreshed order is still onTheWay and owned by this provider.
+        unawaited(_tracking.syncOrder(null));
+        _scheduleOrderWatchRetry();
+      },
+      cancelOnError: true,
+    );
+  }
+
+  void _scheduleOrderWatchRetry() {
+    if (!mounted || (_trackingOrderRetryTimer?.isActive ?? false)) return;
+    _orderStreamFailures++;
+    final shift = (_orderStreamFailures - 1).clamp(0, 5).toInt();
+    final seconds = (1 << shift).clamp(2, 60).toInt();
+    _trackingOrderRetryTimer = Timer(Duration(seconds: seconds), () {
+      _trackingOrderRetryTimer = null;
+      _watchTrackingOrder();
+    });
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     _inForeground = state == AppLifecycleState.resumed;
+    _tracking.setAppForeground(_inForeground);
     if (!_inForeground) return;
+    // Reconnect immediately when the user resumes instead of waiting out
+    // a previous transient-error timer.
+    if (_trackingOrderSubscription == null) {
+      _watchTrackingOrder();
+    }
     final missed = _missedWhileAway;
     _missedWhileAway = null;
     if (missed != null && missed.isActive(DateTime.now())) {
@@ -89,6 +147,9 @@ class _ServiceProviderMainState extends State<ServiceProviderMain>
     // Leaving the main screen (e.g. logging out) ends availability mode.
     DeviceAlerts.setAvailableMode(false);
     _notifications?.dispose();
+    _trackingOrderRetryTimer?.cancel();
+    unawaited(_trackingOrderSubscription?.cancel());
+    _tracking.dispose();
     super.dispose();
   }
 
