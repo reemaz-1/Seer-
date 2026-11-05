@@ -18,6 +18,10 @@ class OrderStatus {
 
   /// The statuses of an order the provider is still working on.
   static const active = [accepted, onTheWay, arrived, inProgress];
+
+  /// The statuses of a finished order that stays in the provider's history
+  /// (#40): completed, or cancelled by the customer after it was accepted.
+  static const past = [completed, cancelled];
 }
 
 /// MODEL: one service request.
@@ -56,6 +60,7 @@ class ServiceOrder {
     this.paymentConfirmed = false,
     this.expiresAt,
     this.completedAt,
+    this.cancelledAt,
   });
 
   final String id;
@@ -123,6 +128,9 @@ class ServiceOrder {
   /// Set by the provider app when the order is completed (#44).
   final DateTime? completedAt;
 
+  /// Set by the customer app when the customer cancels the order (#20).
+  final DateTime? cancelledAt;
+
   /// Parses document [id] and Firestore [map]; returns a typed order snapshot.
   factory ServiceOrder.fromMap(String id, Map<String, dynamic> map) {
     return ServiceOrder(
@@ -156,6 +164,7 @@ class ServiceOrder {
       paymentConfirmed: map['paymentConfirmed'] == true,
       expiresAt: (map['expiresAt'] as Timestamp?)?.toDate(),
       completedAt: (map['completedAt'] as Timestamp?)?.toDate(),
+      cancelledAt: (map['cancelledAt'] as Timestamp?)?.toDate(),
     );
   }
 

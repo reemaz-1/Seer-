@@ -2,13 +2,16 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 import 'order.dart';
 
-/// Notification types. Only one exists today; new ones (for example telling
-/// the customer their order was accepted) can be added here later.
+/// Notification types. New ones (for example telling the customer their
+/// order was accepted) can be added here later.
 class NotificationType {
   NotificationType._();
 
   /// A new service request was matched to this provider (#47).
   static const newRequest = 'newRequest';
+
+  /// The customer cancelled an order this provider had accepted (#20).
+  static const orderCancelled = 'orderCancelled';
 }
 
 /// MODEL: writes in-app notifications (#47).
@@ -79,5 +82,26 @@ class NotificationSender {
       });
     }
     await batch.commit();
+  }
+
+  /// Takes the cancelled [order]; returns the notification telling its
+  /// provider that the customer cancelled it (#20). It is written in the
+  /// same transaction as the cancellation, so one never happens without the
+  /// other.
+  static Map<String, dynamic> orderCancelledData(ServiceOrder order) {
+    final service = order.serviceOptionLabel.trim().isNotEmpty
+        ? order.serviceOptionLabel
+        : order.serviceCategoryLabel;
+    return {
+      'recipientId': order.providerId,
+      'type': NotificationType.orderCancelled,
+      'orderId': order.id,
+      'title': 'ألغى العميل الطلب',
+      'body': [service, order.vehicleTitle]
+          .where((part) => part.trim().isNotEmpty)
+          .join(' · '),
+      'read': false,
+      'createdAt': FieldValue.serverTimestamp(),
+    };
   }
 }

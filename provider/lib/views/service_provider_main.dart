@@ -120,14 +120,16 @@ class _ServiceProviderMainState extends State<ServiceProviderMain>
     }
     final missed = _missedWhileAway;
     _missedWhileAway = null;
-    if (missed != null && missed.isActive(DateTime.now())) {
+    if (missed != null &&
+        (missed.isActive(DateTime.now()) || missed.isCancellation)) {
       // The system notification already made its sound.
       _showBanner(missed, withSound: false);
     }
   }
 
-  /// New request: a banner while the app is open, a system notification
-  /// (status bar and lock screen) while it is in the background.
+  /// New request or cancelled order: a banner while the app is open, a
+  /// system notification (status bar and lock screen) while it is in the
+  /// background.
   void _onNewNotification(AppNotification notification) {
     if (_inForeground) {
       _showBanner(notification);
@@ -162,7 +164,8 @@ class _ServiceProviderMainState extends State<ServiceProviderMain>
       withSound: withSound,
       onTap: () {
         _notifications?.markRead(notification);
-        _openAvailableRequests();
+        // A cancelled order has nothing left to open.
+        if (!notification.isCancellation) _openAvailableRequests();
       },
     );
   }
@@ -251,7 +254,8 @@ class _ServiceProviderMainState extends State<ServiceProviderMain>
         ),
         actions: [
           Padding(
-            padding: const EdgeInsets.only(right: 16),
+            // The app is right to left, so the end side is the left edge.
+            padding: const EdgeInsetsDirectional.only(end: 16),
             child: Stack(
               clipBehavior: Clip.none,
               children: [
@@ -323,26 +327,30 @@ class _ServiceProviderMainState extends State<ServiceProviderMain>
 
       bottomNavigationBar: Container(
         color: const Color(0xFFF1F4FA),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 20),
-          child: GNav(
-            backgroundColor: Colors.transparent,
-            color: const Color(0xFF69728C),
-            activeColor: const Color(0xFF1C63D6),
-            tabBackgroundColor: const Color(0xFFDCE6F5),
-            padding: const EdgeInsets.all(16),
-            gap: 8,
-            selectedIndex: selectedIndex,
-            onTabChange: (index) {
-              setState(() {
-                selectedIndex = index;
-              });
-            },
-            tabs: const [
-              GButton(icon: Icons.home_rounded, text: 'الرئيسية'),
-              GButton(icon: Icons.receipt_long_rounded, text: 'الطلبات'),
-              GButton(icon: Icons.person_rounded, text: 'الحساب'),
-            ],
+        // SafeArea keeps the tabs above the phone's navigation bar.
+        child: SafeArea(
+          top: false,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 20),
+            child: GNav(
+              backgroundColor: Colors.transparent,
+              color: const Color(0xFF69728C),
+              activeColor: const Color(0xFF1C63D6),
+              tabBackgroundColor: const Color(0xFFDCE6F5),
+              padding: const EdgeInsets.all(16),
+              gap: 8,
+              selectedIndex: selectedIndex,
+              onTabChange: (index) {
+                setState(() {
+                  selectedIndex = index;
+                });
+              },
+              tabs: const [
+                GButton(icon: Icons.home_rounded, text: 'الرئيسية'),
+                GButton(icon: Icons.receipt_long_rounded, text: 'الطلبات'),
+                GButton(icon: Icons.person_rounded, text: 'الحساب'),
+              ],
+            ),
           ),
         ),
       ),

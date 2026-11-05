@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
+
 import '../widgets/blur_validated.dart';
+
 import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_material_design_icons/flutter_material_design_icons.dart';
+
 import '../theme/app_colors.dart';
 
 import '../services/auth_service.dart';
 import '../controllers/provider_registration_controller.dart';
-import 'provider_success_screen.dart';
 import '../widgets/plate_number_field.dart';
 import '../models/service_provider.dart';
 import '../widgets/app_snackbar.dart';
@@ -119,10 +121,10 @@ class _ProviderRegistrationScreenState
 
   /// [options] without any stored "أخرى", with one "أخرى" added at the end.
   static List<String> _withOther(List<String> options) => [
-        for (final option in options)
-          if (option != kOtherOption) option,
-        kOtherOption,
-      ];
+    for (final option in options)
+      if (option != kOtherOption) option,
+    kOtherOption,
+  ];
 
   List<String> get _brandOptions => _withOther(_lookups.brands);
   List<String> get _colorOptions => _withOther(_lookups.colors);
@@ -239,8 +241,9 @@ class _ProviderRegistrationScreenState
     return InputDecoration(
       hintText: hint,
       hintStyle: const TextStyle(color: AppColors.secondaryText),
-      prefixIcon:
-          icon == null ? null : Icon(icon, color: AppColors.secondaryText),
+      prefixIcon: icon == null
+          ? null
+          : Icon(icon, color: AppColors.secondaryText),
       suffixIcon: suffix,
       filled: true,
       fillColor: AppColors.background,
@@ -379,9 +382,7 @@ class _ProviderRegistrationScreenState
       padding: const EdgeInsets.only(top: 6, right: 4, left: 4),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _requirementRow('10 خانات فقط', v.length == 10),
-        ],
+        children: [_requirementRow('10 خانات فقط', v.length == 10)],
       ),
     );
   }
@@ -536,8 +537,9 @@ class _ProviderRegistrationScreenState
           width: constraints.maxWidth,
           enabled: options.isNotEmpty,
           initialSelection: _selectedModel,
-          hintText:
-              _selectedBrand == null ? 'اختر الماركة أولاً' : 'اختر الموديل',
+          hintText: _selectedBrand == null
+              ? 'اختر الماركة أولاً'
+              : 'اختر الموديل',
           menuHeight: 320,
           errorText: _modelError,
           inputDecorationTheme: _dropdownTheme(),
@@ -771,7 +773,7 @@ class _ProviderRegistrationScreenState
       final Map<String, dynamic> servicesToSave =
           _buildServicesOfferedPayload();
 
-      final verificationEmailSent = await _authService.registerProvider(
+      await _authService.registerProvider(
         email: _emailController.text.trim(),
         password: _passwordController.text,
         profile: {
@@ -801,23 +803,15 @@ class _ProviderRegistrationScreenState
 
       if (!mounted) return;
 
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(
-          builder: (context) => ProviderSuccessScreen(
-            verificationEmailSent: verificationEmailSent,
-          ),
-        ),
-      );
+      // AuthGate replaces the signed-out navigator with verification.
     } on AuthException catch (error) {
       if (!mounted) return;
-
 
       showAppMessage(context, error.message);
     } catch (e) {
       if (!mounted) return;
 
       showAppMessage(context, 'حدث خطأ ما. الرجاء المحاولة مرة أخرى.');
-
     } finally {
       if (mounted) {
         setState(() {
@@ -1054,8 +1048,11 @@ class _ProviderRegistrationScreenState
               ),
             ),
             textInputAction: TextInputAction.done,
-            validator: (value) => ProviderRegistrationController
-                .validateConfirmPassword(value, _passwordController.text),
+            validator: (value) =>
+                ProviderRegistrationController.validateConfirmPassword(
+                  value,
+                  _passwordController.text,
+                ),
           ),
         ),
         const SizedBox(height: 20),

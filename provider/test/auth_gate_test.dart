@@ -8,6 +8,7 @@ import 'package:google_nav_bar/google_nav_bar.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:provider/main.dart';
 import 'package:provider/views/login_screen.dart';
+import 'package:provider/views/email_verification_screen.dart';
 import 'package:provider/views/provider_profile_screen.dart';
 import 'package:provider/views/provider_registration_screen.dart';
 import 'package:provider/services/auth_service.dart';
@@ -195,8 +196,7 @@ void main() {
   });
 
   for (final entry in <String, String>{
-    'pending':
-        'تم استلام طلبك بنجاح، وهو بانتظار موافقة الإدارة. يمكنك تسجيل الدخول بعد اعتماد الطلب.',
+    'pending': 'تم التحقق من بريدك وإرسال طلبك للإدارة. طلبك قيد المراجعة، وستنتقل تلقائيًا عند اعتماده. يمكنك العودة لاحقًا لمتابعة حالته.',
     'rejected': 'تم رفض طلب تسجيلك. تواصل مع الإدارة.',
     'missing': 'هذا الحساب غير مصرح له بالدخول إلى تطبيق مزود الخدمة.',
   }.entries) {
@@ -215,6 +215,33 @@ void main() {
       },
     );
   }
+
+  testWidgets(
+    'returning from email verification continues to review without logging in again',
+    (tester) async {
+      when(() => session.user.emailVerified).thenReturn(false);
+      when(() => session.service.verificationEmailSent).thenReturn(true);
+      when(() => session.service.refreshEmailVerified())
+          .thenAnswer((_) async => false);
+      await session.mount(tester, signedIn: true);
+      await tester.pumpAndSettle();
+      expect(find.byType(EmailVerificationScreen), findsOneWidget);
+
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+      when(() => session.user.emailVerified).thenReturn(true);
+      when(() => session.service.refreshEmailVerified())
+          .thenAnswer((_) async => true);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+      await tester.pump();
+      session.emitProfile({'status': 'pending'});
+      await tester.pumpAndSettle();
+      expect(find.text('طلبك قيد المراجعة'), findsOneWidget);
+      expect(find.byType(EmailVerificationScreen), findsNothing);
+      expect(find.byType(ServiceProviderMain), findsNothing);
+      verifyNever(() => session.service.logOut());
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
 
   testWidgets(
     'signout discards a pushed notifications route and its back stack',
