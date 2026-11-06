@@ -37,7 +37,8 @@ class AppNotification {
   static const typeOrderCancelled = 'orderCancelled';
 
   /// True while the provider can still answer the request.
-  bool isActive(DateTime now) => expiresAt != null && expiresAt!.isAfter(now);
+  bool isActive(DateTime now) => type == 'adminCancellation' ||
+      (expiresAt != null && expiresAt!.isAfter(now));
 
   /// True when the customer cancelled an order this provider had accepted.
   bool get isCancellation => type == typeOrderCancelled;

@@ -28,6 +28,7 @@ class _AuthGateState extends State<AuthGate> {
   bool _authError = false;
   bool _submittingReview = false;
   bool _reviewFailed = false;
+  bool _suspensionSignOutPending = false;
 
   @override
   void initState() {
@@ -58,6 +59,7 @@ class _AuthGateState extends State<AuthGate> {
     setState(() {
       if (user?.uid != _user?.uid) {
         _reviewFailed = false;
+        _suspensionSignOutPending = false;
         _profile = user == null ? null : _auth.watchProvider(user.uid);
       }
       _user = user;
@@ -128,6 +130,24 @@ class _AuthGateState extends State<AuthGate> {
           return const _LoadingScreen();
         }
         final data = snapshot.data!.data();
+        if (data?['isSuspended'] == true) {
+          if (!_suspensionSignOutPending) {
+            _suspensionSignOutPending = true;
+            WidgetsBinding.instance.addPostFrameCallback((_) async {
+              if (!mounted || _auth.currentUser?.uid != user.uid) return;
+              try {
+                await _auth.logOut();
+              } catch (_) {
+                if (mounted) setState(() => _suspensionSignOutPending = false);
+              }
+            });
+          }
+          return _status(
+            icon: Icons.block_rounded,
+            title: 'تم إيقاف حسابك',
+            message: 'تم إيقاف حسابك من قبل الإدارة. للاستفسار أو طلب إعادة التفعيل، تواصل مع دعم سير: ss222a@icloud.com',
+          );
+        }
         switch (data?['status']) {
           case 'unverified':
             // The email is verified (checked above), so send the request to

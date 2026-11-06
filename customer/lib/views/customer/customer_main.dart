@@ -5,6 +5,7 @@ import 'package:google_nav_bar/google_nav_bar.dart';
 import 'profile_page.dart';
 import 'home.dart';
 import 'orders.dart';
+import 'notifications.dart';
 
 class CustomerMain extends StatefulWidget {
   const CustomerMain({super.key});
@@ -105,6 +106,15 @@ appBar: selectedIndex == 0
        
 
         // Logo in the center
+        actions: [
+          IconButton(
+            tooltip: 'الإشعارات',
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const NotificationsPage()),
+            ),
+            icon: const Icon(Icons.notifications_none, color: Colors.white),
+          ),
+        ],
         title: const Text(
           'سَيْر',
           style: TextStyle(

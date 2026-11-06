@@ -85,10 +85,12 @@ class _AuthGateState extends State<AuthGate> {
   // Cached per user so rebuilds don't open a new Firestore listener.
   String? _uid;
   Stream<DocumentSnapshot<Map<String, dynamic>>>? _customerDoc;
+  bool _suspensionSignOutPending = false;
 
   Stream<DocumentSnapshot<Map<String, dynamic>>> _customerDocFor(String uid) {
     if (_uid != uid) {
       _uid = uid;
+      _suspensionSignOutPending = false;
       _customerDoc = FirebaseFirestore.instance
           .collection('customers')
           .doc(uid)
@@ -142,6 +144,23 @@ class _AuthGateState extends State<AuthGate> {
                 return const _NotCustomerScreen(
                   title: 'هذا الحساب ليس حساب عميل',
                   message: 'سجّل الدخول بحساب عميل، أو استخدم تطبيق مزود الخدمة إذا كان حسابك حساب مزود.',
+                );
+              }
+              if (doc.data()?['isSuspended'] == true) {
+                if (!_suspensionSignOutPending) {
+                  _suspensionSignOutPending = true;
+                  WidgetsBinding.instance.addPostFrameCallback((_) async {
+                    if (!mounted || FirebaseAuth.instance.currentUser?.uid != user.uid) return;
+                    try {
+                      await FirebaseAuth.instance.signOut();
+                    } catch (_) {
+                      if (mounted) setState(() => _suspensionSignOutPending = false);
+                    }
+                  });
+                }
+                return const _NotCustomerScreen(
+                  title: 'تم إيقاف حسابك',
+                  message: 'تم إيقاف حسابك من قبل الإدارة. للتواصل مع دعم سير: ss222a@icloud.com',
                 );
               }
               if (!user.emailVerified) {

@@ -36,10 +36,20 @@ class _ProviderNotificationsState extends State<ProviderNotifications> {
   }
 
   void _open(AppNotification notification) {
+    if (notification.type == 'adminCancellation') {
+      widget.controller?.markRead(notification);
+      showAppMessage(
+        context,
+        notification.body,
+        type: AppMessageType.info,
+      );
+      return;
+    }
+
     if (notification.isCancellation) {
       showAppMessage(
         context,
-        'ألغى العميل هذا الطلب، فلا حاجة للتوجه إليه.',
+        notification.body,
         type: AppMessageType.info,
       );
       return;
@@ -104,7 +114,9 @@ class _NotificationTile extends StatelessWidget {
   final bool active;
   final VoidCallback onTap;
 
-  bool get cancelled => notification.isCancellation;
+bool get cancelled =>
+    notification.isCancellation ||
+    notification.type == 'adminCancellation';
 
   /// Takes no inputs; returns the short state shown under the notification.
   String _statusText() {
