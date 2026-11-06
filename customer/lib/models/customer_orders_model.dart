@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 import 'notification_model.dart';
+import 'order_status_notification.dart';
 import 'order.dart';
 
 /// Summary of the service provider assigned to an order (#26).
@@ -61,7 +62,7 @@ class CustomerOrdersModel {
   /// Parameters: [firestore] can be injected in tests; the default
   /// Firestore instance is used otherwise.
   CustomerOrdersModel({FirebaseFirestore? firestore})
-      : _firestoreOverride = firestore;
+    : _firestoreOverride = firestore;
 
   final FirebaseFirestore? _firestoreOverride;
 
@@ -86,12 +87,12 @@ class CustomerOrdersModel {
         .where(_customerIdField, isEqualTo: customerId)
         .snapshots()
         .map((snapshot) {
-      final orders = snapshot.docs
-          .map((doc) => ServiceOrder.fromMap(doc.id, doc.data()))
-          .toList();
-      orders.sort(_newestFirst);
-      return orders;
-    });
+          final orders = snapshot.docs
+              .map((doc) => ServiceOrder.fromMap(doc.id, doc.data()))
+              .toList();
+          orders.sort(_newestFirst);
+          return orders;
+        });
   }
 
   /// Streams a single order so its details stay up to date.
@@ -104,9 +105,9 @@ class CustomerOrdersModel {
         .doc(orderId)
         .snapshots()
         .map((doc) {
-      final data = doc.data();
-      return data == null ? null : ServiceOrder.fromMap(doc.id, data);
-    });
+          final data = doc.data();
+          return data == null ? null : ServiceOrder.fromMap(doc.id, data);
+        });
   }
 
   /// Loads the provider assigned to an order.
@@ -114,8 +115,10 @@ class CustomerOrdersModel {
   /// Parameters: [providerId] is the provider's user id.
   /// Returns: the provider summary, or null if the document does not exist.
   Future<AssignedProvider?> getAssignedProvider(String providerId) async {
-    final doc =
-        await _firestore.collection(_providersCollection).doc(providerId).get();
+    final doc = await _firestore
+        .collection(_providersCollection)
+        .doc(providerId)
+        .get();
     final data = doc.data();
     return data == null ? null : AssignedProvider.fromMap(data);
   }
@@ -187,10 +190,14 @@ class CustomerOrdersModel {
       }
       final providerId = order.providerId;
       if (providerId != null && providerId.isNotEmpty) {
-        final providerRef = firestore.collection(_providersCollection).doc(providerId);
+        final providerRef = firestore
+            .collection(_providersCollection)
+            .doc(providerId);
         final providerSnapshot = await transaction.get(providerRef);
         if (providerSnapshot.data()?['activeOrderId'] == orderId) {
-          transaction.update(providerRef, {'activeOrderId': FieldValue.delete()});
+          transaction.update(providerRef, {
+            'activeOrderId': FieldValue.delete(),
+          });
         }
         // Tell the provider who accepted it, so the order does not just
         // disappear from their screen.
@@ -199,6 +206,13 @@ class CustomerOrdersModel {
           NotificationSender.orderCancelledData(order),
         );
       }
+      OrderStatusNotification.write(
+        transaction,
+        firestore,
+        orderId,
+        data,
+        OrderStatus.cancelled,
+      );
       transaction.update(ref, {
         'status': OrderStatus.cancelled,
         'cancelledAt': FieldValue.serverTimestamp(),
@@ -237,6 +251,13 @@ class CustomerOrdersModel {
       if (data == null) return false;
       final order = ServiceOrder.fromMap(snapshot.id, data);
       if (!isExpired(order, DateTime.now())) return false;
+      OrderStatusNotification.write(
+        transaction,
+        firestore,
+        orderId,
+        data,
+        OrderStatus.autoCancelled,
+      );
       transaction.update(ref, {
         'status': OrderStatus.autoCancelled,
         'cancelledAt': FieldValue.serverTimestamp(),

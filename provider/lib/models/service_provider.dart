@@ -167,7 +167,7 @@ class ServiceProviderData{
       plateNumberLatin: map['plateNumberLatin'] ?? '',
       vehicleColor: map['vehicleColor'] ?? '',
       licenseNumber: map['licenseNumber'] ?? '',
-      rating: 0.0,
+      rating: (map['rating'] as num?)?.toDouble() ?? 0.0,
       status: map['status'] ?? '',
       activeBranches: activeBranchesFromServicesOffered(map['servicesOffered']),
       isAvailable: map['isAvailable'] == true,

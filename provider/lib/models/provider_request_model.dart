@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 import 'order.dart';
+import 'order_status_notification.dart';
 
 /// A request became unavailable before the provider's transaction committed.
 class ProviderHasActiveOrder implements Exception {
@@ -99,7 +100,9 @@ class ProviderRequestModel implements RequestRepository {
       final activeOrderId =
           (providerSnapshot.data()?['activeOrderId'] as String?) ?? '';
       if (activeOrderId.isNotEmpty) {
-        final activeSnapshot = await transaction.get(_orders.doc(activeOrderId));
+        final activeSnapshot = await transaction.get(
+          _orders.doc(activeOrderId),
+        );
         final activeOrder = activeSnapshot.data();
         if (activeOrder != null &&
             activeOrder['providerId'] == providerId &&
@@ -108,6 +111,13 @@ class ProviderRequestModel implements RequestRepository {
         }
       }
 
+      OrderStatusNotification.write(
+        transaction,
+        _firestore,
+        orderId,
+        orderSnapshot.data()!,
+        OrderStatus.accepted,
+      );
       transaction.update(providerRef, {'activeOrderId': orderId});
       transaction.update(ref, {
         'status': OrderStatus.accepted,
@@ -143,10 +153,20 @@ class ProviderRequestModel implements RequestRepository {
   Future<bool> _rejectTransaction(String orderId, String providerId) async {
     final ref = _orders.doc(orderId);
     return _firestore.runTransaction<bool>((transaction) async {
-      final order = _availableOrder(await transaction.get(ref), providerId);
+      final snapshot = await transaction.get(ref);
+      final order = _availableOrder(snapshot, providerId);
       if (order == null) return false;
       final rejected = {...order.rejectedBy, providerId};
       final allRejected = order.candidateProviderIds.every(rejected.contains);
+      if (allRejected) {
+        OrderStatusNotification.write(
+          transaction,
+          _firestore,
+          orderId,
+          snapshot.data()!,
+          OrderStatus.rejected,
+        );
+      }
       transaction.update(ref, {
         'rejectedBy': FieldValue.arrayUnion([providerId]),
         if (allRejected) 'status': OrderStatus.rejected,

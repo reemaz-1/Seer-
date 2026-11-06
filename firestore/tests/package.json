@@ -1,0 +1,12 @@
+{
+  "name": "seer-customer-status-rating-tests",
+  "private": true,
+  "scripts": {
+    "test": "firebase emulators:exec --only firestore --project demo-seer-shams --config ../firebase.customer-status-test.json \"node --test status_and_ratings.test.cjs\""
+  },
+  "devDependencies": {
+    "@firebase/rules-unit-testing": "4.0.1",
+    "firebase": "11.10.0",
+    "firebase-tools": "14.27.0"
+  }
+}
