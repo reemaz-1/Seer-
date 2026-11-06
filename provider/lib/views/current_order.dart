@@ -3,6 +3,8 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../controllers/current_order_controller.dart';
 import '../controllers/address_controller.dart';
+import '../controllers/complaint_controller.dart';
+import '../widgets/complaint_section.dart';
 import '../widgets/location_card.dart';
 import '../models/order.dart';
 import '../theme/app_colors.dart';
@@ -10,16 +12,18 @@ import '../theme/order_colors.dart';
 import '../widgets/order_display.dart';
 import '../widgets/plate_number_view.dart';
 import '../widgets/app_snackbar.dart';
-import 'package:cloud_firestore/cloud_firestore.dart' show GeoPoint;
 import 'route_to_customer_page.dart';
 
 /// The order the provider is working on now (#42, #43), with the button
 /// that moves it to its next status (#44) and the payment confirmation
 /// when it is completed (#46).
 class ProviderCurrentOrder extends StatefulWidget {
-  const ProviderCurrentOrder({super.key, this.controller});
+  const ProviderCurrentOrder({super.key, this.controller, this.complaints});
 
   final CurrentOrderController? controller;
+
+  /// Sends complaints about the customer (#49); mainly used in tests.
+  final ComplaintController? complaints;
 
   @override
   State<ProviderCurrentOrder> createState() => _ProviderCurrentOrderState();
@@ -34,6 +38,15 @@ class _ProviderCurrentOrderState extends State<ProviderCurrentOrder> {
   /// pressed twice.
   bool _saving = false;
   final AddressController _addresses = AddressController();
+  late final ComplaintController _complaints =
+      widget.complaints ?? ComplaintController();
+
+  @override
+  void dispose() {
+    // Only release a controller this screen created itself.
+    if (widget.complaints == null) _complaints.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -69,11 +82,29 @@ class _ProviderCurrentOrderState extends State<ProviderCurrentOrder> {
     final step = CurrentOrderController.stepFor(order.status);
     return Column(
       children: [
+        // Complaint button, pinned above the order like the customer app.
+        // Keyed by the order, so a new order gets a fresh button.
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+          child: Align(
+            alignment: AlignmentDirectional.centerEnd,
+            child: ComplaintHelpButton(
+              key: ValueKey('complaint-${order.id}'),
+              order: order,
+              controller: _complaints,
+            ),
+          ),
+        ),
         Expanded(
           child: ListView(
-            padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
             children: [
               _serviceCard(order),
+              ComplaintSection(
+                key: ValueKey('complaint-status-${order.id}'),
+                order: order,
+                controller: _complaints,
+              ),
               const SizedBox(height: 12),
               _section(
                 title: 'العميل',

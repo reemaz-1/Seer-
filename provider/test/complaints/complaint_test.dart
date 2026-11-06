@@ -55,14 +55,22 @@ void main() {
       expect(controller.validate(validText), isNull);
     });
 
-    test('allows complaints only on this provider\'s finished orders', () {
+    test('allows complaints on this provider\'s orders from acceptance', () {
       expect(controller.canComplain(finishedOrder()), isTrue);
       expect(
         controller.canComplain(finishedOrder(status: OrderStatus.cancelled)),
         isTrue,
       );
+      for (final status in [
+        OrderStatus.accepted,
+        OrderStatus.onTheWay,
+        OrderStatus.arrived,
+        OrderStatus.inProgress,
+      ]) {
+        expect(controller.canComplain(finishedOrder(status: status)), isTrue);
+      }
       expect(
-        controller.canComplain(finishedOrder(status: OrderStatus.inProgress)),
+        controller.canComplain(finishedOrder(status: OrderStatus.pending)),
         isFalse,
       );
       expect(
@@ -168,14 +176,21 @@ void main() {
       expect(find.text('تم إرسال الشكوى بنجاح'), findsOneWidget);
       expect(find.text('شكوى على هذا الطلب'), findsOneWidget);
       expect(find.text('قيد المراجعة'), findsOneWidget);
-      expect(button, findsNothing);
+
+      // The button stays pinned, and now says a complaint was already sent.
+      await tester.pump(const Duration(seconds: 5));
+      await tester.pumpAndSettle();
+      await tester.tap(button);
+      await tester.pump();
+      expect(find.text(ComplaintController.alreadyPendingInfo), findsOneWidget);
+      expect(find.text('شكوى على العميل'), findsNothing);
 
       // Let the success message close before the test ends.
       await tester.pump(const Duration(seconds: 5));
       await tester.pumpAndSettle();
     });
 
-    testWidgets('shows the status instead of the button when already sent', (
+    testWidgets('shows the status and does not reopen the form when sent', (
       tester,
     ) async {
       final model = FakeComplaintModel(
@@ -191,9 +206,16 @@ void main() {
       );
       await showDetails(tester, finishedOrder(), model);
 
-      expect(button, findsNothing);
       expect(find.text('تمت المعالجة'), findsOneWidget);
       expect(find.text(validText), findsOneWidget);
+
+      await tester.tap(button);
+      await tester.pump();
+      expect(find.text(ComplaintController.alreadyResolvedInfo), findsOneWidget);
+
+      // Let the message close before the test ends.
+      await tester.pump(const Duration(seconds: 5));
+      await tester.pumpAndSettle();
     });
 
     testWidgets('hides the complaint for an order of another provider', (

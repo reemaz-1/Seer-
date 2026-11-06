@@ -31,9 +31,14 @@ class ComplaintController extends ChangeNotifier {
   static const minLength = 10;
   static const maxLength = 500;
 
-  /// The finished orders a provider can complain about: completed ones, and
-  /// ones the customer cancelled after this provider accepted them.
+  /// The orders a provider can complain about: from the moment this
+  /// provider accepts them (like the customer app, #30), and ones the
+  /// customer cancelled after acceptance.
   static const complainableStatuses = {
+    OrderStatus.accepted,
+    OrderStatus.onTheWay,
+    OrderStatus.arrived,
+    OrderStatus.inProgress,
     OrderStatus.completed,
     OrderStatus.cancelled,
   };
@@ -46,6 +51,10 @@ class ComplaintController extends ChangeNotifier {
   static const sendFailedError =
       'تعذّر إرسال الشكوى. تحقق من اتصالك بالإنترنت وحاول مرة أخرى.';
   static const busyError = 'جارٍ إرسال الشكوى، انتظر قليلاً.';
+  static const alreadyPendingInfo =
+      'سبق أن أرسلت شكوى على هذا الطلب وهي قيد المراجعة. لا يمكن إرسال أكثر من شكوى واحدة لكل طلب.';
+  static const alreadyResolvedInfo =
+      'سبق أن أرسلت شكوى على هذا الطلب وتمت معالجتها. لا يمكن إرسال أكثر من شكوى واحدة لكل طلب.';
 
   /// Takes the [text] the provider typed; returns null when it is valid,
   /// otherwise the message to show.
@@ -57,8 +66,8 @@ class ComplaintController extends ChangeNotifier {
     return null;
   }
 
-  /// Takes an [order]; returns true when this provider served it and it is
-  /// finished, so a complaint about the customer can be sent.
+  /// Takes an [order]; returns true when this provider accepted it and its
+  /// status allows a complaint about the customer.
   bool canComplain(ServiceOrder order) =>
       uid.isNotEmpty &&
       order.providerId == uid &&
