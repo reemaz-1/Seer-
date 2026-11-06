@@ -1,8 +1,0 @@
-{
-  "functions": [{
-    "source": "functions",
-    "codebase": "customer-push",
-    "ignore": ["node_modules", ".git", "test", "*-debug.log"],
-    "predeploy": ["npm --prefix \"$RESOURCE_DIR\" test"]
-  }]
-}

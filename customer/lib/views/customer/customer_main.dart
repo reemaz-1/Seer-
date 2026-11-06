@@ -8,13 +8,14 @@ import 'home.dart';
 import 'orders.dart';
 import 'notifications.dart';
 import '../../controllers/customer_notifications_controller.dart';
-import '../../controllers/customer_push_controller.dart';
+import '../../controllers/customer_alerts_controller.dart';
+import '../../controllers/customer_orders_controller.dart';
+import '../../models/customer_notification.dart';
 import '../../services/customer_device_alerts.dart';
 import 'order_details_page.dart';
 
 class CustomerMain extends StatefulWidget {
-  const CustomerMain({super.key, this.pushController});
-  final CustomerPushController? pushController;
+  const CustomerMain({super.key});
 
   @override
   State<CustomerMain> createState() => _CustomerMainState();
@@ -22,52 +23,70 @@ class CustomerMain extends StatefulWidget {
 
 class _CustomerMainState extends State<CustomerMain>
     with WidgetsBindingObserver {
-  bool _inForeground = true;
   int selectedIndex = 0;
   late final CustomerNotificationsController _notifications;
+
+  late final CustomerAlertsController _alerts;
+  late final CustomerOrdersController _activeOrders;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _inForeground =
-        WidgetsBinding.instance.lifecycleState == null ||
-        WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed;
     final uid = FirebaseAuth.instance.currentUser!.uid;
-    // Start only after AuthGate has checked the customer profile and email.
-    widget.pushController?.setUser(uid);
+    _alerts = CustomerAlertsController(onBanner: _showBanner);
+    _alerts.setForeground(
+      WidgetsBinding.instance.lifecycleState == null ||
+          WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed,
+    );
+    _activeOrders = CustomerOrdersController(uid: uid);
+    _activeOrders.addListener(_syncAlertMode);
+    _activeOrders.start();
     _notifications = CustomerNotificationsController(uid: uid)
-      ..onNew = (item) {
-        if (!mounted || !_inForeground) return;
-        CustomerDeviceAlerts.playForCurrentMode();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(item.title),
-            action: SnackBarAction(
-              label: 'عرض الطلب',
-              onPressed: () {
-                OrderDetailsPage.openById(
-                  Navigator.of(context),
-                  uid: uid,
-                  orderId: item.orderId,
-                );
-              },
-            ),
-          ),
-        );
-      }
+      ..onNew = _alerts.onNotification
       ..start();
+  }
+
+  void _syncAlertMode() {
+    // Keep the existing order watcher/timer alive on every tab, including
+    // expiry, rather than making notifications depend on opening Orders.
+    if (!_activeOrders.isLoading && _activeOrders.errorMessage == null) {
+      _alerts.setActive(_activeOrders.currentOrders.isNotEmpty);
+    }
+  }
+
+  void _showBanner(CustomerNotification item, bool withSound) {
+    if (!mounted) return;
+    if (withSound) CustomerDeviceAlerts.playForCurrentMode();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(item.title),
+        action: SnackBarAction(
+          label: 'عرض الطلب',
+          onPressed: () {
+            OrderDetailsPage.openById(
+              Navigator.of(context),
+              uid: _notifications.uid,
+              orderId: item.orderId,
+            );
+          },
+        ),
+      ),
+    );
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    _inForeground = state == AppLifecycleState.resumed;
+    _alerts.setForeground(state == AppLifecycleState.resumed);
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _notifications.dispose();
+    _activeOrders.removeListener(_syncAlertMode);
+    _activeOrders.dispose();
+    _alerts.dispose();
     super.dispose();
   }
 
