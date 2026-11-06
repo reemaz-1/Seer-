@@ -9,6 +9,7 @@ import 'edit_profile_page.dart';
 import 'vehicle_form_page.dart';
 import 'vehicles_page.dart';
 import '../../widgets/app_snackbar.dart';
+import 'my_complaints_page.dart';
 
 /// VIEW: customer profile (user story #5) + entry points to edit (#6),
 /// vehicles (#7–#10) and logout (#3).
@@ -83,6 +84,13 @@ class _ProfilePageState extends State<ProfilePage> {
       MaterialPageRoute(builder: (_) => VehiclesPage(uid: widget.uid)),
     );
     _controller.refreshVehicles(widget.uid);
+  }
+
+  /// Opens the list of complaints this customer sent.
+  void _openMyComplaints() {
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => MyComplaintsPage(uid: widget.uid)),
+    );
   }
 
   /// Pass a vehicle to edit it, or nothing to add a new one.
@@ -198,6 +206,16 @@ class _ProfilePageState extends State<ProfilePage> {
                               onAdd: () => _openVehicleForm(),
                             ),
                           ),
+                          const SizedBox(height: 12),
+                           _SectionCard(
+                            child: _ActionRow(
+                              icon: Icons.assignment_outlined,
+                              label: 'الشكاوى المرسلة',
+                              showDivider: false,
+                              onTap: _openMyComplaints,
+                            ),
+                          ),
+
                           const SizedBox(height: 12),
                           _SectionCard(
                             child: Column(

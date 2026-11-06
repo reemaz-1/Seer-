@@ -75,15 +75,27 @@ class _ComplaintHelpButtonState extends State<ComplaintHelpButton> {
       _complaints.watchComplaint(widget.order.id);
 
   static const _label = 'شكوى';
-  static const _alreadySent = 'لديك شكوى قيد المراجعة على هذا الطلب';
-
+  static const _alreadyPending =
+      'سبق أن أرسلت شكوى على هذا الطلب وهي قيد المراجعة. لا يمكن إرسال أكثر من شكوى واحدة لكل طلب.';
+  static const _alreadyResolved =
+      'سبق أن أرسلت شكوى على هذا الطلب وتمت معالجتها. لا يمكن إرسال أكثر من شكوى واحدة لكل طلب.';
+      
   /// Handles a tap: opens the form, or says a complaint already exists.
   ///
   /// Parameters: [order] is the live order; [hasComplaint] tells whether a
   /// complaint was already sent. Returns: nothing.
-  void _onTap(ServiceOrder order, bool hasComplaint) {
-    if (hasComplaint) {
-      showAppMessage(context, _alreadySent, type: AppMessageType.info);
+    /// Handles a tap: opens the form, or explains why a second complaint is
+  /// not possible.
+  ///
+  /// Parameters: [order] is the live order; [complaint] is the complaint
+  /// already sent for it, or null. Returns: nothing.
+  void _onTap(ServiceOrder order, Complaint? complaint) {
+    if (complaint != null) {
+      // Tell the status of the first complaint, so the message is true.
+      final message = complaint.status == ComplaintStatus.resolved
+          ? _alreadyResolved
+          : _alreadyPending;
+      showAppMessage(context, message, type: AppMessageType.info);
       return;
     }
     showComplaintSheet(context: context, order: order, controller: _complaints);
@@ -105,11 +117,11 @@ class _ComplaintHelpButtonState extends State<ComplaintHelpButton> {
         return StreamBuilder<Complaint?>(
           stream: _complaintStream,
           builder: (context, complaintSnapshot) {
-            final hasComplaint = complaintSnapshot.data != null;
+            final complaint = complaintSnapshot.data;
             return Padding(
               padding: const EdgeInsetsDirectional.only(end: 4),
               child: TextButton.icon(
-                onPressed: () => _onTap(order, hasComplaint),
+                onPressed: () => _onTap(order, complaint),
                 icon: const Icon(Icons.support_agent, size: 20),
                 label: const Text(_label),
                 style: TextButton.styleFrom(
