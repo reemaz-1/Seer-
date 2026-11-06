@@ -11,7 +11,7 @@ import '../../controllers/customer_notifications_controller.dart';
 import '../../controllers/customer_alerts_controller.dart';
 import '../../controllers/customer_orders_controller.dart';
 import '../../models/customer_notification.dart';
-import '../../services/customer_device_alerts.dart';
+import '../../widgets/notification_banner.dart';
 import 'order_details_page.dart';
 
 class CustomerMain extends StatefulWidget {
@@ -57,21 +57,18 @@ class _CustomerMainState extends State<CustomerMain>
 
   void _showBanner(CustomerNotification item, bool withSound) {
     if (!mounted) return;
-    if (withSound) CustomerDeviceAlerts.playForCurrentMode();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(item.title),
-        action: SnackBarAction(
-          label: 'عرض الطلب',
-          onPressed: () {
-            OrderDetailsPage.openById(
-              Navigator.of(context),
-              uid: _notifications.uid,
-              orderId: item.orderId,
-            );
-          },
-        ),
-      ),
+    NotificationBanner.show(
+      context,
+      title: item.title,
+      body: item.body,
+      withSound: withSound,
+      onTap: () {
+        OrderDetailsPage.openById(
+          Navigator.of(context),
+          uid: _notifications.uid,
+          orderId: item.orderId,
+        );
+      },
     );
   }
 
@@ -83,6 +80,7 @@ class _CustomerMainState extends State<CustomerMain>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    NotificationBanner.hide();
     _notifications.dispose();
     _activeOrders.removeListener(_syncAlertMode);
     _activeOrders.dispose();

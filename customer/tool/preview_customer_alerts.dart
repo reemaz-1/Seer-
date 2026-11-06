@@ -13,7 +13,7 @@ import 'package:customer/controllers/customer_notifications_controller.dart';
 import 'package:customer/controllers/customer_orders_controller.dart';
 import 'package:customer/models/customer_notification.dart';
 import 'package:customer/models/customer_orders_model.dart';
-import 'package:customer/services/customer_device_alerts.dart';
+import 'package:customer/widgets/notification_banner.dart';
 
 const project = 'demo-seer-alert-preview';
 const host =
@@ -80,6 +80,7 @@ class Preview extends StatefulWidget {
 
 class _PreviewState extends State<Preview> with WidgetsBindingObserver {
   final scaffold = GlobalKey<ScaffoldMessengerState>();
+  final pageKey = GlobalKey<ScaffoldState>();
   late final CustomerAlertsController alerts;
   late final CustomerNotificationsController notices;
   late final CustomerOrdersController orders;
@@ -91,11 +92,17 @@ class _PreviewState extends State<Preview> with WidgetsBindingObserver {
     WidgetsBinding.instance.addObserver(this);
     alerts = CustomerAlertsController(
       onBanner: (item, sound) {
-        if (sound) CustomerDeviceAlerts.playForCurrentMode();
         record('BANNER ${item.id} sound=$sound');
-        scaffold.currentState?.showSnackBar(
-          SnackBar(content: Text(item.title)),
-        );
+        final bannerContext = pageKey.currentContext;
+        if (bannerContext != null) {
+          NotificationBanner.show(
+            bannerContext,
+            title: item.title,
+            body: item.body,
+            withSound: sound,
+            onTap: () => record('OPEN_ORDER ${item.orderId}'),
+          );
+        }
       },
     );
     orders = CustomerOrdersController(
@@ -162,6 +169,7 @@ class _PreviewState extends State<Preview> with WidgetsBindingObserver {
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    NotificationBanner.hide();
     notices.dispose();
     orders.removeListener(syncOrders);
     orders.dispose();
@@ -180,6 +188,7 @@ class _PreviewState extends State<Preview> with WidgetsBindingObserver {
       GlobalCupertinoLocalizations.delegate,
     ],
     home: Scaffold(
+      key: pageKey,
       appBar: AppBar(title: const Text('اختبار محلي — ليس تطبيق الإنتاج')),
       body: ListView(
         padding: const EdgeInsets.all(16),
