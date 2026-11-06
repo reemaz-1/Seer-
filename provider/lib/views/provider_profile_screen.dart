@@ -3,6 +3,7 @@ import '../theme/app_colors.dart';
 import 'edit_profile_screen.dart';
 import 'edit_vehicle_screen.dart';
 import 'edit_services_screen.dart';
+import 'my_complaints_page.dart';
 import '../services/auth_service.dart';
 import '../widgets/logout_button.dart';
 import '../widgets/plate_number_view.dart';
@@ -11,6 +12,7 @@ import '../controllers/provider_profile_controller.dart';
 
 export '../models/service_provider.dart';
 import '../widgets/app_snackbar.dart';
+
 
 
 
@@ -171,6 +173,9 @@ class _ProviderProfileScreenState extends State<ProviderProfileScreen>{
 
               const SizedBox(height: 12),
               _buildServicesCard(data),
+
+              const SizedBox(height: 12),
+              _buildComplaintsCard(),
 
               const SizedBox(height: 12),
               _buildAccountCard(),
@@ -417,6 +422,40 @@ Widget _buildChip(String label, {required bool active}){
     ),
   );
 }//end _buildChip
+
+/// Opens the list of complaints this provider sent about customers.
+void _openMyComplaints(){
+  final uid = _authService.currentUser?.uid;
+  if (uid == null) return;
+  Navigator.of(context).push(
+    MaterialPageRoute(builder: (_) => MyComplaintsPage(uid: uid)),
+  );
+}//end _openMyComplaints
+
+/// A separate card above logout that opens the sent complaints.
+Widget _buildComplaintsCard(){
+  return Material(
+    color: AppColors.card,
+    clipBehavior: Clip.antiAlias,
+    shape: RoundedRectangleBorder(
+      side: const BorderSide(color: AppColors.cardBorder),
+      borderRadius: BorderRadius.circular(16),
+    ),
+    child: ListTile(
+      leading: const Icon(Icons.assignment_outlined, color: AppColors.navy),
+      title: const Text(
+        'الشكاوى المرسلة',
+        style: TextStyle(
+          color: AppColors.navy,
+          fontSize: 15,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+      trailing: const Icon(Icons.chevron_right, color: AppColors.secondaryText),
+      onTap: _openMyComplaints,
+    ),
+  );
+}//end _buildComplaintsCard
 
 Widget _buildAccountCard(){
   return Material(

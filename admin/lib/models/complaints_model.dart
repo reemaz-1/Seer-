@@ -39,11 +39,12 @@ class ComplaintsModel {
     return data == null ? null : Complaint.fromMap(doc.id, data);
   }
 
-  /// Counts all complaints written about one provider (#55).
-  /// Used to spot a provider who is complained about again and again.
+  /// Counts all complaints written about one user (#55).
+  /// Used to spot a customer or a provider who is complained about again
+  /// and again.
   ///
-  /// Parameters: [providerId] is the provider's user id.
-  /// Returns: the number of complaints about that provider.
+  /// Parameters: [userId] is the user's id (customer or provider).
+  /// Returns: the number of complaints about that user.
   Future<int> countAgainst(String providerId) async {
     final result = await _complaints
         .where('againstId', isEqualTo: providerId)
@@ -83,7 +84,7 @@ class ComplaintsModel {
       });
     });
   }
-  
+
   /// Compares two complaints by creation time, newest first.
   /// A complaint without a time yet is placed first.
   static int _newestFirst(Complaint a, Complaint b) {
