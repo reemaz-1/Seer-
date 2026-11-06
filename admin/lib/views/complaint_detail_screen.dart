@@ -255,6 +255,11 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
       ],
     );
 
+    // Who is the customer and who is the provider depends on who complained.
+    final byProvider = c.complainantType == ComplainantType.provider;
+    final customerId = byProvider ? c.againstId : c.complainantId;
+    final providerId = byProvider ? c.complainantId : c.againstId;
+
     final sideCards = <Widget>[
       _SectionCard(
         icon: Icons.receipt_long_outlined,
@@ -278,16 +283,26 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
           ),
         ],
       ),
-      _SectionCard(
+      _PartyCard(
         icon: Icons.person_outline,
         title: 'العميل',
-        children: [
-          _InfoRow(label: 'الاسم', value: c.customerName),
-          _InfoRow(label: 'رقم الجوال', value: c.customerPhone, ltr: true),
-          _InfoRow(label: 'المعرّف', value: c.complainantId, ltr: true),
-        ],
+        subject: 'هذا العميل',
+        name: c.customerName,
+        phone: c.customerPhone,
+        showPhone: true,
+        userId: customerId,
+        isTarget: byProvider,
+        controller: _controller,
       ),
-      _ProviderCard(complaint: c, controller: _controller),
+      _PartyCard(
+        icon: Icons.support_agent,
+        title: 'مزود الخدمة',
+        subject: 'هذا المزوّد',
+        name: c.providerName,
+        userId: providerId,
+        isTarget: !byProvider,
+        controller: _controller,
+      ),
     ];
 
     return SingleChildScrollView(
@@ -348,6 +363,13 @@ class _SummaryHeader extends StatelessWidget {
     final customer = (complaint.customerName ?? '').trim();
     final provider = (complaint.providerName ?? '').trim();
 
+    // Who sent the complaint decides which name comes first.
+    final byProvider = complaint.complainantType == ComplainantType.provider;
+    final from = (byProvider ? provider : customer);
+    final to = (byProvider ? customer : provider);
+    final fromRole = byProvider ? 'مقدم الخدمة' : 'العميل';
+    final toRole = byProvider ? 'العميل' : 'مقدم الخدمة';
+
     return Row(
       children: [
         Container(
@@ -378,8 +400,8 @@ class _SummaryHeader extends StatelessWidget {
               ),
               const SizedBox(height: 4),
               Text(
-                '${customer.isEmpty ? _unknown : customer}'
-                '  ←  ${provider.isEmpty ? _unknown : provider}',
+                '${from.isEmpty ? _unknown : from} ($fromRole)'
+                '  ←  ${to.isEmpty ? _unknown : to} ($toRole)',
                 style: const TextStyle(
                   fontSize: 14,
                   color: AppColors.secondaryText,
@@ -535,24 +557,59 @@ class _InfoRow extends StatelessWidget {
   }
 }
 
-/// The provider card. It also loads how many complaints exist about this
-/// provider, so the admin can spot repeated complaints.
-class _ProviderCard extends StatefulWidget {
-  const _ProviderCard({required this.complaint, required this.controller});
 
-  final Complaint complaint;
+/// A card for one side of the complaint (the customer or the provider).
+/// It also loads how many complaints exist about this person, so the admin
+/// can spot repeated complaints, whoever sent the current one.
+class _PartyCard extends StatefulWidget {
+  const _PartyCard({
+    required this.icon,
+    required this.title,
+    required this.subject,
+    required this.name,
+    required this.userId,
+    required this.isTarget,
+    required this.controller,
+    this.phone,
+    this.showPhone = false,
+  });
+
+  final IconData icon;
+
+  /// The card title, like "العميل".
+  final String title;
+
+  /// Used in the warning sentence, like "هذا العميل".
+  final String subject;
+
+  final String? name;
+  final String? phone;
+
+  /// True for the customer card, which also shows the phone number.
+  final bool showPhone;
+
+  /// The user id of this person (not always the same field of the complaint).
+  final String userId;
+
+  /// True when the complaint is about this person.
+  final bool isTarget;
+
   final ComplaintsController controller;
 
   @override
-  State<_ProviderCard> createState() => _ProviderCardState();
+  State<_PartyCard> createState() => _PartyCardState();
 }
 
-class _ProviderCardState extends State<_ProviderCard> {
+class _PartyCardState extends State<_PartyCard> {
+  // Counts the complaints written about THIS person, not about the provider.
   late final Future<int> _countFuture =
-      widget.controller.getProviderComplaintCount(widget.complaint.againstId);
+      widget.controller.getComplaintCountAgainst(widget.userId);
 
-  /// From this number of complaints the provider is marked as repeated.
+  /// From this number of complaints the person is marked as repeated.
   static const _repeatedFrom = 2;
+
+  static const _targetLabel = 'المشتكى عليه';
+  static const _complainantLabel = 'مقدّم الشكوى';
 
   @override
   Widget build(BuildContext context) {
@@ -564,8 +621,8 @@ class _ProviderCardState extends State<_ProviderCard> {
         final repeated = count != null && count >= _repeatedFrom;
 
         return _SectionCard(
-          icon: Icons.support_agent,
-          title: 'مزود الخدمة',
+          icon: widget.icon,
+          title: widget.title,
           children: [
             // Red warning first, because it is the most important thing here.
             if (repeated)
@@ -585,7 +642,7 @@ class _ProviderCardState extends State<_ProviderCard> {
                     const SizedBox(width: 10),
                     Expanded(
                       child: Text(
-                        'لدى هذا المزوّد $count شكاوى مسجلة',
+                        'لدى ${widget.subject} $count شكاوى مسجلة',
                         style: const TextStyle(
                           fontWeight: FontWeight.w700,
                           color: AppColors.error,
@@ -595,12 +652,15 @@ class _ProviderCardState extends State<_ProviderCard> {
                   ],
                 ),
               ),
-            _InfoRow(label: 'الاسم', value: widget.complaint.providerName),
+            // Says whether this person sent the complaint or is its target.
             _InfoRow(
-              label: 'المعرّف',
-              value: widget.complaint.againstId,
-              ltr: true,
+              label: 'الدور في الشكوى',
+              value: widget.isTarget ? _targetLabel : _complainantLabel,
             ),
+            _InfoRow(label: 'الاسم', value: widget.name),
+            if (widget.showPhone)
+              _InfoRow(label: 'رقم الجوال', value: widget.phone, ltr: true),
+            _InfoRow(label: 'المعرّف', value: widget.userId, ltr: true),
             _InfoRow(
               label: 'عدد الشكاوى عليه',
               value: loading ? '...' : (count == null ? '-' : '$count'),
@@ -611,6 +671,7 @@ class _ProviderCardState extends State<_ProviderCard> {
     );
   }
 }
+
 
 /// The bar pinned at the bottom: the resolve button, or the resolved notice.
 class _ActionBar extends StatelessWidget {

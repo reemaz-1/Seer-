@@ -31,9 +31,10 @@ class ComplaintsController {
   /// Story #55: one complaint.
   Future<Complaint?> getComplaintDetails(String id) => _model.fetchById(id);
 
-  /// Story #55: how many complaints exist about a provider.
-  Future<int> getProviderComplaintCount(String providerId) =>
-      _model.countAgainst(providerId);
+  /// Story #55: how many complaints exist about one user, a customer or a
+  /// provider.
+  Future<int> getComplaintCountAgainst(String userId) =>
+      _model.countAgainst(userId);
 
 static const _staleError = 'هذه الشكوى عولجت مسبقاً أو لم تعد موجودة.';
   static const _resolveFailedError =
@@ -56,7 +57,7 @@ static const _staleError = 'هذه الشكوى عولجت مسبقاً أو ل�
       return _resolveFailedError;
     }
   }
-  
+
   /// Returns the Arabic label of a complaint status.
   ///
   /// Parameters: [status] is a [ComplaintStatus] value.
