@@ -29,9 +29,9 @@ class OrderCard extends StatelessWidget {
 
   static const Map<String, String> _hints = {
     OrderStatus.pending: 'نبحث عن أقرب مزود خدمة متاح لك',
-    OrderStatus.rejected: 'لم يتمكن المزود من قبول الطلب',
-    OrderStatus.autoCancelled: 'لم يتوفر مزود في الوقت المحدد',
-    OrderStatus.cancelled: 'تم إلغاء الطلب بناءً على طلبك',
+    OrderStatus.rejected: 'اعتذر جميع المزودين عن قبول الطلب.',
+    OrderStatus.autoCancelled: 'انتهت مهلة الانتظار دون رد من مزودي الخدمة.',
+    OrderStatus.cancelled: 'تم إلغاء الطلب بناءً على طلبك.',
   };
 
   /// Statuses that can be requested again from the card.
@@ -119,7 +119,8 @@ class OrderCard extends StatelessWidget {
                 const SizedBox(height: 4),
                 _InfoItem(
                   icon: Icons.access_time_rounded,
-                  text: '${OrderFormat.date(order.createdAt)}  ·  '
+                  text:
+                      '${OrderFormat.date(order.createdAt)}  ·  '
                       '${OrderFormat.time(order.createdAt)}',
                 ),
                 const SizedBox(height: 4),
@@ -263,7 +264,9 @@ class _ProgressBar extends StatelessWidget {
                 child: Container(
                   height: 6,
                   decoration: BoxDecoration(
-                    color: i <= current ? activeColor : CustomerColors.cardBorder,
+                    color: i <= current
+                        ? activeColor
+                        : CustomerColors.cardBorder,
                     borderRadius: BorderRadius.circular(3),
                   ),
                 ),
@@ -284,8 +287,8 @@ class _ProgressBar extends StatelessWidget {
                   color: i == current
                       ? activeColor
                       : i < current
-                          ? CustomerColors.primaryText
-                          : CustomerColors.secondaryText,
+                      ? CustomerColors.primaryText
+                      : CustomerColors.secondaryText,
                 ),
               ),
           ],

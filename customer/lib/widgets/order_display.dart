@@ -17,8 +17,8 @@ class OrderStatusStyle {
     OrderStatus.inProgress: 'قيد التنفيذ',
     OrderStatus.completed: 'مكتمل',
     OrderStatus.cancelled: _cancelledLabel,
-    OrderStatus.rejected: _cancelledLabel,
-    OrderStatus.autoCancelled: _cancelledLabel,
+    OrderStatus.rejected: 'لم يقبل أي مزود',
+    OrderStatus.autoCancelled: 'بلا استجابة',
   };
 
   static const _unknownLabel = 'غير معروف';
@@ -74,8 +74,7 @@ class OrderStatusStyle {
   ///
   /// Parameters: [status] is one of the [OrderStatus] values.
   /// Returns: the status color at low opacity.
-  static Color tintOf(String status) =>
-      colorOf(status).withValues(alpha: 0.12);
+  static Color tintOf(String status) => colorOf(status).withValues(alpha: 0.12);
 }
 
 /// Icon shown for each service category.
@@ -172,8 +171,9 @@ class OrderFormat {
   /// Returns: the price with its currency, or a "decided later" label.
   static String price(num? value) {
     if (value == null) return _priceLater;
-    final amount =
-        value % 1 == 0 ? value.toInt().toString() : value.toStringAsFixed(2);
+    final amount = value % 1 == 0
+        ? value.toInt().toString()
+        : value.toStringAsFixed(2);
     return '$amount $_currency';
   }
 

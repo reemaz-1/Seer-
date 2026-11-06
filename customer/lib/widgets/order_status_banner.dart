@@ -32,21 +32,18 @@ class OrderStatusBanner extends StatelessWidget {
 
   static const Map<String, _BannerText> _texts = {
     OrderStatus.rejected: _BannerText(
-      'عذراً! تم رفض الطلب',
-      'لم يتمكن مزود الخدمة من قبول طلبك هذه المرة.',
+      'لم يقبل أي مزود الطلب',
+      'لم يتمكن أي من المزودين من قبول طلبك هذه المرة.',
     ),
     OrderStatus.autoCancelled: _BannerText(
-      'تم إلغاء الطلب تلقائياً',
-      'لم يتوفر مزود خدمة خلال الوقت المحدد.',
+      'بلا استجابة',
+      'انتهت مهلة الانتظار دون استجابة من مزود خدمة.',
     ),
     OrderStatus.cancelled: _BannerText(
       'تم إلغاء الطلب',
       'تم إلغاء الطلب بناءً على طلبك.',
     ),
-    OrderStatus.completed: _BannerText(
-      'تم إكمال الطلب',
-      'سعدنا بخدمتك.',
-    ),
+    OrderStatus.completed: _BannerText('تم إكمال الطلب', 'سعدنا بخدمتك.'),
   };
 
   /// Statuses that can be requested again from the banner.
