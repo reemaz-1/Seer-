@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import 'services/password_reset_link_handler.dart';
@@ -6,6 +8,13 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_app_check/firebase_app_check.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/foundation.dart';
+
+import 'controllers/customer_push_controller.dart';
+import 'services/customer_push_gateway.dart';
+import 'views/customer/order_details_page.dart';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 import 'services/auth_service.dart';
@@ -17,10 +26,21 @@ import 'views/customer/customer_registration_screen.dart';
 import 'views/customer/email_verification_screen.dart';
 import 'theme/app_theme.dart';
 
+@pragma('vm:entry-point')
+Future<void> customerPushBackground(RemoteMessage message) async {
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  // FCM's notification payload is displayed by Android. Do not post a second
+  // local notification from this isolate.
+}
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+
+  if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
+    FirebaseMessaging.onBackgroundMessage(customerPushBackground);
+  }
 
   // App Check is not enforced yet. The debug provider fails in release
   // builds, so never let it stop the app from starting.
@@ -41,8 +61,52 @@ class MyApp extends StatefulWidget {
   State<MyApp> createState() => _MyAppState();
 }
 
-class _MyAppState extends State<MyApp> {
+class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
   final _navigatorKey = GlobalKey<NavigatorState>();
+  late final CustomerPushController _push;
+  StreamSubscription<User?>? _pushAuth;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _push = CustomerPushController(
+      gateway: FirebaseCustomerPushGateway(),
+      onOpen: (message) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted ||
+              FirebaseAuth.instance.currentUser?.uid != message.recipientId) {
+            return;
+          }
+          final navigator = _navigatorKey.currentState;
+          if (navigator != null) {
+            OrderDetailsPage.openById(
+              navigator,
+              uid: message.recipientId,
+              orderId: message.orderId,
+            );
+          }
+        });
+      },
+    );
+    _pushAuth = FirebaseAuth.instance.authStateChanges().listen((user) {
+      if (user == null) _push.setUser(null);
+    });
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) _push.retry();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _pushAuth?.cancel();
+    _push.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -61,14 +125,15 @@ class _MyAppState extends State<MyApp> {
         GlobalCupertinoLocalizations.delegate,
       ],
       theme: AppTheme.of(AppRole.customer),
-      home: const AuthGate(),
+      home: AuthGate(pushController: _push),
       routes: {'/register': (context) => const CustomerRegistrationScreen()},
     );
   }
 }
 
 class AuthGate extends StatefulWidget {
-  const AuthGate({super.key});
+  const AuthGate({super.key, this.pushController});
+  final CustomerPushController? pushController;
 
   @override
   State<AuthGate> createState() => _AuthGateState();
@@ -150,11 +215,16 @@ class _AuthGateState extends State<AuthGate> {
                 if (!_suspensionSignOutPending) {
                   _suspensionSignOutPending = true;
                   WidgetsBinding.instance.addPostFrameCallback((_) async {
-                    if (!mounted || FirebaseAuth.instance.currentUser?.uid != user.uid) return;
+                    if (!mounted ||
+                        FirebaseAuth.instance.currentUser?.uid != user.uid) {
+                      return;
+                    }
                     try {
                       await FirebaseAuth.instance.signOut();
                     } catch (_) {
-                      if (mounted) setState(() => _suspensionSignOutPending = false);
+                      if (mounted) {
+                        setState(() => _suspensionSignOutPending = false);
+                      }
                     }
                   });
                 }
@@ -166,7 +236,10 @@ class _AuthGateState extends State<AuthGate> {
               if (!user.emailVerified) {
                 return EmailVerificationScreen(onVerified: _refresh);
               }
-              return const CustomerMain();
+              return CustomerMain(
+                key: ValueKey(user.uid),
+                pushController: widget.pushController,
+              );
             },
           );
         },

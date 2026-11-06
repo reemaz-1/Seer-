@@ -8,26 +8,38 @@ import 'home.dart';
 import 'orders.dart';
 import 'notifications.dart';
 import '../../controllers/customer_notifications_controller.dart';
+import '../../controllers/customer_push_controller.dart';
+import '../../services/customer_device_alerts.dart';
 import 'order_details_page.dart';
 
 class CustomerMain extends StatefulWidget {
-  const CustomerMain({super.key});
+  const CustomerMain({super.key, this.pushController});
+  final CustomerPushController? pushController;
 
   @override
   State<CustomerMain> createState() => _CustomerMainState();
 }
 
-class _CustomerMainState extends State<CustomerMain> {
+class _CustomerMainState extends State<CustomerMain>
+    with WidgetsBindingObserver {
+  bool _inForeground = true;
   int selectedIndex = 0;
   late final CustomerNotificationsController _notifications;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _inForeground =
+        WidgetsBinding.instance.lifecycleState == null ||
+        WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed;
     final uid = FirebaseAuth.instance.currentUser!.uid;
+    // Start only after AuthGate has checked the customer profile and email.
+    widget.pushController?.setUser(uid);
     _notifications = CustomerNotificationsController(uid: uid)
       ..onNew = (item) {
-        if (!mounted) return;
+        if (!mounted || !_inForeground) return;
+        CustomerDeviceAlerts.playForCurrentMode();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(item.title),
@@ -48,7 +60,13 @@ class _CustomerMainState extends State<CustomerMain> {
   }
 
   @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    _inForeground = state == AppLifecycleState.resumed;
+  }
+
+  @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _notifications.dispose();
     super.dispose();
   }
