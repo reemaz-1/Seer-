@@ -13,6 +13,7 @@ import '../../widgets/complaint_section.dart';
 import '../../widgets/location_card.dart';
 import '../../controllers/address_controller.dart';
 import '../../widgets/plate_number_view.dart';
+import '../../widgets/customer_order_tracking_map.dart';
 import 'request_service_page.dart';
 
 /// Shows the full details of one order and its assigned provider (#25, #26).
@@ -182,8 +183,7 @@ class _OrderDetailsBody extends StatelessWidget {
     final finalPrice = order.finalPrice;
     final note = order.note.trim();
 
-    // SafeArea keeps the last section and the cancel bar above the phone's
-    // navigation bar.
+    // Keep content and the cancel bar above system navigation.
     return SafeArea(
       top: false,
       child: Column(
@@ -207,7 +207,7 @@ class _OrderDetailsBody extends StatelessWidget {
                 ],
                 if (_TrackingSection.isVisibleFor(order.status)) ...[
                   const SizedBox(height: 16),
-                  _TrackingSection(status: order.status),
+                  _TrackingSection(order: order),
                 ],
                 const SizedBox(height: 16),
                 if (order.status == OrderStatus.completed)
@@ -223,7 +223,7 @@ class _OrderDetailsBody extends StatelessWidget {
                       order: order,
                       uid: controller.uid,
                     ),
-                  // Complaint button, or the status card if one was already sent (#30).
+                  // Complaint action or existing complaint status (#30).
                   ComplaintSection(order: order, uid: controller.uid),
                 ],
                 if (order.pickupLocation != null) ...[
@@ -327,48 +327,31 @@ class _OrderHeader extends StatelessWidget {
   }
 }
 
-/// Live tracking area of the details page (#27).
+/// Tracking card in the details page (#27).
 ///
-/// Shown while the provider is preparing (`accepted`) or driving to the
-/// customer (`onTheWay`), and hidden from `arrived` on. The live map is
-/// not connected yet: this area explains what will appear here.
-///
-/// TODO(#27): replace the placeholder with a map. On `accepted`, show the
-/// provider's current location without a route; on `onTheWay`, show the
-/// live route with the estimated time and distance. Depends on #18
-/// saving the provider's location while available.
+/// `onTheWay` uses the customer tracking widget, which owns the live map,
+/// optional routing data and full-screen view. This avoids duplicated status
+/// text below the map. No provider/Firestore code is changed here.
 class _TrackingSection extends StatelessWidget {
-  /// Creates the section.
-  ///
-  /// Parameters: [status] is the order's current status.
-  const _TrackingSection({required this.status});
+  const _TrackingSection({required this.order});
 
-  final String status;
+  final ServiceOrder order;
 
   static const _visibleStatuses = {OrderStatus.accepted, OrderStatus.onTheWay};
 
-  static const _acceptedTitle = 'المزود يستعد للانطلاق';
-  static const _acceptedBody =
-      'سيظهر هنا موقع المزود الحالي على الخريطة، ويبدأ التتبع المباشر عند انطلاقه إليك.';
-  static const _onTheWayTitle = 'المزود في الطريق إليك';
-  static const _onTheWayBody =
-      'سيظهر هنا مسار المزود على الخريطة، مع الوقت المتوقع لوصوله والمسافة المتبقية.';
-
-  /// Returns whether the section is shown for a status.
-  ///
-  /// Parameters: [status] is the order's current status.
-  /// Returns: true for `accepted` and `onTheWay`, false otherwise.
   static bool isVisibleFor(String status) => _visibleStatuses.contains(status);
 
-  /// Builds the placeholder map area and its explanation.
-  ///
-  /// Parameters: [context] is the build context.
-  /// Returns: a bordered card with a map placeholder and text.
   @override
   Widget build(BuildContext context) {
-    final onTheWay = status == OrderStatus.onTheWay;
-    final color = OrderStatusStyle.colorOf(status);
+    if (order.status == OrderStatus.onTheWay && order.pickupLocation != null) {
+      return CustomerOrderTrackingMap(
+        orderId: order.id,
+        pickupLocation: order.pickupLocation!,
+      );
+    }
 
+    final onTheWay = order.status == OrderStatus.onTheWay;
+    final color = OrderStatusStyle.colorOf(order.status);
     return Container(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(18),
@@ -395,7 +378,7 @@ class _TrackingSection extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  onTheWay ? _onTheWayTitle : _acceptedTitle,
+                  onTheWay ? 'المزود في الطريق إليك' : 'المزود يستعد للانطلاق',
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w700,
@@ -404,7 +387,9 @@ class _TrackingSection extends StatelessWidget {
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  onTheWay ? _onTheWayBody : _acceptedBody,
+                  onTheWay
+                      ? 'بانتظار تحديد موقع المركبة لإظهار التتبع.'
+                      : 'سيظهر موقع المزود مباشرة عند انطلاقه إليك.',
                   style: const TextStyle(
                     fontSize: 13,
                     height: 1.5,

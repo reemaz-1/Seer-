@@ -236,7 +236,7 @@ void main() {
 
   test('customer status/date/time/price conventions are retained', () {
     expect(OrderStatusStyle.labelOf('rejected'), 'ملغي');
-    expect(OrderStatusStyle.labelOf('pending'), 'بانتظار مزود خدمة');
+    expect(OrderStatusStyle.labelOf('pending'), 'بانتظار قبولك للطلب');
     expect(OrderFormat.price(150.5), '150.50 ر.س');
     expect(OrderFormat.price(null), 'يحدد لاحقاً');
     expect(OrderFormat.date(DateTime(2026, 10, 9)), '2026/10/09');

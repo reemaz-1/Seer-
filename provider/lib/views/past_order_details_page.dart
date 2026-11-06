@@ -43,6 +43,15 @@ class PastOrderDetailsPage extends StatelessWidget {
         scrolledUnderElevation: 0,
         backgroundColor: CustomerColors.background,
         foregroundColor: CustomerColors.primaryText,
+        actions: [
+          // Complaint button, pinned in the top bar like the customer app.
+          Padding(
+            padding: const EdgeInsetsDirectional.only(end: 12),
+            child: Center(
+              child: ComplaintHelpButton(order: order, controller: complaints),
+            ),
+          ),
+        ],
       ),
       body: SingleChildScrollView(
         // Extra bottom space for the phone's navigation bar.
@@ -68,6 +77,8 @@ class PastOrderDetailsPage extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             _header(),
+            // The status of a complaint, once one was sent.
+            ComplaintSection(order: order, controller: complaints),
             const SizedBox(height: 16),
             _section(
               title: 'العميل',
@@ -101,8 +112,6 @@ class PastOrderDetailsPage extends StatelessWidget {
             _datesSection(),
             const SizedBox(height: 12),
             _paymentSection(),
-            const SizedBox(height: 20),
-            ComplaintSection(order: order, controller: complaints),
           ],
         ),
       ),

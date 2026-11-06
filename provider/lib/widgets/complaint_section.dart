@@ -37,13 +37,94 @@ Future<void> showComplaintSheet({
   }
 }
 
-/// VIEW: the complaint part of a previous order's details (#49).
-/// Shows a button to complain about the customer, or the status of the
-/// complaint once it was sent. Hidden when the order cannot be complained
-/// about.
+/// VIEW: the complaint button pinned at the top of an order (#49), in the
+/// same style as the customer app (#30). It is visible as soon as the
+/// provider accepts the order, so it is always easy to find. Tapping it
+/// opens the form, or says a complaint was already sent.
+class ComplaintHelpButton extends StatefulWidget {
+  /// Takes the live [order] and an optional [controller]; when no
+  /// controller is given, the button creates and releases its own.
+  const ComplaintHelpButton({super.key, required this.order, this.controller});
+
+  final ServiceOrder order;
+  final ComplaintController? controller;
+
+  @override
+  State<ComplaintHelpButton> createState() => _ComplaintHelpButtonState();
+}
+
+class _ComplaintHelpButtonState extends State<ComplaintHelpButton> {
+  late final ComplaintController _controller =
+      widget.controller ?? ComplaintController();
+
+  // Created once, so the stream is not restarted on every rebuild.
+  late final Stream<Complaint?> _complaint = _controller.watchComplaint(
+    widget.order.id,
+  );
+
+  static const _label = 'شكوى';
+
+  /// Takes the [complaint] already sent for the order, or null; opens the
+  /// form, or explains why a second complaint is not possible.
+  void _onTap(Complaint? complaint) {
+    if (complaint != null) {
+      // Tell the status of the first complaint, like the customer app.
+      final message = complaint.status == ComplaintStatus.resolved
+          ? ComplaintController.alreadyResolvedInfo
+          : ComplaintController.alreadyPendingInfo;
+      showAppMessage(context, message, type: AppMessageType.info);
+      return;
+    }
+    showComplaintSheet(
+      context: context,
+      order: widget.order,
+      controller: _controller,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_controller.canComplain(widget.order)) return const SizedBox.shrink();
+    return StreamBuilder<Complaint?>(
+      stream: _complaint,
+      builder: (context, snapshot) {
+        final complaint = snapshot.data;
+        return TextButton.icon(
+          key: const ValueKey('complain-about-customer'),
+          onPressed: () => _onTap(complaint),
+          icon: const Icon(Icons.support_agent, size: 20),
+          label: const Text(_label),
+          style: TextButton.styleFrom(
+            backgroundColor: const Color(0xFFEAF1FC),
+            foregroundColor: CustomerColors.accent,
+            minimumSize: const Size(0, 36),
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            shape: const StadiumBorder(),
+            textStyle: const TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  @override
+  void dispose() {
+    // Only release a controller this button created itself.
+    if (widget.controller == null) _controller.dispose();
+    super.dispose();
+  }
+}
+
+/// VIEW: the status card shown in an order once a complaint was sent (#49).
+/// Shows nothing before that; the complaint itself is sent from
+/// [ComplaintHelpButton].
 class ComplaintSection extends StatefulWidget {
-  /// Takes the finished [order] and an optional [controller]; when no
-  /// controller is given, the section creates and releases its own.
+  /// Takes the [order] and an optional [controller]; when no controller is
+  /// given, the section creates and releases its own.
   const ComplaintSection({super.key, required this.order, this.controller});
 
   final ServiceOrder order;
@@ -62,43 +143,18 @@ class _ComplaintSectionState extends State<ComplaintSection> {
     widget.order.id,
   );
 
-  static const _buttonLabel = 'تقديم شكوى على العميل';
-
   @override
   Widget build(BuildContext context) {
-    if (!_controller.canComplain(widget.order)) return const SizedBox.shrink();
     return StreamBuilder<Complaint?>(
       stream: _complaint,
       builder: (context, snapshot) {
-        // Wait for the first answer, so the button never flashes before
-        // an existing complaint appears.
-        if (!snapshot.hasData &&
-            snapshot.connectionState == ConnectionState.waiting) {
-          return const SizedBox.shrink();
-        }
         final complaint = snapshot.data;
-        if (complaint != null) return _ComplaintStatusCard(complaint: complaint);
-        return OutlinedButton.icon(
-          key: const ValueKey('complain-about-customer'),
-          onPressed: () => showComplaintSheet(
-            context: context,
-            order: widget.order,
-            controller: _controller,
-          ),
-          icon: const Icon(Icons.report_problem_outlined, size: 20),
-          label: const Text(_buttonLabel),
-          style: OutlinedButton.styleFrom(
-            foregroundColor: AppStatusColors.error,
-            side: const BorderSide(color: AppStatusColors.error, width: 1.5),
-            minimumSize: const Size.fromHeight(50),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(14),
-            ),
-            textStyle: const TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
+        if (complaint == null) return const SizedBox.shrink();
+        // The space above comes with the card, so nothing is left behind
+        // when there is no complaint.
+        return Padding(
+          padding: const EdgeInsets.only(top: 12),
+          child: _ComplaintStatusCard(complaint: complaint),
         );
       },
     );

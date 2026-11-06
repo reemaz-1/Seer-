@@ -48,7 +48,7 @@ class _AdminComplaintsState extends State<AdminComplaints> {
 
             final complaints = snapshot.data ?? [];
 
-             // Two groups, like the users page: still open first, then done.
+            // Two groups, like the users page: still open first, then done.
             final pending = complaints
                 .where((c) => c.status != ComplaintStatus.resolved)
                 .toList();
@@ -147,12 +147,47 @@ class _ComplaintCard extends StatelessWidget {
   final Complaint complaint;
 
   static const _unknown = 'غير معروف';
+  static const _customerRole = 'العميل';
+  static const _providerRole = 'مقدم الخدمة';
+  static const _against = 'على';
+
+  // One colour per role, so the admin recognises them at a glance.
+  static const _customerBackground = Color(0xFFEAF1FC);
+  static const _customerForeground = Color(0xFF1F5FBF);
+  static const _providerBackground = Color(0xFFF1EBFB);
+  static const _providerForeground = Color(0xFF6B3FA0);
+
+  /// Builds the coloured label of one side; [isCustomer] picks the role.
+  Widget _buildParty({required bool isCustomer, required String? name}) {
+    final text = (name ?? '').trim();
+    return _PartyChip(
+      role: isCustomer ? _customerRole : _providerRole,
+      name: text.isEmpty ? _unknown : text,
+      icon: isCustomer ? Icons.person_outline : Icons.handyman_outlined,
+      background: isCustomer ? _customerBackground : _providerBackground,
+      foreground: isCustomer ? _customerForeground : _providerForeground,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     final resolved = complaint.status == ComplaintStatus.resolved;
-    final customer = (complaint.customerName ?? '').trim();
-    final provider = (complaint.providerName ?? '').trim();
+
+    // Who submitted the complaint decides which side comes first.
+    final byProvider = complaint.complainantType == ComplainantType.provider;
+
+    final customerChip = _buildParty(
+      isCustomer: true,
+      name: complaint.customerName,
+    );
+    final providerChip = _buildParty(
+      isCustomer: false,
+      name: complaint.providerName,
+    );
+
+    // The complainant is first (right side in RTL), then the one it is about.
+    final complainantChip = byProvider ? providerChip : customerChip;
+    final againstChip = byProvider ? customerChip : providerChip;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -177,18 +212,29 @@ class _ComplaintCard extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // Who complained about whom, as two coloured labels.
                   Expanded(
-                    child: Text(
-                      '${customer.isEmpty ? _unknown : customer}'
-                      '  ←  ${provider.isEmpty ? _unknown : provider}',
-                      style: const TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.primaryText,
-                      ),
+                    child: Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        complainantChip,
+                        const Text(
+                          _against,
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.secondaryText,
+                          ),
+                        ),
+                        againstChip,
+                      ],
                     ),
                   ),
+                  const SizedBox(width: 12),
                   _StatusBadge(resolved: resolved, status: complaint.status),
                 ],
               ),
@@ -242,6 +288,66 @@ class _StatusBadge extends StatelessWidget {
           fontWeight: FontWeight.w700,
           color: resolved ? AppColors.success : AppColors.primaryText,
         ),
+      ),
+    );
+  }
+}
+
+/// A small coloured label for one side of the complaint: its role
+/// (customer / provider) in small text, and the name under it.
+class _PartyChip extends StatelessWidget {
+  const _PartyChip({
+    required this.role,
+    required this.name,
+    required this.icon,
+    required this.background,
+    required this.foreground,
+  });
+
+  final String role;
+  final String name;
+  final IconData icon;
+  final Color background;
+  final Color foreground;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: background,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 20, color: foreground),
+          const SizedBox(width: 8),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Small role label, so it is clear who is who.
+              Text(
+                role,
+                style: TextStyle(
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w600,
+                  color: foreground,
+                ),
+              ),
+              // The person's name.
+              Text(
+                name,
+                style: const TextStyle(
+                  fontSize: 14.5,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.primaryText,
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }

@@ -36,6 +36,26 @@ class ComplaintModel {
     });
   }
 
+  /// Listens to all the complaints sent by [uid].
+  /// Returns: a stream of the complaints, newest first. It updates by itself
+  /// when a complaint is added or its status changes.
+  Stream<List<Complaint>> watchComplaintsBy(String uid) {
+    return _complaints
+        .where('complainantId', isEqualTo: uid)
+        .snapshots()
+        .map((snapshot) {
+      final list = snapshot.docs
+          .map((doc) => Complaint.fromMap(doc.id, doc.data()))
+          .toList();
+      // Sorted here, so no Firestore index is needed. A complaint that was
+      // just sent has no server time yet, so it counts as the newest.
+      final now = DateTime.now();
+      list.sort((a, b) =>
+          (b.createdAt ?? now).compareTo(a.createdAt ?? now));
+      return list;
+    });
+  }
+
   /// Saves a new [complaint].
   /// Throws [ComplaintAlreadyExists] if this order already has one.
   Future<void> submit(Complaint complaint) async {
