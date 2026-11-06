@@ -197,6 +197,35 @@ service cloud.firestore {
       allow create: if validCreation();
       allow update: if (mayRespond() && (accepting() || rejecting())) || cancelling() || progressing();
       allow delete: if false;
+      // Customer live tracking (#27). This is intentionally NOT stored on the
+      // general provider profile: only the customer of this active order can
+      // access its provider's location, and only while the provider is en route.
+      match /tracking/{trackingId} {
+        function parentOrder() {
+          return get(/databases/$(database)/documents/orders/$(orderId)).data;
+        }
+        function trackingActive() {
+          return parentOrder().status == 'onTheWay';
+        }
+        function assignedProvider() {
+          return isProvider() && parentOrder().providerId == request.auth.uid;
+        }
+        function validTrackingLocation() {
+          return request.resource.data.keys().hasOnly(['location', 'updatedAt'])
+            && request.resource.data.keys().hasAll(['location', 'updatedAt'])
+            && request.resource.data.location is latlng
+            && request.resource.data.updatedAt == request.time;
+        }
+        allow get: if trackingId == 'current' && signedIn() && trackingActive()
+          && (owns(parentOrder().customerId) || assignedProvider());
+        allow list: if false;
+        allow create: if trackingId == 'current' && trackingActive()
+          && assignedProvider() && validTrackingLocation();
+        allow update: if trackingId == 'current' && trackingActive()
+          && assignedProvider() && validTrackingLocation()
+          && changesOnly(['location', 'updatedAt']);
+        allow delete: if false;
+      }
     }
 
     match /complaints/{complaintId} {
