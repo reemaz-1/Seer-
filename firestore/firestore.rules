@@ -237,7 +237,7 @@ service cloud.firestore {
           && relatedOrder().status in ['accepted', 'onTheWay', 'arrived', 'inProgress', 'completed']
           && relatedOrder().providerId == c.againstId;
       }
-      // Takes no inputs; checks a new provider complaint about the customer of a finished order (#49).
+      // Takes no inputs; checks a new provider complaint about the customer of an accepted order (#49).
       function validProviderComplaint() {
         let c = request.resource.data;
         return isProvider()
@@ -245,7 +245,7 @@ service cloud.firestore {
           // One complaint per order from each side: the id is fixed by the order id.
           && complaintId == c.orderId + '_provider'
           && relatedOrder().providerId == request.auth.uid
-          && relatedOrder().status in ['completed', 'cancelled']
+          && relatedOrder().status in ['accepted', 'onTheWay', 'arrived', 'inProgress', 'completed', 'cancelled']
           && relatedOrder().customerId == c.againstId;
       }
       // Takes no inputs; accepts a valid complaint from either side.

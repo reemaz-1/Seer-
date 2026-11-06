@@ -10,11 +10,12 @@ class OrderStatusStyle {
 
   static const _cancelledLabel = 'ملغي';
 
+  // Written for the provider, who is the one answering and arriving.
   static const Map<String, String> _labels = {
-    OrderStatus.pending: 'بانتظار مزود خدمة',
+    OrderStatus.pending: 'بانتظار قبولك للطلب',
     OrderStatus.accepted: 'تم القبول',
     OrderStatus.onTheWay: 'في الطريق',
-    OrderStatus.arrived: 'وصل المزود',
+    OrderStatus.arrived: 'وصلت للموقع',
     OrderStatus.inProgress: 'قيد التنفيذ',
     OrderStatus.completed: 'مكتمل',
     OrderStatus.cancelled: _cancelledLabel,
@@ -31,7 +32,7 @@ class OrderStatusStyle {
     OrderStatus.autoCancelled,
   };
 
-  /// Returns the label shown to the customer for a status.
+  /// Returns the label shown to the provider for a status.
   ///
   /// Parameters: [status] is one of the [OrderStatus] values.
   /// Returns: the matching label, or a generic one for unknown values.
