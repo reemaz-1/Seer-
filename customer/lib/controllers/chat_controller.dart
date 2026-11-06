@@ -15,7 +15,7 @@ import '../services/gemini_ai_assistant.dart';
 
 class ChatController extends ChangeNotifier {
 
-  ChatController({required AiAssistant assistant}) : _assistant  = assistant;
+  ChatController({required this._assistant});
 
   ///The real chat for a signed-in customer 
   factory ChatController.forCustomer({
@@ -121,15 +121,15 @@ class ChatController extends ChangeNotifier {
       return true;
     }
 
-    /**
-     * Synchronizes a manually submitted request with the assistant and chat.
-     * The assistant must clear its pending confirmation too, otherwise a
-     * later chat confirmation could create a second order for the same card.
-     */
+    // Synchronizes a manually submitted request with the assistant and chat.
+    // The assistant must clear its pending confirmation too, otherwise a
+    // later chat confirmation could create a second order for the same card.
     void markSummarySent(String summaryId, String orderId) {
       final card = _summaryCard(summaryId);
       if (card == null || card.summaryState != SummaryState.waiting ||
-          orderId.isEmpty) return;
+          orderId.isEmpty) {
+        return;
+      }
       card.summaryState = SummaryState.sent;
       card.orderId = orderId;
       _assistant.markSummarySent(summaryId);

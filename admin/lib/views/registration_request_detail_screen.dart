@@ -19,7 +19,6 @@ class _RegistrationRequestDetailScreenState
       RegistrationRequestsController();
 
   static const Color navy = Color(0xFF0E1B33);
-  static const Color accent = Color(0xFF1C63D6);
   static const Color secondaryText = Color(0xFF6B7385);
   static const Color background = Color(0xFFF7F9FC);
 
@@ -129,7 +128,7 @@ class _RegistrationRequestDetailScreenState
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Text(

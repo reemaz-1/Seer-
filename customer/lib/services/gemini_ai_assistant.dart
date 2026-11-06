@@ -92,7 +92,7 @@ class GeminiAiAssistant implements AiAssistant {
     return _tools?.updateLocation(summaryId, pickup: pickup, dropoff: dropoff);
   }
 
-  /** Prevents the AI confirmation tool from resending a manually placed order. */
+  //Prevents the AI confirmation tool from resending a manually placed order.
   @override
   void markSummarySent(String summaryId) {
     _tools?.markExternallyPlaced(summaryId);

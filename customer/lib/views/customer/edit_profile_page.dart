@@ -108,7 +108,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                     onPressed: saving ? null : _save,
                     style: FilledButton.styleFrom(
                       backgroundColor: CustomerColors.accent,
-                      disabledBackgroundColor: CustomerColors.accent.withOpacity(0.3),
+                      disabledBackgroundColor: CustomerColors.accent.withValues(alpha: 0.3),
                       minimumSize: const Size.fromHeight(52),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(14),
