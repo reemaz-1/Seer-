@@ -55,9 +55,15 @@ class _AdminUsersState extends State<AdminUsers> {
         openOrders = await _controller.getOpenOrders(user);
       } catch (_) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-            content: Text('تعذر تحميل الطلبات. لم يتم إيقاف الحساب.'),
-          ));
+        ScaffoldMessenger.of(context).showSnackBar(
+  SnackBar(
+    backgroundColor: Colors.red.shade700,
+    content: const Text(
+      'تعذر تحميل الطلبات. لم يتم إيقاف الحساب.',
+      style: TextStyle(color: Colors.white),
+    ),
+  ),
+);
         }
         return;
       } finally {
@@ -150,9 +156,12 @@ class _AdminUsersState extends State<AdminUsers> {
               child: const Text('رجوع'),
             ),
             FilledButton(
-              onPressed: blocked ? null : () => Navigator.of(dialogContext).pop(true),
-              child: Text('تأكيد $action'),
-            ),
+  onPressed: blocked ? null : () => Navigator.of(dialogContext).pop(true),
+  style: FilledButton.styleFrom(
+    backgroundColor: suspend ? Colors.red.shade700 : Colors.green.shade700,
+  ),
+  child: Text('تأكيد $action'),
+),
           ],
         ),
       ),
@@ -163,18 +172,36 @@ class _AdminUsersState extends State<AdminUsers> {
     try {
       await _controller.setSuspended(user, suspend);
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(suspend ? 'تم إيقاف الحساب' : 'تمت إعادة تفعيل الحساب')),
-      );
+     ScaffoldMessenger.of(context).showSnackBar(
+  SnackBar(
+    backgroundColor: suspend ? Colors.red.shade700 : Colors.green.shade700,
+    content: Text(
+      suspend ? 'تم إيقاف الحساب' : 'تمت إعادة تفعيل الحساب',
+      style: const TextStyle(color: Colors.white),
+    ),
+  ),
+);
     } on AdminSuspensionBlocked {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('تغيّرت حالة الطلب. يجب إنهاء الطلبات الجارية أولًا.')),
+        SnackBar(
+  backgroundColor: Colors.red.shade700,
+  content: const Text(
+    'تغيّرت حالة الطلب. يجب إنهاء الطلبات الجارية أولًا.',
+    style: TextStyle(color: Colors.white),
+  ),
+),
       );
     } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('تعذر تحديث الحساب. يرجى المحاولة مرة أخرى.')),
+        SnackBar(
+  backgroundColor: Colors.red.shade700,
+  content: const Text(
+    'تعذر تحديث الحساب. يرجى المحاولة مرة أخرى.',
+    style: TextStyle(color: Colors.white),
+  ),
+),
       );
     } finally {
       if (mounted) setState(() => _updatingId = null);
@@ -396,10 +423,16 @@ class _AdminUsersState extends State<AdminUsers> {
             ),
           ),
           const SizedBox(width: 12),
-          OutlinedButton(
-            onPressed: busy ? null : () => _confirmChange(user),
-            child: Text(user.isSuspended ? 'إعادة تفعيل' : 'إيقاف الحساب'),
-          ),
+      OutlinedButton(
+  onPressed: busy ? null : () => _confirmChange(user),
+  style: OutlinedButton.styleFrom(
+    foregroundColor: user.isSuspended ? Colors.green.shade700 : Colors.red.shade700,
+    side: BorderSide(
+      color: user.isSuspended ? Colors.green.shade700 : Colors.red.shade700,
+    ),
+  ),
+  child: Text(user.isSuspended ? 'إعادة تفعيل' : 'إيقاف الحساب'),
+),
         ],
       ),
     );
