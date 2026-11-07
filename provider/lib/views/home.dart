@@ -229,7 +229,7 @@ class _ProviderHomeState extends State<ProviderHome> {
               Expanded(
                 child: _buildStatCard(
                   icon: Icons.star_rounded,
-                  value: '0.0',
+                  value: _stats?.rating?.toStringAsFixed(1) ?? '—',
                   label: 'التقييم',
                 ),
               ),

@@ -8,6 +8,7 @@ import '../../widgets/order_display.dart';
 import '../../widgets/order_status_banner.dart';
 import '../../widgets/cancel_order_section.dart';
 import '../../widgets/order_completed_card.dart';
+import '../../widgets/order_rating_section.dart';
 import '../../widgets/complaint_section.dart';
 import '../../widgets/location_card.dart';
 import '../../controllers/address_controller.dart';
@@ -216,6 +217,12 @@ class _OrderDetailsBody extends StatelessWidget {
                 if (providerId != null && providerId.isNotEmpty) ...[
                   const SizedBox(height: 14),
                   _ProviderCard(providerId: providerId, controller: controller),
+                  if (order.status == OrderStatus.completed)
+                    OrderRatingSection(
+                      key: ValueKey(order.id),
+                      order: order,
+                      uid: controller.uid,
+                    ),
                   // Complaint action or existing complaint status (#30).
                   ComplaintSection(order: order, uid: controller.uid),
                 ],

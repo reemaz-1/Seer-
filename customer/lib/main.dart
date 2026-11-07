@@ -166,7 +166,7 @@ class _AuthGateState extends State<AuthGate> {
               if (!user.emailVerified) {
                 return EmailVerificationScreen(onVerified: _refresh);
               }
-              return const CustomerMain();
+              return CustomerMain(key: ValueKey(user.uid));
             },
           );
         },

@@ -81,8 +81,9 @@ class AdminUsersModel {
           .map((doc) => AdminUserData.fromMap(doc.id, 'provider', doc.data()))
           .toList());
 
-  static Future<List<AdminOpenOrder>> getOpenOrders(AdminUserData user, {bool includeExpiredPending = false}) async {
-    final orders = FirebaseFirestore.instance.collection('orders');
+  /// Takes an account and optional client; returns open orders for suspension checks.
+  static Future<List<AdminOpenOrder>> getOpenOrders(AdminUserData user, {bool includeExpiredPending = false, FirebaseFirestore? firestore}) async {
+    final orders = (firestore ?? FirebaseFirestore.instance).collection('orders');
     final query = user.type == 'customer'
         ? orders.where('customerId', isEqualTo: user.id)
         : orders.where('providerId', isEqualTo: user.id);
@@ -111,18 +112,20 @@ class AdminUsersModel {
     }).toList();
   }
 
-  static Future<void> setSuspended(AdminUserData user, bool suspended) async {
+  /// Takes an account, suspension state and optional client; commits eligible
+  /// cancellations and counterpart notifications atomically.
+  static Future<void> setSuspended(AdminUserData user, bool suspended, {FirebaseFirestore? firestore}) async {
     if (user.id.isEmpty || !['customer', 'provider'].contains(user.type)) {
       throw ArgumentError('Invalid account identifier or account type');
     }
-    final db = FirebaseFirestore.instance;
+    final db = firestore ?? FirebaseFirestore.instance;
     final collection = user.type == 'customer' ? 'customers' : 'providers';
     final accountRef = db.collection(collection).doc(user.id);
     if (!suspended) {
       await accountRef.update({'isSuspended': false});
       return;
     }
-    final preview = await getOpenOrders(user, includeExpiredPending: true);
+    final preview = await getOpenOrders(user, includeExpiredPending: true, firestore: db);
     if (preview.any((o) => o.blocksSuspension)) {
       throw const AdminSuspensionBlocked();
     }

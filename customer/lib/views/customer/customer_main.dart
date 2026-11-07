@@ -2,10 +2,18 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_nav_bar/google_nav_bar.dart';
+
 import 'profile_page.dart';
 import 'home.dart';
 import 'orders.dart';
 import 'notifications.dart';
+import '../../controllers/customer_notifications_controller.dart';
+import '../../controllers/customer_alerts_controller.dart';
+import '../../controllers/customer_orders_controller.dart';
+import '../../models/customer_notification.dart';
+import '../../widgets/notification_banner.dart';
+import '../../widgets/app_snackbar.dart';
+import 'order_details_page.dart';
 
 class CustomerMain extends StatefulWidget {
   const CustomerMain({super.key});
@@ -14,28 +22,99 @@ class CustomerMain extends StatefulWidget {
   State<CustomerMain> createState() => _CustomerMainState();
 }
 
-class _CustomerMainState extends State<CustomerMain> {
+class _CustomerMainState extends State<CustomerMain>
+    with WidgetsBindingObserver {
   int selectedIndex = 0;
+  late final CustomerNotificationsController _notifications;
 
-Widget _selectedPage() {
-  switch (selectedIndex) {
-    case 0:
-      return Home(
-        uid: FirebaseAuth.instance.currentUser!.uid,
-        onOrderSent: () => setState(() => selectedIndex = 2),
-      );
-    case 1:
-      return CustomerOrders(uid: FirebaseAuth.instance.currentUser!.uid);
+  late final CustomerAlertsController _alerts;
+  late final CustomerOrdersController _activeOrders;
 
-    case 2:
-      return ProfilePage(
-        uid: FirebaseAuth.instance.currentUser!.uid,
-      );
-
-    default:
-      return Home(uid: FirebaseAuth.instance.currentUser!.uid);
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    final uid = FirebaseAuth.instance.currentUser!.uid;
+    _alerts = CustomerAlertsController(onBanner: _showBanner);
+    _alerts.setForeground(
+      WidgetsBinding.instance.lifecycleState == null ||
+          WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed,
+    );
+    _activeOrders = CustomerOrdersController(uid: uid);
+    _activeOrders.addListener(_syncAlertMode);
+    _activeOrders.start();
+    _notifications = CustomerNotificationsController(uid: uid)
+      ..onNew = _alerts.onNotification
+      ..start();
   }
-}
+
+  void _syncAlertMode() {
+    // Keep the existing order watcher/timer alive on every tab, including
+    // expiry, rather than making notifications depend on opening Orders.
+    if (!_activeOrders.isLoading && _activeOrders.errorMessage == null) {
+      _alerts.setOrders(_activeOrders.orders);
+    }
+  }
+
+  void _showBanner(CustomerNotification item, bool withSound) {
+    if (!mounted) return;
+    NotificationBanner.show(
+      context,
+      title: item.title,
+      body: item.body,
+      withSound: withSound,
+      onTap: () => _openNotification(item),
+    );
+  }
+
+  /// Takes a banner event; marks it read before opening its order details.
+  Future<void> _openNotification(CustomerNotification item) async {
+    try {
+      await _notifications.markRead(item);
+      if (!mounted || item.orderId.isEmpty) return;
+      await OrderDetailsPage.openById(
+        Navigator.of(context),
+        uid: _notifications.uid,
+        orderId: item.orderId,
+      );
+    } catch (_) {
+      if (mounted) showAppMessage(context, 'تعذر فتح الإشعار، حاول مرة أخرى.');
+    }
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    _alerts.setForeground(state == AppLifecycleState.resumed);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    NotificationBanner.hide();
+    _notifications.dispose();
+    _activeOrders.removeListener(_syncAlertMode);
+    _activeOrders.dispose();
+    _alerts.dispose();
+    super.dispose();
+  }
+
+  Widget _selectedPage() {
+    switch (selectedIndex) {
+      case 0:
+        return Home(
+          uid: FirebaseAuth.instance.currentUser!.uid,
+          onOrderSent: () => setState(() => selectedIndex = 2),
+        );
+      case 1:
+        return CustomerOrders(uid: FirebaseAuth.instance.currentUser!.uid);
+
+      case 2:
+        return ProfilePage(uid: FirebaseAuth.instance.currentUser!.uid);
+
+      default:
+        return Home(uid: FirebaseAuth.instance.currentUser!.uid);
+    }
+  }
 
   Widget _buildCustomerGreeting() {
     final user = FirebaseAuth.instance.currentUser;
@@ -56,8 +135,7 @@ Widget _selectedPage() {
         }
 
         final customerData = snapshot.data!.data();
-        final firstName =
-            customerData?['firstName']?.toString().trim();
+        final firstName = customerData?['firstName']?.toString().trim();
 
         if (firstName == null || firstName.isEmpty) {
           return _greetingText('مرحباً');
@@ -72,7 +150,7 @@ Widget _selectedPage() {
     return SizedBox(
       width: 110,
       child: Align(
-alignment: Alignment.centerRight,
+        alignment: Alignment.centerRight,
         child: Text(
           textAlign: TextAlign.right,
           greeting,
@@ -97,44 +175,53 @@ alignment: Alignment.centerRight,
 
       // Upper bar
       // Show the main AppBar only on the Home tab.
-appBar: selectedIndex == 0
-    ? AppBar(
-        backgroundColor: const Color(0xFF0E1B33),
-        elevation: 0,
-        centerTitle: true,
+      appBar: selectedIndex == 0
+          ? AppBar(
+              backgroundColor: const Color(0xFF0E1B33),
+              elevation: 0,
+              centerTitle: true,
 
-       
+              // Logo in the center
+              actions: [
+                IconButton(
+                  tooltip: 'الإشعارات',
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) =>
+                          NotificationsPage(controller: _notifications),
+                    ),
+                  ),
+                  icon: AnimatedBuilder(
+                    animation: _notifications,
+                    builder: (context, _) => Badge(
+                      isLabelVisible: _notifications.unreadCount > 0,
+                      label: Text('${_notifications.unreadCount}'),
+                      child: const Icon(
+                        Icons.notifications_none,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+              title: const Text(
+                'سَيْر',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 30,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 2,
+                ),
+              ),
 
-        // Logo in the center
-        actions: [
-          IconButton(
-            tooltip: 'الإشعارات',
-            onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const NotificationsPage()),
-            ),
-            icon: const Icon(Icons.notifications_none, color: Colors.white),
-          ),
-        ],
-        title: const Text(
-          'سَيْر',
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 30,
-            fontWeight: FontWeight.w700,
-            letterSpacing: 2,
-          ),
-        ),
-
-// Customer greeting on the right
-leadingWidth: 126,
-leading: Padding(
-  padding: const EdgeInsets.only(right: 16),
-  child: Center(
-    child: _buildCustomerGreeting(),
-  ),
-),
-       )
-    : null,
+              // Customer greeting on the right
+              leadingWidth: 126,
+              leading: Padding(
+                padding: const EdgeInsets.only(right: 16),
+                child: Center(child: _buildCustomerGreeting()),
+              ),
+            )
+          : null,
 
       // Bottom navigation bar
       bottomNavigationBar: Container(

@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 import 'order.dart';
+import 'order_status_notification.dart';
 
 /// Talks to the database (provider side).
 class ProviderOrderModel {
@@ -68,6 +69,13 @@ class ProviderOrderModel {
       if (snapshot.data()?['status'] != from) {
         throw StateError('Order is no longer $from');
       }
+      OrderStatusNotification.write(
+        transaction,
+        _firestore,
+        orderId,
+        snapshot.data()!,
+        to,
+      );
       transaction.update(ref, {
         'status': to,
         // When each step happened, e.g. arrivedAt, for history and reports.
@@ -93,6 +101,13 @@ class ProviderOrderModel {
       final providerSnapshot = providerId.isEmpty
           ? null
           : await transaction.get(providerRef);
+      OrderStatusNotification.write(
+        transaction,
+        _firestore,
+        orderId,
+        snapshot.data()!,
+        OrderStatus.completed,
+      );
       if (providerSnapshot?.data()?['activeOrderId'] == orderId) {
         transaction.update(providerRef, {'activeOrderId': FieldValue.delete()});
       }
@@ -127,6 +142,14 @@ class ProviderOrderModel {
         .count()
         .get();
     return result.count ?? 0;
+  }
+
+  Future<double?> averageRating(String providerId) async {
+    final provider = await _firestore
+        .collection('providers')
+        .doc(providerId)
+        .get();
+    return (provider.data()?['rating'] as num?)?.toDouble();
   }
 
   /// A date as "yyyy-MM-dd" in the phone's local time.
