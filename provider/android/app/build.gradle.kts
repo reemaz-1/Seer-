@@ -50,3 +50,11 @@ kotlin {
 flutter {
     source = "../.."
 }
+
+dependencies {
+    // The same Firebase libraries the FlutterFire plugins already use, so the
+    // background service can listen to notifications without the Flutter
+    // screen. Gradle keeps the plugins' (newer or equal) versions.
+    implementation("com.google.firebase:firebase-firestore:25.1.4")
+    implementation("com.google.firebase:firebase-auth:23.0.0")
+}

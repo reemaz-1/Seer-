@@ -132,7 +132,10 @@ class _ServiceProviderMainState extends State<ServiceProviderMain>
   /// background.
   void _onNewNotification(AppNotification notification) {
     if (_inForeground) {
-      _showBanner(notification);
+      // Opening the app shows a request that is still waiting, but quietly:
+      // the phone already made a sound for it.
+      final quiet = _notifications?.lastArrivalOnFirstLoad ?? false;
+      _showBanner(notification, withSound: !quiet);
       return;
     }
     _missedWhileAway = notification;

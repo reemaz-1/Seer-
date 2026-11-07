@@ -12,6 +12,7 @@ import android.media.AudioAttributes
 import android.media.AudioManager
 import android.media.RingtoneManager
 import android.os.Build
+import android.os.Bundle
 import android.os.VibrationEffect
 import android.os.Vibrator
 import io.flutter.embedding.android.FlutterActivity
@@ -19,6 +20,26 @@ import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 
 class MainActivity : FlutterActivity() {
+
+    companion object {
+        /**
+         * True while the app screen exists, even in the background. The
+         * background service shows notices only when it is false, that is
+         * after the provider swiped the app away.
+         */
+        @Volatile
+        var isOpen = false
+    }
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        isOpen = true
+        super.onCreate(savedInstanceState)
+    }
+
+    override fun onDestroy() {
+        isOpen = false
+        super.onDestroy()
+    }
 
     // Notifications for new requests (#47), written from scratch without
     // packages or Firebase Cloud Messaging. The Dart side

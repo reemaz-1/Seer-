@@ -28,6 +28,13 @@ class NotificationController extends ChangeNotifier {
   List<AppNotification> _items = const [];
   final Set<String> _seen = {};
   bool _loadedOnce = false;
+  bool _lastArrivalOnFirstLoad = false;
+
+  /// True when the latest [onNew] call came from the first load, that is
+  /// when the app was just opened. The phone already alerted the provider
+  /// for it (the background service or a system notification), so the
+  /// banner shows without a second sound.
+  bool get lastArrivalOnFirstLoad => _lastArrivalOnFirstLoad;
 
   List<AppNotification> get items => _items;
 
@@ -49,6 +56,7 @@ class NotificationController extends ChangeNotifier {
 
   void _onSnapshot(List<AppNotification> list) {
     final now = _now();
+    final firstLoad = !_loadedOnce;
     final arrived = <AppNotification>[];
     for (final n in list) {
       if (_seen.contains(n.id)) continue;
@@ -63,7 +71,10 @@ class NotificationController extends ChangeNotifier {
     notifyListeners();
 
     // The list is sorted newest first, so the first arrival is the newest.
-    if (arrived.isNotEmpty) onNew?.call(arrived.first);
+    if (arrived.isNotEmpty) {
+      _lastArrivalOnFirstLoad = firstLoad;
+      onNew?.call(arrived.first);
+    }
   }
 
   /// Marks one notification as read (when its banner or row is tapped).
