@@ -21,7 +21,7 @@ class NotificationType {
 /// addressed to one user by `recipientId`:
 ///
 ///   notifications (collection)
-///     <auto id> (document)
+///     orderId_type_providerId (document)
 ///       recipientId: provider uid
 ///       type:        'newRequest'
 ///       orderId:     the order it is about
@@ -34,17 +34,11 @@ class NotificationType {
 /// The provider app listens to its own documents live and shows a banner,
 /// a badge on the bell and a list (see provider/lib/models/app_notification.dart).
 ///
-/// Security Rules (to add with the real rules before submission):
-///   match /notifications/{id} {
-///     allow create: if request.auth != null;
-///     allow read: if request.auth.uid == resource.data.recipientId;
-///     allow update: if request.auth.uid == resource.data.recipientId
-///       && request.resource.data.diff(resource.data).affectedKeys()
-///            .hasOnly(['read']);
-///   }
+/// Stable ids prevent duplicate events. The proposed authorization rules live
+/// in firestore/firestore.rules and require team review before deployment.
 class NotificationSender {
   NotificationSender({FirebaseFirestore? firestore})
-      : _firestore = firestore ?? FirebaseFirestore.instance;
+    : _firestore = firestore ?? FirebaseFirestore.instance;
 
   final FirebaseFirestore _firestore;
 
@@ -62,15 +56,17 @@ class NotificationSender {
   }) async {
     if (providerIds.isEmpty) return;
 
-    final expiresAt =
-        Timestamp.fromDate(DateTime.now().add(OrderModel.responseWindow));
-    final body = [serviceLabel, vehicleTitle]
-        .where((part) => part.trim().isNotEmpty)
-        .join(' · ');
+    final expiresAt = Timestamp.fromDate(
+      DateTime.now().add(OrderModel.responseWindow),
+    );
+    final body = [
+      serviceLabel,
+      vehicleTitle,
+    ].where((part) => part.trim().isNotEmpty).join(' · ');
 
     final batch = _firestore.batch();
     for (final providerId in providerIds.toSet()) {
-      batch.set(_notifications.doc(), {
+      batch.set(_notifications.doc('${orderId}_newRequest_$providerId'), {
         'recipientId': providerId,
         'type': NotificationType.newRequest,
         'orderId': orderId,
@@ -97,9 +93,10 @@ class NotificationSender {
       'type': NotificationType.orderCancelled,
       'orderId': order.id,
       'title': 'ألغى العميل الطلب',
-      'body': [service, order.vehicleTitle]
-          .where((part) => part.trim().isNotEmpty)
-          .join(' · '),
+      'body': [
+        service,
+        order.vehicleTitle,
+      ].where((part) => part.trim().isNotEmpty).join(' · '),
       'read': false,
       'createdAt': FieldValue.serverTimestamp(),
     };

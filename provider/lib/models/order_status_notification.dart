@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-/// Persisted together with each order transition, even if the customer is offline.
+/// MODEL: writes an inbox event atomically with an order transition.
+/// Kept identical in both apps; tool/check_order_notification_contract.py checks parity.
 class OrderStatusNotification {
   static const messages = <String, String>{
     'accepted': 'تم قبول طلبك',
@@ -13,6 +14,8 @@ class OrderStatusNotification {
     'cancelled': 'تم إلغاء طلبك',
   };
 
+  /// Takes a transaction, order and status; writes one stable event when valid.
+  /// Missing legacy customer ids skip the notice without blocking the order.
   static void write(
     Transaction transaction,
     FirebaseFirestore firestore,
@@ -24,7 +27,7 @@ class OrderStatusNotification {
     if (customerId is! String ||
         customerId.isEmpty ||
         !messages.containsKey(status)) {
-      throw StateError('Invalid customer notification');
+      return;
     }
     transaction.set(
       firestore.collection('notifications').doc('${orderId}_$status'),

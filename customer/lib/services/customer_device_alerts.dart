@@ -40,11 +40,13 @@ class CustomerDeviceAlerts {
   /// A notification in the status bar and on the lock screen, used while the
   /// app is in the background. Android applies the phone's mode to it.
   static Future<void> showSystemNotification({
+    required String id,
     required String title,
     required String body,
   }) async {
     try {
       await _channel.invokeMethod('showSystemNotification', {
+        'id': id,
         'title': title,
         'body': body,
       });
@@ -56,11 +58,15 @@ class CustomerDeviceAlerts {
   /// Turns "order updates mode" on or off: while on, a small fixed notification
   /// shows and Android keeps the app running in the background, so new
   /// order updates can arrive while Android keeps the process running.
-  static Future<void> setOrderUpdatesMode(bool on) async {
+  /// Returns whether Android accepted the service start/stop request.
+  static Future<bool> setOrderUpdatesMode(bool on) async {
     try {
-      await _channel.invokeMethod('setOrderUpdatesMode', {'on': on});
+      return await _channel.invokeMethod<bool>('setOrderUpdatesMode', {
+            'on': on,
+          }) ==
+          true;
     } catch (_) {
-      // Optional.
+      return false;
     }
   }
 

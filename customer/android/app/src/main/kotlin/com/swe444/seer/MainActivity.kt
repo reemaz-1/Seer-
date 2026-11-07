@@ -37,6 +37,7 @@ class MainActivity : FlutterActivity() {
                 "vibrate" -> result.success(vibrate())
                 "showSystemNotification" -> result.success(
                     showSystemNotification(
+                        call.argument<String>("id") ?: "order_update",
                         call.argument<String>("title") ?: "",
                         call.argument<String>("body") ?: ""
                     )
@@ -131,7 +132,7 @@ class MainActivity : FlutterActivity() {
      * Tapping it opens the app.
      */
     @Suppress("DEPRECATION")
-    private fun showSystemNotification(title: String, body: String): Boolean {
+    private fun showSystemNotification(id: String, title: String, body: String): Boolean {
         return try {
             val manager =
                 getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
@@ -163,8 +164,8 @@ class MainActivity : FlutterActivity() {
                 .setVisibility(Notification.VISIBILITY_PUBLIC)
                 .build()
 
-            // A new id each time, so several requests show as several rows.
-            manager.notify((System.currentTimeMillis() % Int.MAX_VALUE).toInt(), notification)
+            // A stable event tag replaces retries without collapsing distinct orders.
+            manager.notify(id, 0, notification)
             true
         } catch (e: Exception) {
             false

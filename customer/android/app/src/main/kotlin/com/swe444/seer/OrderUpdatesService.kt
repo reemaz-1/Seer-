@@ -15,7 +15,7 @@ import android.os.IBinder
  * Keeps the app awake while the customer has an active order (#28).
  *
  * Android 14 and later freeze an app a few seconds after it goes to the
- * background, so it could not hear new requests. While this service runs,
+ * background, so it could not receive status updates. While this service runs,
  * a small fixed notification ("نتابع تحديثات طلبك") shows in the status
  * bar and Android keeps the app running, like driver and delivery apps.
  * Written from scratch, without packages or Firebase Cloud Messaging.

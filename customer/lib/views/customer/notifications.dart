@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import '../../controllers/customer_notifications_controller.dart';
 import '../../models/customer_notification.dart';
+import '../../widgets/app_snackbar.dart';
 import 'order_details_page.dart';
 
 class NotificationsPage extends StatefulWidget {
@@ -43,9 +44,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
       );
     } catch (_) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('تعذر فتح الإشعار، حاول مرة أخرى.')),
-        );
+        showAppMessage(context, 'تعذر فتح الإشعار، حاول مرة أخرى.');
       }
     } finally {
       _opening.remove(item.id);

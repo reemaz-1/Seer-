@@ -1,50 +1,67 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import 'order.dart';
+
+/// MODEL: the immutable star value saved for a completed order.
 class OrderRating {
+  /// Takes the saved [stars]; creates a read-only rating.
   const OrderRating(this.stars);
   final int stars;
 }
 
-/// One immutable rating per completed order; the aggregate changes atomically.
+/// Persistence failure codes; the controller supplies user-facing messages.
+enum RatingFailure { invalidStars, notEligible, alreadyRated, providerMissing }
+
+/// A typed rating failure, independent of presentation language.
+class RatingException implements Exception {
+  /// Takes the failed persistence [reason]; creates the domain exception.
+  const RatingException(this.reason);
+  final RatingFailure reason;
+}
+
+/// MODEL: stores one rating and updates the provider aggregate atomically.
 class RatingModel {
+  /// Takes an optional Firestore client; creates the persistence gateway.
   RatingModel({FirebaseFirestore? firestore}) : _injected = firestore;
   final FirebaseFirestore? _injected;
   FirebaseFirestore get _store => _injected ?? FirebaseFirestore.instance;
 
+  /// Takes [orderId]; returns its persisted rating stream.
   Stream<OrderRating?> watch(String orderId) =>
       _store.collection('ratings').doc(orderId).snapshots().map((doc) {
         final stars = doc.data()?['stars'];
         return stars is int ? OrderRating(stars) : null;
       });
 
+  /// Takes the order, owner and stars; commits both documents or throws.
   Future<void> submit({
     required String orderId,
     required String customerId,
     required int stars,
   }) async {
     if (stars < 1 || stars > 5) {
-      throw StateError('اختر تقييمًا من نجمة إلى خمس نجوم.');
+      throw const RatingException(RatingFailure.invalidStars);
     }
     final ratingRef = _store.collection('ratings').doc(orderId);
     final orderRef = _store.collection('orders').doc(orderId);
-    String? result;
+    RatingFailure? result;
     for (var attempt = 0; attempt < 3; attempt++) {
       try {
-        result = await _store.runTransaction<String?>((tx) async {
+        result = await _store.runTransaction<RatingFailure?>((tx) async {
           final order = (await tx.get(orderRef)).data();
           final previous = await tx.get(ratingRef);
           if (order == null ||
               order['customerId'] != customerId ||
-              order['status'] != 'completed' ||
+              order['status'] != OrderStatus.completed ||
               order['providerId'] is! String ||
               (order['providerId'] as String).isEmpty) {
-            return 'يمكن تقييم مقدم الخدمة بعد اكتمال طلبك فقط.';
+            return RatingFailure.notEligible;
           }
-          if (previous.exists) return 'سبق أن قيّمت هذا الطلب.';
+          if (previous.exists) return RatingFailure.alreadyRated;
           final providerId = order['providerId'] as String;
           final providerRef = _store.collection('providers').doc(providerId);
           final provider = (await tx.get(providerRef)).data();
-          if (provider == null) return 'تعذر العثور على مقدم الخدمة.';
+          if (provider == null) return RatingFailure.providerMissing;
           final count = (provider['ratingCount'] as int? ?? 0) + 1;
           final sum = (provider['ratingSum'] as num? ?? 0) + stars;
           tx.set(ratingRef, {
@@ -71,6 +88,6 @@ class RatingModel {
         rethrow;
       }
     }
-    if (result != null) throw StateError(result);
+    if (result != null) throw RatingException(result);
   }
 }

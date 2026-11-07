@@ -312,9 +312,22 @@ service cloud.firestore {
         let n = request.resource.data;
         let order = relatedAfter();
         return owns(order.customerId) && isCustomer()
+          && n.orderId is string && n.recipientId is string
+          && n.recipientId.size() > 0
+          && notificationId == n.orderId + '_' + n.type + '_' + n.recipientId
+          && n.title is string && n.body is string && n.body.size() <= 1000
           && ((n.type == 'newRequest' && order.status == 'pending'
-              && n.recipientId in order.candidateProviderIds)
+              && n.keys().hasOnly(['recipientId', 'type', 'orderId', 'title', 'body', 'read', 'createdAt', 'expiresAt'])
+              && n.title == 'طلب خدمة جديد'
+              && order.expiresAt > request.time
+              && n.expiresAt is timestamp && n.expiresAt > request.time
+              && n.expiresAt <= request.time + duration.value(135, 's')
+              && n.recipientId in order.candidateProviderIds
+              && !(n.recipientId in order.get('rejectedBy', [])))
             || (n.type == 'orderCancelled' && order.status == 'cancelled'
+              && n.keys().hasOnly(['recipientId', 'type', 'orderId', 'title', 'body', 'read', 'createdAt'])
+              && n.title == 'ألغى العميل الطلب'
+              && relatedBefore().status == 'accepted'
               && n.recipientId == order.providerId));
       }
       allow read: if owns(resource.data.recipientId);

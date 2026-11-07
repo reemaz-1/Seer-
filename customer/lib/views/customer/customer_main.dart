@@ -12,6 +12,7 @@ import '../../controllers/customer_alerts_controller.dart';
 import '../../controllers/customer_orders_controller.dart';
 import '../../models/customer_notification.dart';
 import '../../widgets/notification_banner.dart';
+import '../../widgets/app_snackbar.dart';
 import 'order_details_page.dart';
 
 class CustomerMain extends StatefulWidget {
@@ -51,7 +52,7 @@ class _CustomerMainState extends State<CustomerMain>
     // Keep the existing order watcher/timer alive on every tab, including
     // expiry, rather than making notifications depend on opening Orders.
     if (!_activeOrders.isLoading && _activeOrders.errorMessage == null) {
-      _alerts.setActive(_activeOrders.currentOrders.isNotEmpty);
+      _alerts.setOrders(_activeOrders.orders);
     }
   }
 
@@ -62,14 +63,23 @@ class _CustomerMainState extends State<CustomerMain>
       title: item.title,
       body: item.body,
       withSound: withSound,
-      onTap: () {
-        OrderDetailsPage.openById(
-          Navigator.of(context),
-          uid: _notifications.uid,
-          orderId: item.orderId,
-        );
-      },
+      onTap: () => _openNotification(item),
     );
+  }
+
+  /// Takes a banner event; marks it read before opening its order details.
+  Future<void> _openNotification(CustomerNotification item) async {
+    try {
+      await _notifications.markRead(item);
+      if (!mounted || item.orderId.isEmpty) return;
+      await OrderDetailsPage.openById(
+        Navigator.of(context),
+        uid: _notifications.uid,
+        orderId: item.orderId,
+      );
+    } catch (_) {
+      if (mounted) showAppMessage(context, 'تعذر فتح الإشعار، حاول مرة أخرى.');
+    }
   }
 
   @override

@@ -202,17 +202,13 @@ class CustomerOrdersModel {
         // Tell the provider who accepted it, so the order does not just
         // disappear from their screen.
         transaction.set(
-          firestore.collection('notifications').doc(),
+          firestore
+              .collection('notifications')
+              .doc('${order.id}_orderCancelled_${order.providerId}'),
           NotificationSender.orderCancelledData(order),
         );
       }
-      OrderStatusNotification.write(
-        transaction,
-        firestore,
-        orderId,
-        data,
-        OrderStatus.cancelled,
-      );
+      // Self-cancellation already has UI feedback; notify only the provider.
       transaction.update(ref, {
         'status': OrderStatus.cancelled,
         'cancelledAt': FieldValue.serverTimestamp(),
