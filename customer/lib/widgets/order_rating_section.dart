@@ -85,6 +85,8 @@ class _OrderRatingSectionState extends State<OrderRatingSection> {
                     color: CustomerColors.primaryText,
                   ),
                 ),
+                اconst SizedBox(height: 14),
+
                 Wrap(
                   alignment: WrapAlignment.center,
                   children: [

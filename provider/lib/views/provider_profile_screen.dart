@@ -245,7 +245,7 @@ class _ProviderProfileScreenState extends State<ProviderProfileScreen>{
             children: [
               const Icon(Icons.star, size: 14, color: Color(0xFFF4B942)),
               const SizedBox(width: 4),
-              Text(provider.rating.toString(),
+              Text(provider.rating.toStringAsFixed(1),
               style: const TextStyle(fontWeight: FontWeight.bold, fontSize:14)),
             ],
           ),
