@@ -27,9 +27,10 @@ class ServiceCategory {
     required this.label,
     required this.shortLabel,
     required this.options,
+    this.description = '',
   });
 
-  /// 'battery' | 'fuel' | 'tires' | 'towing'
+  /// 'battery' | 'fuel' | 'tires' | 'towing' | 'carwash'
   final String id;
 
   /// Full name, used as the page title.
@@ -39,6 +40,9 @@ class ServiceCategory {
   final String shortLabel;
 
   final List<ServiceOption> options;
+
+  /// One short line on the home page saying what the service covers.
+  final String description;
 }
 
 class ServiceCatalog {
@@ -49,6 +53,7 @@ class ServiceCatalog {
       id: 'battery',
       label: 'خدمة البطارية',
       shortLabel: 'البطارية',
+      description: 'تشغيل البطارية أو تغييرها في مكانك',
       options: [
         ServiceOption(id: 'activation', label: 'تشغيل البطارية (اشتراك)', branch: 'شحن'),
         ServiceOption(id: 'replace', label: 'تغيير البطارية', branch: 'تبديل'),
@@ -58,6 +63,7 @@ class ServiceCatalog {
       id: 'fuel',
       label: 'التزويد بالوقود',
       shortLabel: 'الوقود',
+      description: 'بنزين 91 أو 95 إلى سيارتك',
       options: [
         ServiceOption(id: 'petrol91', label: 'بنزين 91 (أخضر)', branch: '٩١'),
         ServiceOption(id: 'petrol95', label: 'بنزين 95 (أحمر)', branch: '٩٥'),
@@ -67,6 +73,7 @@ class ServiceCatalog {
       id: 'tires',
       label: 'خدمة الإطارات',
       shortLabel: 'الإطارات',
+      description: 'نفخ أو ترقيع أو تغيير الإطار',
       options: [
         ServiceOption(id: 'airInflate', label: 'نفخ الإطار بالهواء', branch: 'نفخ'),
         ServiceOption(id: 'patch', label: 'ترقيع الإطار', branch: 'تصليح'),
@@ -78,9 +85,21 @@ class ServiceCatalog {
       id: 'towing',
       label: 'خدمة السطحة',
       shortLabel: 'السطحة',
+      description: 'نقل السيارة إلى وجهتك',
       options: [
         ServiceOption(id: 'regular', label: 'سطحة عادية', branch: 'عادية'),
         ServiceOption(id: 'hydraulic', label: 'سطحة هيدروليكية', branch: 'هيدروليك'),
+      ],
+    ),
+    ServiceCategory(
+      id: 'carwash',
+      label: 'غسيل السيارة',
+      shortLabel: 'غسيل السيارة',
+      description: 'تنظيف سيارتك دون مغادرة موقعك',
+      options: [
+        ServiceOption(id: 'washExterior', label: 'غسيل خارجي', branch: 'خارجي'),
+        ServiceOption(id: 'washInterior', label: 'غسيل داخلي', branch: 'داخلي'),
+        ServiceOption(id: 'washFull', label: 'غسيل داخلي وخارجي', branch: 'داخلي وخارجي'),
       ],
     ),
   ];

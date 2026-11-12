@@ -89,6 +89,7 @@ class ServiceIcons {
     'fuel': Icons.local_gas_station_rounded,
     'tires': Icons.tire_repair_rounded,
     'towing': Icons.local_shipping_rounded,
+    'carwash': Icons.local_car_wash_rounded,
   };
 
   /// Returns the icon for a service category.

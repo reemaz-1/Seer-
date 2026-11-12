@@ -54,6 +54,9 @@ const Map<String, num> kFallbackServicePrices = {
   'newTire': 200,      // إطار جديد
   'regular': 150,      // سطحة عادية
   'hydraulic': 250,    // سطحة هيدروليكية
+  'washExterior': 30,  // غسيل خارجي
+  'washInterior': 40,  // غسيل داخلي
+  'washFull': 60,      // غسيل داخلي وخارجي
 };
 
 const num kFallbackTowingPerKm = 3;

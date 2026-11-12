@@ -30,7 +30,7 @@ class OrderDraftController extends ChangeNotifier {
  
   final String uid;
  
-  /// The service picked on the home page: 'battery', 'fuel', 'tires', 'towing'.
+  /// The service picked on the home page: 'battery', 'fuel', 'tires', 'towing', 'carwash'.
   final String categoryId;
  
   /// The vehicle shown on the home page, so the same one is pre-selected here.

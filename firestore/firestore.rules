@@ -194,7 +194,7 @@ service cloud.firestore {
           && o.vehicleTitle is string && o.vehiclePlateArabic is string && o.vehiclePlateLatin is string
           && o.serviceCategoryLabel is string && o.serviceOptionId is string
           && o.serviceOptionLabel is string && o.serviceBranch is string
-          && o.serviceCategoryId in ['battery', 'fuel', 'tires', 'towing']
+          && o.serviceCategoryId in ['battery', 'fuel', 'tires', 'towing', 'carwash']
           && (o.estimatedPrice == null || (o.estimatedPrice is number && o.estimatedPrice >= 0))
           && exists(/databases/$(database)/documents/customers/$(request.auth.uid)/vehicles/$(o.vehicleId));
       }
