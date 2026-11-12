@@ -103,6 +103,8 @@ class FirestoreAiOrderActions implements AiOrderActions {
         throw const AiOrderException('هذه المركبة لم تعد موجودة في حسابك.');
       }
       draft.selectOption(summary.optionId);
+      final sizeId = summary.vehicleSizeId;
+      if (sizeId != null) draft.selectVehicleSize(sizeId);
       draft.setNote(summary.note);
       final pickup = summary.pickupLocation;
       if (pickup != null) draft.setPickupLocation(pickup);

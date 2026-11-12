@@ -59,6 +59,9 @@ class OrderDraftController extends ChangeNotifier {
   Customer? customer;
  
   String? selectedOptionId;
+
+  /// 'standard' or 'large'. Only used by services priced by size (car wash).
+  String? vehicleSizeId;
   Vehicle? selectedVehicle;
   String note = '';
 
@@ -114,8 +117,10 @@ void clearDropoffLocation() {
     String note = '',
     GeoPoint? pickup,
     GeoPoint? dropoff,
+    String? vehicleSizeId,
   }) {
     selectedOptionId = optionId;
+    this.vehicleSizeId = vehicleSizeId;
     this.note = note;
     if (pickup != null) pickupLocation = pickup;
     if (dropoff != null) dropoffLocation = dropoff;
@@ -129,6 +134,26 @@ void clearDropoffLocation() {
  
   /// Towing is the only service that also needs a drop-off location (#16).
   bool get needsDropoff => categoryId == ServiceCatalog.towingId;
+
+  /// Car wash: the price depends on the size of the car.
+  bool get needsVehicleSize => category?.priceBySize ?? false;
+
+  VehicleSize? get vehicleSize =>
+      needsVehicleSize ? VehicleSize.byId(vehicleSizeId) : null;
+
+  /// The extra for the chosen size, in riyals. 0 when it does not apply.
+  num get sizeExtra =>
+      needsVehicleSize ? prices.sizeExtraFor(vehicleSizeId) : 0;
+
+  /// The option name as it is saved in the order and shown on the review
+  /// page. The size is part of it ("غسيل خارجي - دفع رباعي"), so the provider
+  /// sees it and can compare it with the car, without a new database field.
+  String get selectedOptionLabel {
+    final option = selectedOption;
+    if (option == null) return '';
+    final size = vehicleSize;
+    return size == null ? option.label : '${option.label} - ${size.shortLabel}';
+  }
  
   /// Loads the prices shown next to each option (#17). Never throws: the
   /// built-in list is used when Firestore cannot be read.
@@ -170,12 +195,12 @@ void clearDropoffLocation() {
     return km == null ? null : (km * prices.towingPerKm).round();
   }
 
-  /// What the customer is charged: the base price plus the distance fee when
-  /// there is one. null when this service has no price yet.
+  /// What the customer is charged: the base price plus the distance fee and
+  /// the size extra when they apply. null when this service has no price yet.
   num? get estimatedPrice {
     final base = basePrice;
     if (base == null) return null;
-    return base + (distanceFee ?? 0);
+    return base + (distanceFee ?? 0) + sizeExtra;
   }
  
   /// Towing also costs per kilometre, which needs the distance from #15/#76,
@@ -215,6 +240,11 @@ void clearDropoffLocation() {
     notifyListeners();
   }
  
+  void selectVehicleSize(String sizeId) {
+    vehicleSizeId = sizeId;
+    notifyListeners();
+  }
+
   void selectVehicle(Vehicle vehicle) {
     selectedVehicle = vehicle;
     notifyListeners();
@@ -227,6 +257,7 @@ void clearDropoffLocation() {
 /// Returns null when the draft is ready, or the message to show.
 String? validate() {
   if (selectedOptionId == null) return 'اختر نوع الخدمة';
+  if (needsVehicleSize && vehicleSize == null) return 'اختر حجم السيارة';
   if (selectedVehicle == null) return 'اختر المركبة';
 
   // Every service request needs the vehicle's current location (#15).
@@ -284,7 +315,7 @@ String? validate() {
         serviceCategoryId: categoryId,
         serviceCategoryLabel: category?.label ?? '',
         serviceOptionId: option.id,
-        serviceOptionLabel: option.label,
+        serviceOptionLabel: selectedOptionLabel,
         serviceBranch: option.branch,
         note: note,
         estimatedPrice: estimatedPrice,
@@ -305,7 +336,7 @@ candidateProviderIds: candidates,
         await _notifications.notifyNewRequest(
           orderId: createdOrderId!,
           providerIds: candidates,
-          serviceLabel: option.label,
+          serviceLabel: selectedOptionLabel,
           vehicleTitle: vehicle.title,
         );
       } catch (e) {

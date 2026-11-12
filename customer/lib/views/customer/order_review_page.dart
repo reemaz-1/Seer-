@@ -83,7 +83,6 @@ class _OrderReviewPageState extends State<OrderReviewPage> {
           listenable: _controller,
           builder: (context, _) {
             final vehicle = _controller.selectedVehicle;
-            final option = _controller.selectedOption;
             final sending = _controller.isSubmitting;
 
             return Column(
@@ -102,7 +101,7 @@ class _OrderReviewPageState extends State<OrderReviewPage> {
                         title: 'الخدمة',
                         children: [
                           _Line(label: 'الخدمة', value: _controller.category?.label ?? ''),
-                          _Line(label: 'النوع', value: option?.label ?? ''),
+                          _Line(label: 'النوع', value: _controller.selectedOptionLabel),
                           // #17: the customer sees the cost before confirming.
                           _Line(
                             label: 'السعر التقديري',

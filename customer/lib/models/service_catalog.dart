@@ -28,6 +28,7 @@ class ServiceCategory {
     required this.shortLabel,
     required this.options,
     this.description = '',
+    this.priceBySize = false,
   });
 
   /// 'battery' | 'fuel' | 'tires' | 'towing' | 'carwash'
@@ -43,6 +44,50 @@ class ServiceCategory {
 
   /// One short line on the home page saying what the service covers.
   final String description;
+
+  /// True when the price depends on the size of the car (car wash), so the
+  /// request page asks for it and adds [ServicePrices.largeVehicleExtra].
+  final bool priceBySize;
+}
+
+/// The car sizes a customer can pick for services priced by size.
+///
+/// Only two sizes, to keep the choice simple. The id is what the AI tool and
+/// the code use; the labels are what the customer and the provider read.
+class VehicleSize {
+  const VehicleSize({
+    required this.id,
+    required this.label,
+    required this.shortLabel,
+  });
+
+  final String id;
+
+  /// Shown to the customer when choosing.
+  final String label;
+
+  /// Added to the option name in the order, e.g. "غسيل خارجي - دفع رباعي".
+  final String shortLabel;
+
+  static const standard = VehicleSize(
+    id: 'standard',
+    label: 'سيدان / صغيرة',
+    shortLabel: 'سيدان',
+  );
+  static const large = VehicleSize(
+    id: 'large',
+    label: 'دفع رباعي / كبيرة',
+    shortLabel: 'دفع رباعي',
+  );
+
+  static const List<VehicleSize> all = [standard, large];
+
+  static VehicleSize? byId(String? id) {
+    for (final size in all) {
+      if (size.id == id) return size;
+    }
+    return null;
+  }
 }
 
 class ServiceCatalog {
@@ -96,6 +141,7 @@ class ServiceCatalog {
       label: 'غسيل السيارة',
       shortLabel: 'غسيل السيارة',
       description: 'تنظيف سيارتك دون مغادرة موقعك',
+      priceBySize: true,
       options: [
         ServiceOption(id: 'washExterior', label: 'غسيل خارجي', branch: 'خارجي'),
         ServiceOption(id: 'washInterior', label: 'غسيل داخلي', branch: 'داخلي'),

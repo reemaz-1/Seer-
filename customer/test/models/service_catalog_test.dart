@@ -12,6 +12,30 @@ void main() {
         ['washExterior', 'washInterior', 'washFull'],
       );
     });
+
+    test('is priced by car size, and the others are not', () {
+      for (final c in ServiceCatalog.categories) {
+        expect(c.priceBySize, c.id == 'carwash');
+      }
+    });
+  });
+
+  group('car size', () {
+    test('a large car adds the extra, a standard car does not', () {
+      final prices = ServicePrices.fallback();
+      expect(prices.sizeExtraFor(VehicleSize.standard.id), 0);
+      expect(prices.sizeExtraFor(null), 0);
+      expect(prices.sizeExtraFor(VehicleSize.large.id), prices.largeVehicleExtra);
+    });
+
+    test('ids and labels are unique', () {
+      final ids = VehicleSize.all.map((s) => s.id).toSet();
+      final shorts = VehicleSize.all.map((s) => s.shortLabel).toSet();
+      expect(ids.length, VehicleSize.all.length);
+      expect(shorts.length, VehicleSize.all.length);
+      expect(VehicleSize.byId('large'), VehicleSize.large);
+      expect(VehicleSize.byId('x'), isNull);
+    });
   });
 
   group('catalog consistency', () {

@@ -136,6 +136,7 @@ class OrderSummary {
     required this.needsDropoff,
     this.pickupLocation,
     this.dropoffLocation,
+    this.vehicleSizeId,
   });
 
   /// Local id inside this chat ('S1', 'S2'...), not a Firestore id.
@@ -168,6 +169,10 @@ class OrderSummary {
   /// customer to pick it on the map.
   final GeoPoint? dropoffLocation;
 
+  /// 'standard' or 'large' for services priced by car size (car wash);
+  /// null for the others.
+  final String? vehicleSizeId;
+
   /// null when the order can be sent; otherwise what the card should ask for.
   /// Same messages as OrderDraftController.validate().
   String? get missingLocationMessage {
@@ -189,6 +194,7 @@ class OrderSummary {
       needsDropoff: needsDropoff,
       pickupLocation: pickup ?? pickupLocation,
       dropoffLocation: dropoff ?? dropoffLocation,
+      vehicleSizeId: vehicleSizeId,
     );
   }
 }

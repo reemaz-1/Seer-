@@ -130,6 +130,7 @@ class _RequestServicePageState extends State<RequestServicePage> {
         note: suggestion.note,
         pickup: suggestion.pickupLocation,
         dropoff: suggestion.dropoffLocation,
+        vehicleSizeId: suggestion.vehicleSizeId,
       );
       _note.text = suggestion.note;
     }
@@ -335,6 +336,33 @@ Future<void> _selectDropoffFromMap() async {
                   ),
                 ),
               const SizedBox(height: 14),
+
+              // ---- car wash: the price depends on the size of the car ----
+              if (_controller.needsVehicleSize) ...[
+                const _SectionTitle('حجم السيارة'),
+                for (final size in VehicleSize.all)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: _OptionCard(
+                      label: size.label,
+                      price: size.id == VehicleSize.large.id
+                          ? '+ ${formatPrice(_controller.prices.largeVehicleExtra)}'
+                          : 'بدون زيادة',
+                      selected: _controller.vehicleSizeId == size.id,
+                      onTap: () => _controller.selectVehicleSize(size.id),
+                    ),
+                  ),
+                const Padding(
+                  padding: EdgeInsets.only(bottom: 14),
+                  child: Text(
+                    'اختر الحجم المناسب لمركبتك، وقد يتغير السعر إذا لم يطابق.',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: CustomerColors.secondaryText,
+                    ),
+                  ),
+                ),
+              ],
 
               // ---- #14: which vehicle ----
               const _SectionTitle('المركبة'),

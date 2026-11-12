@@ -193,6 +193,66 @@ void main() {
     });
   });
 
+  group('car wash size', () {
+    Future<AiToolOutcome> showWash({String? size}) {
+      return handler.handle(AiToolHandler.showSummaryName, {
+        'vehicleId': 'v-camry',
+        'categoryId': 'carwash',
+        'optionId': 'washFull',
+        if (size != null) 'vehicleSize': size,
+      }, turn: 1);
+    }
+
+    test('asks for the size instead of guessing it', () async {
+      final outcome = await showWash();
+      expect(outcome.ok, isFalse);
+      expect(outcome.reply, contains('دفع رباعي'));
+      expect(handler.pendingSummary, isNull);
+    });
+
+    test('a standard car pays the base price', () async {
+      final outcome = await showWash(size: 'standard');
+      expect(outcome.ok, isTrue);
+      final prices = ServicePrices.fallback();
+      expect(
+        handler.pendingSummary!.estimatedPrice,
+        prices.basePriceFor('washFull'),
+      );
+      expect(handler.pendingSummary!.optionLabel, contains('سيدان'));
+    });
+
+    test('a large car pays the base price plus the extra', () async {
+      await showWash(size: 'large');
+      final prices = ServicePrices.fallback();
+      expect(
+        handler.pendingSummary!.estimatedPrice,
+        prices.basePriceFor('washFull')! + prices.largeVehicleExtra,
+      );
+      expect(handler.pendingSummary!.optionLabel, contains('دفع رباعي'));
+      expect(handler.pendingSummary!.vehicleSizeId, 'large');
+    });
+
+    test('an unknown size is refused', () async {
+      final outcome = await showWash(size: 'huge');
+      expect(outcome.ok, isFalse);
+    });
+
+    test('other services ignore the size', () async {
+      final outcome = await handler.handle(AiToolHandler.showSummaryName, {
+        'vehicleId': 'v-camry',
+        'categoryId': 'battery',
+        'optionId': 'activation',
+        'vehicleSize': 'large',
+      }, turn: 1);
+      expect(outcome.ok, isTrue);
+      expect(handler.pendingSummary!.vehicleSizeId, isNull);
+      expect(
+        handler.pendingSummary!.estimatedPrice,
+        ServicePrices.fallback().basePriceFor('activation'),
+      );
+    });
+  });
+
   group('place_order', () {
     test('places the order after the customer replies', () async {
       await showBatterySummary(turn: 1);
