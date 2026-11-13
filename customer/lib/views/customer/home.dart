@@ -196,10 +196,15 @@ class _ServiceCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: Colors.white,
+      // A clear border groups each service (common region), and a soft
+      // shadow signals that the card can be tapped.
+      color: const Color(0xFFF7F8FA), // very light grey
+      elevation: 4,
+      shadowColor: const Color(0x290E1B33),
+      surfaceTintColor: Colors.transparent,
       clipBehavior: Clip.antiAlias,
       shape: RoundedRectangleBorder(
-        side: const BorderSide(color: CustomerColors.cardBorder),
+        side: const BorderSide(color: Color(0xFFDDE3EC), width: 1.5),
         borderRadius: BorderRadius.circular(18),
       ),
       child: InkWell(
@@ -270,7 +275,7 @@ class _ServiceCard extends StatelessWidget {
                 ),
               ),
               const Icon(
-                Icons.chevron_left,
+                Icons.chevron_right,
                 color: CustomerColors.secondaryText,
               ),
             ],
