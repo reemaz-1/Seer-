@@ -1,5 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import 'service_catalog.dart';
+
 /// Prices are kept in Firestore, not in the code, so the team can change them
 /// without a new app release:
 ///
@@ -18,6 +20,7 @@ class ServicePrices {
     required this.byOption,
     required this.towingPerKm,
     required this.isFallback,
+    this.largeVehicleExtra = kFallbackLargeVehicleExtra,
   });
 
   /// Service option id -> base price in Saudi riyals.
@@ -27,6 +30,10 @@ class ServicePrices {
   final num towingPerKm;
 
   final bool isFallback;
+
+  /// Added to a size-based service (car wash) for a large car (SUV...), in
+  /// riyals. Stored as `carwashLargeExtra` in the same Firestore document.
+  final num largeVehicleExtra;
 
   factory ServicePrices.fallback() {
     return const ServicePrices(
@@ -39,6 +46,10 @@ class ServicePrices {
   /// null when this option has no price yet, so the UI can say so instead of
   /// showing a wrong number.
   num? basePriceFor(String optionId) => byOption[optionId];
+
+  /// The extra for a car size: 0 for a standard car or when no size is set.
+  num sizeExtraFor(String? sizeId) =>
+      sizeId == VehicleSize.large.id ? largeVehicleExtra : 0;
 }
 
 /// TODO: the team and the supervisor must confirm these numbers. They are
@@ -54,7 +65,14 @@ const Map<String, num> kFallbackServicePrices = {
   'newTire': 200,      // إطار جديد
   'regular': 150,      // سطحة عادية
   'hydraulic': 250,    // سطحة هيدروليكية
+  'washExterior': 99,  // غسيل خارجي (سيدان)
+  'washInterior': 149, // غسيل داخلي (سيدان)
+  'washFull': 189,     // غسيل داخلي وخارجي (سيدان)
 };
+
+/// Extra for a large car (SUV...) on the car wash. Placeholder from market
+/// prices in Riyadh (about 30-40 riyals); the team must confirm it.
+const num kFallbackLargeVehicleExtra = 30;
 
 const num kFallbackTowingPerKm = 3;
 
@@ -90,6 +108,8 @@ class PricingModel {
         byOption: byOption,
         towingPerKm: (data?['towingPerKm'] as num?) ?? kFallbackTowingPerKm,
         isFallback: false,
+        largeVehicleExtra:
+            (data?['carwashLargeExtra'] as num?) ?? kFallbackLargeVehicleExtra,
       );
       _cached = result;
       return result;

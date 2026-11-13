@@ -130,12 +130,18 @@ class AiToolHandler {
             description: 'The option inside that category; it must belong '
                 'to categoryId.',
           ),
+          'vehicleSize': Schema.enumString(
+            enumValues: [for (final v in VehicleSize.all) v.id],
+            description: 'The size of the car: "standard" (sedan / small) or '
+                '"large" (SUV / big). Required for the car wash (carwash): '
+                'ask the customer, never guess it from the car name.',
+          ),
           'note': Schema.string(
             description: 'A short Arabic description of the problem for the '
                 'provider (max $maxNoteLength characters). No personal data.',
           ),
         },
-        optionalParameters: ['note'],
+        optionalParameters: ['note', 'vehicleSize'],
       ),
       FunctionDeclaration(
         placeOrderName,
@@ -211,6 +217,13 @@ class AiToolHandler {
                 'السابق لأنه كان لسيارة أخرى.');
   }
 
+  /// Base price plus the size extra, or null when the option has no price.
+  num? _priceWithSize(ServicePrices prices, String optionId, VehicleSize? size) {
+    final base = prices.basePriceFor(optionId);
+    if (base == null) return null;
+    return base + prices.sizeExtraFor(size?.id);
+  }
+
   Future<AiToolOutcome> _showSummary(Map<String, Object?> args, int turn) async {
     final vehicle = _findVehicle(args['vehicleId']);
     if (vehicle == null) {
@@ -230,6 +243,21 @@ class AiToolHandler {
       return AiToolOutcome.error(
         'optionId "$optionId" is not part of categoryId "$categoryId". '
         'Pick a valid pair from the catalog.',
+      );
+    }
+
+    // Car wash: the price depends on the car size, which only the customer
+    // knows. Ask instead of guessing, so the card never shows a wrong price.
+    final rawSize = args['vehicleSize'];
+    final VehicleSize? size = category.priceBySize
+        ? VehicleSize.byId(rawSize is String ? rawSize : null)
+        : null;
+    if (category.priceBySize && size == null) {
+      return AiToolOutcome.error(
+        'vehicleSize is required for ${category.id}: "standard" or "large". '
+        'Ask the customer; do not guess.',
+        reply: 'هل سيارتك سيدان / صغيرة، أم دفع رباعي / كبيرة؟ '
+            'السعر يختلف حسب الحجم.',
       );
     }
 
@@ -266,9 +294,11 @@ class AiToolHandler {
       categoryId: categoryId,
       categoryLabel: category.label,
       optionId: optionId,
-      optionLabel: option.label,
+      optionLabel:
+          size == null ? option.label : '${option.label} - ${size.shortLabel}',
       note: note,
-      estimatedPrice: prices.basePriceFor(optionId),
+      estimatedPrice: _priceWithSize(prices, optionId, size),
+      vehicleSizeId: size?.id,
       needsDropoff: categoryId == ServiceCatalog.towingId,
       pickupLocation: pickup,
       dropoffLocation:

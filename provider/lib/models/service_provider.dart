@@ -5,6 +5,7 @@ const Map<String, List<String>> allServiceBranches = {
   'الوقود': ['٩١', '٩٥'],
   'الإطارات': ['نفخ', 'تصليح', 'تبديل احتياطي', 'تركيب جديد'],
   'السطحة': ['عادية', 'هيدروليك'],
+  'الغسيل': ['خارجي', 'داخلي', 'داخلي وخارجي'],
 };
 
 /// Vehicle types that cannot physically tow another vehicle. Providers with
@@ -31,6 +32,9 @@ const Map<String, String> _serviceOptionToBranch = {
   'newTire'     : 'تركيب جديد',
   'regular'     : 'عادية',
   'hydraulic'   : 'هيدروليك',
+  'washExterior': 'خارجي',
+  'washInterior': 'داخلي',
+  'washFull'    : 'داخلي وخارجي',
 };
 
 Set<String> activeBranchesFromServicesOffered(dynamic servicesOffered){
@@ -82,6 +86,14 @@ const Map<String, Map<String, dynamic>> _serviceCategoryDefinitions = {
     'options': [
       {'id': 'regular', 'label': 'سطحة عادية', 'branch': 'عادية'},
       {'id': 'hydraulic', 'label': 'سطحة هيدروليكية', 'branch': 'هيدروليك'},
+    ],
+  },
+  'carwash': {
+    'label': 'غسيل السيارة',
+    'options': [
+      {'id': 'washExterior', 'label': 'غسيل خارجي', 'branch': 'خارجي'},
+      {'id': 'washInterior', 'label': 'غسيل داخلي', 'branch': 'داخلي'},
+      {'id': 'washFull', 'label': 'غسيل داخلي وخارجي', 'branch': 'داخلي وخارجي'},
     ],
   },
 };
