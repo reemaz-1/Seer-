@@ -84,6 +84,42 @@ class ProviderOrderModel {
     });
   }
 
+  /// Starts an accepted future booking when it is within 12 hours of arrival.
+  /// Reuses the existing activeOrderId lock and notification transaction.
+  Future<void> beginScheduledJourney(String orderId, String providerId) async {
+    final ref = _orders.doc(orderId);
+    final providerRef = _firestore.collection('providers').doc(providerId);
+    await _firestore.runTransaction((transaction) async {
+      final orderSnapshot = await transaction.get(ref);
+      final providerSnapshot = await transaction.get(providerRef);
+      final data = orderSnapshot.data();
+      if (data == null || data['status'] != OrderStatus.scheduledAccepted ||
+          data['providerId'] != providerId || !providerSnapshot.exists) {
+        throw StateError('الحجز لم يعد متاحًا');
+      }
+      final scheduled = (data['scheduledAt'] as Timestamp?)?.toDate();
+      if (scheduled == null ||
+          DateTime.now().isBefore(scheduled.subtract(const Duration(hours: 12)))) {
+        throw StateError('يمكن بدء التوجه قبل الموعد بـ12 ساعة');
+      }
+      final activeId = (providerSnapshot.data()?['activeOrderId'] as String?) ?? '';
+      if (activeId.isNotEmpty && activeId != orderId) {
+        final activeSnapshot = await transaction.get(_orders.doc(activeId));
+        if (activeSnapshot.data()?['providerId'] == providerId &&
+            OrderStatus.active.contains(activeSnapshot.data()?['status'])) {
+          throw StateError('لديك طلب آخر قيد التنفيذ');
+        }
+      }
+      OrderStatusNotification.write(transaction, _firestore, orderId, data,
+          OrderStatus.onTheWay);
+      transaction.update(providerRef, {'activeOrderId': orderId});
+      transaction.update(ref, {
+        'status': OrderStatus.onTheWay,
+        'onTheWayAt': FieldValue.serverTimestamp(),
+      });
+    });
+  }
+
   /// Completes the order and confirms the payment in one step (#44, #46),
   /// so an order can never be completed with the payment left unconfirmed.
   Future<void> completeWithPayment({
@@ -108,6 +144,12 @@ class ProviderOrderModel {
         snapshot.data()!,
         OrderStatus.completed,
       );
+      final appointment = snapshot.data()?['scheduledAt'];
+      if (appointment is Timestamp && providerSnapshot != null) {
+        transaction.update(providerRef, {
+          'scheduledReservationTimes': FieldValue.arrayRemove([appointment]),
+        });
+      }
       if (providerSnapshot?.data()?['activeOrderId'] == orderId) {
         transaction.update(providerRef, {'activeOrderId': FieldValue.delete()});
       }

@@ -29,6 +29,10 @@ class _AdminUsersState extends State<AdminUsers> {
 
   static String _orderStatusArabic(String status) {
     switch (status) {
+      case 'scheduledPending':
+        return 'حجز مجدول - بانتظار مزود';
+      case 'scheduledAccepted':
+        return 'حجز مجدول - مقبول';
       case 'pending':
         return 'بانتظار القبول';
       case 'accepted':

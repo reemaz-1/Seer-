@@ -242,6 +242,11 @@ class _OrderDetailsBody extends StatelessWidget {
                       label: _plateLabel,
                       value: order.vehiclePlateArabic,
                     ),
+                    if (order.scheduledAt != null)
+                      _InfoRow(
+                        label: 'موعد الوصول المطلوب',
+                        value: '${OrderFormat.date(order.scheduledAt)} · ${OrderFormat.time(order.scheduledAt)}',
+                      ),
                     _InfoRow(
                       label: _dateLabel,
                       value: OrderFormat.date(order.createdAt),

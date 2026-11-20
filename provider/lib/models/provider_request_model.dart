@@ -8,6 +8,10 @@ class ProviderHasActiveOrder implements Exception {
   const ProviderHasActiveOrder();
 }
 
+class ProviderAppointmentConflict implements Exception {
+  const ProviderAppointmentConflict();
+}
+
 class RequestUnavailable implements Exception {
   /// Takes no inputs; creates the expected stale-request error.
   const RequestUnavailable();
@@ -22,12 +26,14 @@ class RequestEligibility {
   /// this candidate may answer. Missing deadlines fail closed.
   static bool canRespond(ServiceOrder order, String providerId, DateTime now) =>
       providerId.isNotEmpty &&
-      order.status == OrderStatus.pending &&
+      (order.status == OrderStatus.pending ||
+       order.status == OrderStatus.scheduledPending) &&
       (order.providerId == null || order.providerId!.isEmpty) &&
       order.candidateProviderIds.contains(providerId) &&
       !order.rejectedBy.contains(providerId) &&
-      order.expiresAt != null &&
-      order.expiresAt!.isAfter(now);
+      (order.status == OrderStatus.scheduledPending
+          ? order.scheduledAt != null && order.scheduledAt!.isAfter(now)
+          : order.expiresAt != null && order.expiresAt!.isAfter(now));
 }
 
 /// Injectable boundary for request snapshots and atomic provider decisions.
@@ -95,11 +101,23 @@ class ProviderRequestModel implements RequestRepository {
       final providerSnapshot = await transaction.get(providerRef);
       final orderSnapshot = await transaction.get(ref);
       if (_availableOrder(orderSnapshot, providerId) == null) return 0;
-      if (!providerSnapshot.exists) return 0;
+      if (!providerSnapshot.exists ||
+          providerSnapshot.data()?['isSuspended'] == true ||
+          providerSnapshot.data()?['status'] != 'approved') return 0;
+      final scheduledTime = (orderSnapshot.data()?['scheduledAt'] as Timestamp?)?.toDate();
+      if (scheduledTime != null) {
+        final reservations = providerSnapshot.data()?['scheduledReservationTimes'];
+        if (reservations is List && reservations.whereType<Timestamp>().any(
+            (stamp) => stamp.toDate().difference(scheduledTime).abs() <
+                const Duration(hours: 2))) {
+          return 3;
+        }
+      }
 
       final activeOrderId =
           (providerSnapshot.data()?['activeOrderId'] as String?) ?? '';
-      if (activeOrderId.isNotEmpty) {
+      if (activeOrderId.isNotEmpty &&
+          orderSnapshot.data()?['scheduledAt'] == null) {
         final activeSnapshot = await transaction.get(
           _orders.doc(activeOrderId),
         );
@@ -116,17 +134,29 @@ class ProviderRequestModel implements RequestRepository {
         _firestore,
         orderId,
         orderSnapshot.data()!,
-        OrderStatus.accepted,
+        orderSnapshot.data()?['scheduledAt'] != null
+            ? OrderStatus.scheduledAccepted : OrderStatus.accepted,
       );
-      transaction.update(providerRef, {'activeOrderId': orderId});
+      // Future bookings do not occupy the live activeOrderId slot.
+      final isScheduled = orderSnapshot.data()?['scheduledAt'] != null;
+      if (isScheduled) {
+        transaction.update(providerRef, {
+          'scheduledReservationTimes': FieldValue.arrayUnion(
+              [Timestamp.fromDate(scheduledTime!)]),
+        });
+      } else {
+        transaction.update(providerRef, {'activeOrderId': orderId});
+      }
       transaction.update(ref, {
-        'status': OrderStatus.accepted,
+        'status': isScheduled
+            ? OrderStatus.scheduledAccepted : OrderStatus.accepted,
         'providerId': providerId,
         'acceptedAt': FieldValue.serverTimestamp(),
       });
       return 2;
     });
     if (outcome == 1) throw const ProviderHasActiveOrder();
+    if (outcome == 3) throw const ProviderAppointmentConflict();
     if (outcome != 2) throw const RequestUnavailable();
   }
 

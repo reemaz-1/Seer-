@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../controllers/address_controller.dart';
 import '../controllers/provider_requests_controller.dart';
@@ -8,6 +9,7 @@ import 'available_requests.dart';
 import 'current_order.dart';
 import 'history.dart';
 import 'request_details_page.dart';
+import 'scheduled_orders.dart';
 import '../widgets/app_snackbar.dart';
 
 /// Provider requests, accepted work and previous orders in one place.
@@ -33,7 +35,7 @@ class _ProviderOrdersState extends State<ProviderOrders>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _tabs = TabController(length: 3, vsync: this);
+    _tabs = TabController(length: 4, vsync: this);
     _requests = ProviderRequestsController(
       providerId: (widget.authService ?? AuthService()).currentUser?.uid ?? '',
     );
@@ -47,6 +49,18 @@ class _ProviderOrdersState extends State<ProviderOrders>
   Future<void> _openInitialDetails() async {
     final id = widget.initialOrderId;
     if (!mounted || id == null) return;
+    // Notification deep links for advance bookings belong to the scheduled tab.
+    try {
+      final doc = await FirebaseFirestore.instance.collection('orders').doc(id).get();
+      if (!mounted) return;
+      if (doc.data()?['scheduledAt'] != null) {
+        _tabs.animateTo(1);
+        return;
+      }
+    } catch (_) {
+      // Preserve the existing immediate-request deep link if lookup fails.
+    }
+    if (!mounted) return;
     final accepted = await Navigator.of(context).push<bool>(
       MaterialPageRoute(
         builder: (_) => RequestDetailsPage(
@@ -56,7 +70,7 @@ class _ProviderOrdersState extends State<ProviderOrders>
         ),
       ),
     );
-    if (mounted && accepted == true) _tabs.animateTo(1);
+    if (mounted && accepted == true) _tabs.animateTo(2);
   }
 
   /// Takes app [state]; refreshes GPS on resume. Deadlines use absolute time.
@@ -116,11 +130,12 @@ class _ProviderOrdersState extends State<ProviderOrders>
             labelColor: Colors.white,
             unselectedLabelColor: AppColors.secondaryText,
             labelStyle: const TextStyle(
-              fontSize: 14,
+              fontSize: 12,
               fontWeight: FontWeight.w600,
             ),
             tabs: const [
               Tab(text: 'المتاحة'),
+              Tab(text: 'المجدولة'),
               Tab(text: 'الحالية'),
               Tab(text: 'السابقة'),
             ],
@@ -133,8 +148,10 @@ class _ProviderOrdersState extends State<ProviderOrders>
               AvailableRequests(
                 controller: _requests,
                 addresses: _addresses,
-                onAccepted: () => _tabs.animateTo(1),
+                onAccepted: () => _tabs.animateTo(2),
               ),
+              ScheduledOrders(controller: _requests,
+                onStarted: () => _tabs.animateTo(2)),
               const ProviderCurrentOrder(),
               ProviderHistory(addresses: _addresses),
             ],

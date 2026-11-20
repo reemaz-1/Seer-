@@ -6,6 +6,8 @@ class OrderStatus {
   /// Prevents instantiation; takes no inputs and creates no public object.
   OrderStatus._();
 
+  static const scheduledPending = 'scheduledPending';
+  static const scheduledAccepted = 'scheduledAccepted';
   static const pending = 'pending'; // waiting for a provider (#18)
   static const accepted = 'accepted'; // a provider accepted it (#39)
   static const onTheWay = 'onTheWay';
@@ -61,6 +63,7 @@ class ServiceOrder {
     this.expiresAt,
     this.completedAt,
     this.cancelledAt,
+    this.scheduledAt,
   });
 
   final String id;
@@ -131,6 +134,10 @@ class ServiceOrder {
   /// Set by the customer app when the customer cancels the order (#20).
   final DateTime? cancelledAt;
 
+  /// Requested provider arrival time (local selection stored as Firestore timestamp).
+  final DateTime? scheduledAt;
+  bool get isScheduled => scheduledAt != null;
+
   /// Parses document [id] and Firestore [map]; returns a typed order snapshot.
   factory ServiceOrder.fromMap(String id, Map<String, dynamic> map) {
     return ServiceOrder(
@@ -165,6 +172,7 @@ class ServiceOrder {
       expiresAt: (map['expiresAt'] as Timestamp?)?.toDate(),
       completedAt: (map['completedAt'] as Timestamp?)?.toDate(),
       cancelledAt: (map['cancelledAt'] as Timestamp?)?.toDate(),
+      scheduledAt: (map['scheduledAt'] as Timestamp?)?.toDate(),
     );
   }
 
@@ -195,6 +203,7 @@ class ServiceOrder {
       'candidateProviderIds': candidateProviderIds,
       'rejectedBy': rejectedBy,
       'paymentConfirmed': paymentConfirmed,
+      if (scheduledAt != null) 'scheduledAt': Timestamp.fromDate(scheduledAt!),
     };
   }
 }
@@ -222,7 +231,8 @@ class OrderModel {
     final ref = await _orders.add({
       ...order.toMap(),
       'createdAt': FieldValue.serverTimestamp(),
-      'expiresAt': Timestamp.fromDate(DateTime.now().add(responseWindow)),
+      if (!order.isScheduled)
+        'expiresAt': Timestamp.fromDate(DateTime.now().add(responseWindow)),
       'paymentConfirmed': false,
     });
     return ref.id;
