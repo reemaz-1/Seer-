@@ -7,9 +7,15 @@ class NearbyProvider {
     required this.id,
     required this.mapPoint,
     required this.distanceKm,
+    required this.displayName,
+    this.rating,
+    required this.ratingCount,
   });
 
   final String id;
   final LatLng mapPoint;
   final double distanceKm;
+  final String displayName;
+  final double? rating; // null means no verified rating yet
+  final int ratingCount;
 }

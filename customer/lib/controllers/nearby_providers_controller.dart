@@ -9,9 +9,11 @@ import 'matching_controller.dart';
 
 /// Read-only, live preview for #78. This never assigns or books a provider.
 class NearbyProvidersController extends ChangeNotifier {
-  NearbyProvidersController({FirebaseFirestore? firestore, DateTime Function()? now})
-    : _firestore = firestore ?? FirebaseFirestore.instance,
-      _now = now ?? DateTime.now;
+  NearbyProvidersController({
+    FirebaseFirestore? firestore,
+    DateTime Function()? now,
+  }) : _firestore = firestore ?? FirebaseFirestore.instance,
+       _now = now ?? DateTime.now;
 
   static const Duration locationMaxAge = Duration(minutes: 15);
   static const Duration clockTolerance = Duration(minutes: 2);
@@ -33,7 +35,11 @@ class NearbyProvidersController extends ChangeNotifier {
   List<NearbyProvider> providers = const [];
 
   /// A change of service or pickup re-filters the same live provider stream.
-  void configure({required String categoryId, required String optionId, required LatLng pickup}) {
+  void configure({
+    required String categoryId,
+    required String optionId,
+    required LatLng pickup,
+  }) {
     _categoryId = categoryId;
     _optionId = optionId;
     _pickup = pickup;
@@ -54,25 +60,38 @@ class NearbyProvidersController extends ChangeNotifier {
         .where('status', isEqualTo: 'approved')
         .where('isAvailable', isEqualTo: true)
         .snapshots()
-        .listen((snapshot) {
-          if (_disposed || currentGeneration != _generation) return;
-          _docs = [for (final doc in snapshot.docs) MapEntry(doc.id, doc.data())];
-          loading = false;
-          error = null;
-          _recalculate();
-        }, onError: (Object _) {
-          if (_disposed || currentGeneration != _generation) return;
-          _docs = const [];
-          providers = const [];
-          loading = false;
-          error = 'تعذر تحميل المزودين القريبين. تحققي من الاتصال وحاولي مجددًا.';
-          notifyListeners();
-        });
-    _freshnessTimer = Timer.periodic(const Duration(minutes: 1), (_) => _recalculate());
+        .listen(
+          (snapshot) {
+            if (_disposed || currentGeneration != _generation) return;
+            _docs = [
+              for (final doc in snapshot.docs) MapEntry(doc.id, doc.data()),
+            ];
+            loading = false;
+            error = null;
+            _recalculate();
+          },
+          onError: (Object _) {
+            if (_disposed || currentGeneration != _generation) return;
+            _docs = const [];
+            providers = const [];
+            loading = false;
+            error =
+                'تعذر تحميل المزودين القريبين. تحققي من الاتصال وحاولي مجددًا.';
+            notifyListeners();
+          },
+        );
+    _freshnessTimer = Timer.periodic(
+      const Duration(minutes: 1),
+      (_) => _recalculate(),
+    );
   }
 
   void _recalculate() {
-    if (_disposed || _pickup == null || _categoryId == null || _optionId == null) return;
+    if (_disposed ||
+        _pickup == null ||
+        _categoryId == null ||
+        _optionId == null)
+      return;
     providers = filterProviders(
       _docs,
       categoryId: _categoryId!,
@@ -97,11 +116,22 @@ class NearbyProvidersController extends ChangeNotifier {
       final data = entry.value;
       if (data['status'] != 'approved' || data['isAvailable'] != true) continue;
       if ((data['activeOrderId'] ?? '').toString().trim().isNotEmpty) continue;
-      if (!MatchingController.offersOption(data['servicesOffered'], categoryId, optionId)) continue;
+      if (!MatchingController.offersOption(
+        data['servicesOffered'],
+        categoryId,
+        optionId,
+      ))
+        continue;
 
       final point = MatchingController.readLatLng(data['currentLocation']);
-      if (point == null || !point.lat.isFinite || !point.lng.isFinite ||
-          point.lat < -90 || point.lat > 90 || point.lng < -180 || point.lng > 180) continue;
+      if (point == null ||
+          !point.lat.isFinite ||
+          !point.lng.isFinite ||
+          point.lat < -90 ||
+          point.lat > 90 ||
+          point.lng < -180 ||
+          point.lng > 180)
+        continue;
 
       // Fail closed on stale/missing timestamps; never imply an old fix is live.
       final rawTime = data['currentLocationUpdatedAt'];
@@ -110,15 +140,43 @@ class NearbyProvidersController extends ChangeNotifier {
       if (age > locationMaxAge || age < -clockTolerance) continue;
 
       final km = MatchingController.distanceKm(
-        pickup.latitude, pickup.longitude, point.lat, point.lng,
+        pickup.latitude,
+        pickup.longitude,
+        point.lat,
+        point.lng,
       );
       if (km > MatchingController.radiusKm) continue;
 
       // Visual approximation only. Firestore still holds precise provider GPS;
       // a separate server-side public projection is needed for strong privacy.
-      final lat = (point.lat / approximateGridDegrees).round() * approximateGridDegrees;
-      final lng = (point.lng / approximateGridDegrees).round() * approximateGridDegrees;
-      found.add(NearbyProvider(id: entry.key, mapPoint: LatLng(lat, lng), distanceKm: km));
+      final lat =
+          (point.lat / approximateGridDegrees).round() * approximateGridDegrees;
+      final lng =
+          (point.lng / approximateGridDegrees).round() * approximateGridDegrees;
+      // Only display a first name, never contact information or a plate number.
+      final firstName = (data['firstName'] ?? '').toString().trim();
+      final displayName = firstName.isEmpty ? 'مزود خدمة' : firstName;
+      final count = data['ratingCount'] is num
+          ? (data['ratingCount'] as num).toInt()
+          : 0;
+      final rawRating = data['rating'];
+      final rating =
+          count > 0 &&
+              rawRating is num &&
+              rawRating.toDouble() >= 0 &&
+              rawRating.toDouble() <= 5
+          ? rawRating.toDouble()
+          : null;
+      found.add(
+        NearbyProvider(
+          id: entry.key,
+          mapPoint: LatLng(lat, lng),
+          distanceKm: km,
+          displayName: displayName,
+          rating: rating,
+          ratingCount: count,
+        ),
+      );
     }
     found.sort((a, b) => a.distanceKm.compareTo(b.distanceKm));
     return List.unmodifiable(found);

@@ -8,12 +8,13 @@ import '../../services/ai_assistant.dart';
 import '../../models/pricing_model.dart';
 import '../../models/service_catalog.dart';
 import '../../widgets/vehicle_picker_sheet.dart';
-import '../../widgets/nearby_providers_map.dart';
 import 'order_review_page.dart';
 import 'vehicle_form_page.dart';
 import 'location_picker_page.dart';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:latlong2/latlong.dart';
+
 import '../../widgets/app_snackbar.dart';
 
 /// VIEW: build a service request.
@@ -191,8 +192,10 @@ class _RequestServicePageState extends State<RequestServicePage> {
     if (widget.suggestion != null) {
       final orderId = _controller.createdOrderId;
       if (orderId == null || orderId.isEmpty) {
-        _showMessage('تعذر فتح الطلب الجديد. تحقق من قائمة الطلبات.',
-            type: AppMessageType.warning);
+        _showMessage(
+          'تعذر فتح الطلب الجديد. تحقق من قائمة الطلبات.',
+          type: AppMessageType.warning,
+        );
         return;
       }
       Navigator.of(context).pop(orderId);
@@ -201,68 +204,69 @@ class _RequestServicePageState extends State<RequestServicePage> {
     }
   }
 
-  void _showMessage(String text, {AppMessageType type = AppMessageType.success}) {
+  void _showMessage(
+    String text, {
+    AppMessageType type = AppMessageType.success,
+  }) {
     showAppMessage(context, text, type: type);
   }
 
   /// Opens the shared map screen to select the vehicle's pickup location.
- Future<void> _selectPickupFromMap() async {
-  final LatLng? selectedLocation = await Navigator.of(context).push<LatLng>(
-    MaterialPageRoute(
-builder: (_) => LocationPickerPage(
-  title: 'تحديد موقع المركبة',
-  initialSelectedLocation: _controller.pickupLocation == null
-      ? null
-      : LatLng(
-          _controller.pickupLocation!.latitude,
-          _controller.pickupLocation!.longitude,
+  Future<void> _selectPickupFromMap() async {
+    final LatLng? selectedLocation = await Navigator.of(context).push<LatLng>(
+      MaterialPageRoute(
+        builder: (_) => LocationPickerPage(
+          title: 'تحديد موقع المركبة',
+          categoryId: widget.categoryId,
+          optionId: _controller.selectedOptionId,
+          initialSelectedLocation: _controller.pickupLocation == null
+              ? null
+              : LatLng(
+                  _controller.pickupLocation!.latitude,
+                  _controller.pickupLocation!.longitude,
+                ),
         ),
-),
-    ),
-  );
+      ),
+    );
 
-  if (!mounted || selectedLocation == null) return;
-  debugPrint(
-  '📍 PICKUP LOCATION: Latitude = ${selectedLocation.latitude}, '
-  'Longitude = ${selectedLocation.longitude}',
-);
+    if (!mounted || selectedLocation == null) return;
+    debugPrint(
+      '📍 PICKUP LOCATION: Latitude = ${selectedLocation.latitude}, '
+      'Longitude = ${selectedLocation.longitude}',
+    );
 
-  _controller.setPickupLocation(
-    GeoPoint(selectedLocation.latitude, selectedLocation.longitude),
-  );
+    _controller.setPickupLocation(
+      GeoPoint(selectedLocation.latitude, selectedLocation.longitude),
+    );
+  }
 
-}
-
-  
-/// Opens the shared map screen to select the towing destination.
-Future<void> _selectDropoffFromMap() async {
-  final LatLng? selectedLocation = await Navigator.of(context).push<LatLng>(
-    MaterialPageRoute(
-   builder: (_) => LocationPickerPage(
-  title: 'تحديد موقع التوصيل',
-  initialSelectedLocation: _controller.dropoffLocation == null
-      ? null
-      : LatLng(
-          _controller.dropoffLocation!.latitude,
-          _controller.dropoffLocation!.longitude,
+  /// Opens the shared map screen to select the towing destination.
+  Future<void> _selectDropoffFromMap() async {
+    final LatLng? selectedLocation = await Navigator.of(context).push<LatLng>(
+      MaterialPageRoute(
+        builder: (_) => LocationPickerPage(
+          title: 'تحديد موقع التوصيل',
+          initialSelectedLocation: _controller.dropoffLocation == null
+              ? null
+              : LatLng(
+                  _controller.dropoffLocation!.latitude,
+                  _controller.dropoffLocation!.longitude,
+                ),
         ),
-),
-    ),
-  );
+      ),
+    );
 
-  if (!mounted || selectedLocation == null) return;
+    if (!mounted || selectedLocation == null) return;
 
-  debugPrint(
-    '📍 DROPOFF LOCATION: Latitude = ${selectedLocation.latitude}, '
-    'Longitude = ${selectedLocation.longitude}',
-  );
+    debugPrint(
+      '📍 DROPOFF LOCATION: Latitude = ${selectedLocation.latitude}, '
+      'Longitude = ${selectedLocation.longitude}',
+    );
 
-  _controller.setDropoffLocation(
-    GeoPoint(selectedLocation.latitude, selectedLocation.longitude),
-  );
-
-}
-
+    _controller.setDropoffLocation(
+      GeoPoint(selectedLocation.latitude, selectedLocation.longitude),
+    );
+  }
 
   // ---------------- UI ----------------
 
@@ -381,11 +385,11 @@ Future<void> _selectDropoffFromMap() async {
               // ---- #15 / #16: not built yet ----
               const _SectionTitle('الموقع'),
 
-  _MapLocationRow(
-  title: 'موقع المركبة الحالي',
-  isSelected: _controller.pickupLocation != null,
-  onSelectFromMap: _selectPickupFromMap,
-),
+              _MapLocationRow(
+                title: 'موقع المركبة الحالي',
+                isSelected: _controller.pickupLocation != null,
+                onSelectFromMap: _selectPickupFromMap,
+              ),
               if (_controller.needsDropoff) ...[
                 const SizedBox(height: 10),
 
@@ -396,19 +400,6 @@ Future<void> _selectDropoffFromMap() async {
                 ),
               ],
               const SizedBox(height: 14),
-
-              // ---- #78: read-only map of available providers for the exact
-              // selected option and vehicle pickup. Does not change matching.
-              if (_controller.selectedOptionId != null &&
-                  _controller.pickupLocation != null) ...[
-                NearbyProvidersMap(
-                  key: const ValueKey('nearby-providers-map'),
-                  categoryId: widget.categoryId,
-                  optionId: _controller.selectedOptionId!,
-                  pickupLocation: _controller.pickupLocation!,
-                ),
-                const SizedBox(height: 18),
-              ],
 
               // ---- #23: an optional note ----
               const _SectionTitle('ملاحظة لمزود الخدمة (اختياري)'),
