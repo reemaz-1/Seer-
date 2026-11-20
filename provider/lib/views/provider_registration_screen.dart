@@ -187,6 +187,14 @@ class _ProviderRegistrationScreenState
       'label': 'خدمة السطحة',
       'options': {'regular': 'سطحة عادية', 'hydraulic': 'سطحة هيدروليكية'},
     },
+    'carwash': {
+      'label': 'غسيل السيارة',
+      'options': {
+        'washExterior': 'غسيل خارجي',
+        'washInterior': 'غسيل داخلي',
+        'washFull': 'غسيل داخلي وخارجي',
+      },
+    },
   };
 
   // Composite keys in the form "categoryId.optionId" (e.g. "battery.activation")

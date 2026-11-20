@@ -27,9 +27,11 @@ class ServiceCategory {
     required this.label,
     required this.shortLabel,
     required this.options,
+    this.description = '',
+    this.priceBySize = false,
   });
 
-  /// 'battery' | 'fuel' | 'tires' | 'towing'
+  /// 'battery' | 'fuel' | 'tires' | 'towing' | 'carwash'
   final String id;
 
   /// Full name, used as the page title.
@@ -39,6 +41,53 @@ class ServiceCategory {
   final String shortLabel;
 
   final List<ServiceOption> options;
+
+  /// One short line on the home page saying what the service covers.
+  final String description;
+
+  /// True when the price depends on the size of the car (car wash), so the
+  /// request page asks for it and adds [ServicePrices.largeVehicleExtra].
+  final bool priceBySize;
+}
+
+/// The car sizes a customer can pick for services priced by size.
+///
+/// Only two sizes, to keep the choice simple. The id is what the AI tool and
+/// the code use; the labels are what the customer and the provider read.
+class VehicleSize {
+  const VehicleSize({
+    required this.id,
+    required this.label,
+    required this.shortLabel,
+  });
+
+  final String id;
+
+  /// Shown to the customer when choosing.
+  final String label;
+
+  /// Added to the option name in the order, e.g. "غسيل خارجي - دفع رباعي".
+  final String shortLabel;
+
+  static const standard = VehicleSize(
+    id: 'standard',
+    label: 'سيدان / صغيرة',
+    shortLabel: 'سيدان',
+  );
+  static const large = VehicleSize(
+    id: 'large',
+    label: 'دفع رباعي / كبيرة',
+    shortLabel: 'دفع رباعي',
+  );
+
+  static const List<VehicleSize> all = [standard, large];
+
+  static VehicleSize? byId(String? id) {
+    for (final size in all) {
+      if (size.id == id) return size;
+    }
+    return null;
+  }
 }
 
 class ServiceCatalog {
@@ -49,6 +98,7 @@ class ServiceCatalog {
       id: 'battery',
       label: 'خدمة البطارية',
       shortLabel: 'البطارية',
+      description: 'تشغيل البطارية أو تغييرها في مكانك',
       options: [
         ServiceOption(id: 'activation', label: 'تشغيل البطارية (اشتراك)', branch: 'شحن'),
         ServiceOption(id: 'replace', label: 'تغيير البطارية', branch: 'تبديل'),
@@ -58,6 +108,7 @@ class ServiceCatalog {
       id: 'fuel',
       label: 'التزويد بالوقود',
       shortLabel: 'الوقود',
+      description: 'بنزين 91 أو 95 إلى سيارتك',
       options: [
         ServiceOption(id: 'petrol91', label: 'بنزين 91 (أخضر)', branch: '٩١'),
         ServiceOption(id: 'petrol95', label: 'بنزين 95 (أحمر)', branch: '٩٥'),
@@ -67,6 +118,7 @@ class ServiceCatalog {
       id: 'tires',
       label: 'خدمة الإطارات',
       shortLabel: 'الإطارات',
+      description: 'نفخ أو ترقيع أو تغيير الإطار',
       options: [
         ServiceOption(id: 'airInflate', label: 'نفخ الإطار بالهواء', branch: 'نفخ'),
         ServiceOption(id: 'patch', label: 'ترقيع الإطار', branch: 'تصليح'),
@@ -78,9 +130,22 @@ class ServiceCatalog {
       id: 'towing',
       label: 'خدمة السطحة',
       shortLabel: 'السطحة',
+      description: 'نقل السيارة إلى وجهتك',
       options: [
         ServiceOption(id: 'regular', label: 'سطحة عادية', branch: 'عادية'),
         ServiceOption(id: 'hydraulic', label: 'سطحة هيدروليكية', branch: 'هيدروليك'),
+      ],
+    ),
+    ServiceCategory(
+      id: 'carwash',
+      label: 'غسيل السيارة',
+      shortLabel: 'غسيل السيارة',
+      description: 'تنظيف سيارتك دون مغادرة موقعك',
+      priceBySize: true,
+      options: [
+        ServiceOption(id: 'washExterior', label: 'غسيل خارجي', branch: 'خارجي'),
+        ServiceOption(id: 'washInterior', label: 'غسيل داخلي', branch: 'داخلي'),
+        ServiceOption(id: 'washFull', label: 'غسيل داخلي وخارجي', branch: 'داخلي وخارجي'),
       ],
     ),
   ];
