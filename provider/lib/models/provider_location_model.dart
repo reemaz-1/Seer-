@@ -8,11 +8,12 @@ class ProviderLocationModel {
   final FirebaseFirestore _firestore;
 
   /// Takes the authenticated [providerId] and GPS [point]; updates only
-  /// currentLocation and completes after the server write, or throws on failure.
+  /// currentLocation and its server timestamp, or throws on failure.
   Future<void> saveCurrentLocation(String providerId, GeoPoint point) async {
     if (providerId.isEmpty) throw StateError('سجّل الدخول لتحديث موقعك.');
     await _firestore.collection('providers').doc(providerId).update({
       'currentLocation': point,
+      'currentLocationUpdatedAt': FieldValue.serverTimestamp(),
     });
   }
 }

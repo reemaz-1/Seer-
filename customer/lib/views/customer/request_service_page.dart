@@ -8,6 +8,7 @@ import '../../services/ai_assistant.dart';
 import '../../models/pricing_model.dart';
 import '../../models/service_catalog.dart';
 import '../../widgets/vehicle_picker_sheet.dart';
+import '../../widgets/nearby_providers_map.dart';
 import 'order_review_page.dart';
 import 'vehicle_form_page.dart';
 import 'location_picker_page.dart';
@@ -367,6 +368,19 @@ Future<void> _selectDropoffFromMap() async {
                 ),
               ],
               const SizedBox(height: 14),
+
+              // ---- #78: read-only map of available providers for the exact
+              // selected option and vehicle pickup. Does not change matching.
+              if (_controller.selectedOptionId != null &&
+                  _controller.pickupLocation != null) ...[
+                NearbyProvidersMap(
+                  key: const ValueKey('nearby-providers-map'),
+                  categoryId: widget.categoryId,
+                  optionId: _controller.selectedOptionId!,
+                  pickupLocation: _controller.pickupLocation!,
+                ),
+                const SizedBox(height: 18),
+              ],
 
               // ---- #23: an optional note ----
               const _SectionTitle('ملاحظة لمزود الخدمة (اختياري)'),

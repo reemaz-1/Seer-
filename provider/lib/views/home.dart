@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../services/auth_service.dart';
@@ -35,6 +37,7 @@ class _ProviderHomeState extends State<ProviderHome> {
 
   late final ProviderAvailabilityController _availabilityController;
   late final ProviderRequestsController _requests;
+  Timer? _locationRefreshTimer;
 
   // Quick statistics (#36). Null until loaded; shown as 0 meanwhile.
   final ProviderStatsController _statsController = ProviderStatsController();
@@ -49,12 +52,18 @@ class _ProviderHomeState extends State<ProviderHome> {
     _requests = ProviderRequestsController(
       providerId: (widget.authService ?? AuthService()).currentUser?.uid ?? '',
     )..start();
+    // #78: keep the available provider's last-known GPS reasonably fresh
+    // while the provider home is open. Do not claim live presence in background.
+    _locationRefreshTimer = Timer.periodic(const Duration(minutes: 5), (_) {
+      if (mounted && isAvailable) unawaited(_requests.refreshLocation());
+    });
     _loadAvailability();
     _loadStats();
   }
 
   @override
   void dispose() {
+    _locationRefreshTimer?.cancel();
     _requests.dispose();
     super.dispose();
   }
