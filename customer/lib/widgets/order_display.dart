@@ -10,6 +10,8 @@ class OrderStatusStyle {
   static const _cancelledLabel = 'ملغي';
 
   static const Map<String, String> _labels = {
+    OrderStatus.scheduledPending: 'مجدول - بانتظار القبول',
+    OrderStatus.scheduledAccepted: 'مجدول - تم الحجز',
     OrderStatus.pending: 'بانتظار مزود خدمة',
     OrderStatus.accepted: 'تم القبول',
     OrderStatus.onTheWay: 'في الطريق',
@@ -45,6 +47,10 @@ class OrderStatusStyle {
     if (status == OrderStatus.cancelled) return CustomerColors.secondaryText;
     if (cancelledStatuses.contains(status)) return AppStatusColors.error;
     switch (status) {
+      case OrderStatus.scheduledPending:
+        return AppStatusColors.warning;
+      case OrderStatus.scheduledAccepted:
+        return CustomerColors.accent;
       case OrderStatus.pending:
         return AppStatusColors.warning;
       case OrderStatus.accepted:
@@ -130,7 +136,9 @@ class OrderProgress {
   /// Parameters: [status] is the order's current status.
   /// Returns: the index of the status in [steps], or -1 when the order
   /// has not been accepted or will not be served.
-  static int indexOf(String status) => steps.indexOf(status);
+  static int indexOf(String status) =>
+      steps.indexOf(status == OrderStatus.scheduledAccepted
+          ? OrderStatus.accepted : status);
 }
 
 /// Text formatting for order dates, times, prices and references.

@@ -45,11 +45,20 @@ class ProviderRequestsController extends ChangeNotifier {
 
   /// Takes no inputs; returns available orders sorted by their shared deadline.
   List<ServiceOrder> get availableRequests {
-    final orders = _orders.values.where(canRespond).toList();
+    final orders = _orders.values
+        .where((order) => !order.isScheduled && canRespond(order)).toList();
     orders.sort((a, b) {
       final comparison = a.expiresAt!.compareTo(b.expiresAt!);
       return comparison == 0 ? a.id.compareTo(b.id) : comparison;
     });
+    return orders;
+  }
+
+  /// Scheduled requests reuse the same candidate stream and atomic acceptance.
+  List<ServiceOrder> get scheduledRequests {
+    final orders = _orders.values
+        .where((order) => order.isScheduled && canRespond(order)).toList();
+    orders.sort((a, b) => a.scheduledAt!.compareTo(b.scheduledAt!));
     return orders;
   }
 
@@ -202,6 +211,8 @@ class ProviderRequestsController extends ChangeNotifier {
       }
       _hidden.add(orderId);
       return null;
+    } on ProviderAppointmentConflict {
+      return 'لديك حجز آخر قريب من هذا الموعد (خلال ساعتين).';
     } on ProviderHasActiveOrder {
       return 'لديك طلب قيد التنفيذ. أكمله قبل قبول طلب جديد.';
     } on RequestUnavailable {

@@ -28,6 +28,8 @@ class OrderCard extends StatelessWidget {
   static const _reorderLabel = 'إعادة الطلب';
 
   static const Map<String, String> _hints = {
+    OrderStatus.scheduledPending: 'بانتظار قبول أحد مزودي الخدمة للحجز المجدول',
+    OrderStatus.scheduledAccepted: 'تم قبول الحجز من مزود الخدمة',
     OrderStatus.pending: 'نبحث عن أقرب مزود خدمة متاح لك',
     OrderStatus.rejected: 'اعتذر جميع المزودين عن قبول الطلب.',
     OrderStatus.autoCancelled: 'انتهت مهلة الانتظار دون رد من مزودي الخدمة.',
@@ -118,10 +120,11 @@ class OrderCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 _InfoItem(
-                  icon: Icons.access_time_rounded,
-                  text:
-                      '${OrderFormat.date(order.createdAt)}  ·  '
-                      '${OrderFormat.time(order.createdAt)}',
+                  icon: order.isScheduled
+                      ? Icons.calendar_month_outlined : Icons.access_time_rounded,
+                  text: order.isScheduled
+                      ? 'موعد الوصول: ${OrderFormat.date(order.scheduledAt)} · ${OrderFormat.time(order.scheduledAt)}'
+                      : '${OrderFormat.date(order.createdAt)}  ·  ${OrderFormat.time(order.createdAt)}',
                 ),
                 const SizedBox(height: 4),
                 _InfoItem(

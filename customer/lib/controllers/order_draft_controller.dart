@@ -65,6 +65,13 @@ class OrderDraftController extends ChangeNotifier {
   Vehicle? selectedVehicle;
   String note = '';
 
+  /// Null keeps the existing immediate-order flow untouched.
+  DateTime? scheduledAt;
+  void setScheduledAt(DateTime? value) {
+    scheduledAt = value;
+    notifyListeners();
+  }
+
   /// The id of the order once it is created, so its details page can be
   /// opened right after sending it (#20).
   String? createdOrderId;
@@ -256,6 +263,14 @@ void clearDropoffLocation() {
  
 /// Returns null when the draft is ready, or the message to show.
 String? validate() {
+  if (scheduledAt != null) {
+    final now = DateTime.now();
+    final tomorrow = DateTime(now.year, now.month, now.day + 2);
+    if (!scheduledAt!.isAfter(now) ||
+        !scheduledAt!.isBefore(tomorrow)) {
+      return 'حدد موعدًا مستقبليًا اليوم أو غدًا';
+    }
+  }
   if (selectedOptionId == null) return 'اختر نوع الخدمة';
   if (needsVehicleSize && vehicleSize == null) return 'اختر حجم السيارة';
   if (selectedVehicle == null) return 'اختر المركبة';
@@ -293,12 +308,15 @@ String? validate() {
         optionId: option.id,
         lat: pickupLocation!.latitude,
         lng: pickupLocation!.longitude,
+        scheduled: scheduledAt != null,
       );
 
       // #19: nobody nearby, so nothing is saved
       if( candidates.isEmpty){
         noNearbyProviders = true;
-        return 'لا يوجد مزود خدمة متاح بالقرب منك حاليًا';
+        return scheduledAt != null
+            ? 'لا يوجد مزود خدمة مؤهل للحجز في منطقتك'
+            : 'لا يوجد مزود خدمة متاح بالقرب منك حاليًا';
       }
 
 
@@ -319,7 +337,9 @@ String? validate() {
         serviceBranch: option.branch,
         note: note,
         estimatedPrice: estimatedPrice,
-        status: OrderStatus.pending,
+        status: scheduledAt == null
+            ? OrderStatus.pending : OrderStatus.scheduledPending,
+        scheduledAt: scheduledAt,
 
 // Locations belong to this individual order.
 // Non-towing orders intentionally store no drop-off location.
@@ -338,6 +358,7 @@ candidateProviderIds: candidates,
           providerIds: candidates,
           serviceLabel: selectedOptionLabel,
           vehicleTitle: vehicle.title,
+          scheduledAt: scheduledAt,
         );
       } catch (e) {
         debugPrint('notifyNewRequest failed: $e');

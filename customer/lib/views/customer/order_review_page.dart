@@ -121,6 +121,14 @@ class _OrderReviewPageState extends State<OrderReviewPage> {
                             ),
                         ],
                       ),
+                      if (_controller.scheduledAt != null) ...[
+                        const SizedBox(height: 12),
+                        _Card(title: 'الجدولة', children: [
+                          _Line(label: 'موعد الوصول المطلوب',
+                            value: '${_controller.scheduledAt!.day}/${_controller.scheduledAt!.month}/${_controller.scheduledAt!.year}  ${_controller.scheduledAt!.hour.toString().padLeft(2, '0')}:${_controller.scheduledAt!.minute.toString().padLeft(2, '0')}',
+                            last: true),
+                        ]),
+                      ],
                       const SizedBox(height: 12),
 
                       _Card(

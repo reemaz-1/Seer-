@@ -53,11 +53,12 @@ class NotificationSender {
     required List<String> providerIds,
     required String serviceLabel,
     required String vehicleTitle,
+    DateTime? scheduledAt,
   }) async {
     if (providerIds.isEmpty) return;
 
     final expiresAt = Timestamp.fromDate(
-      DateTime.now().add(OrderModel.responseWindow),
+      scheduledAt ?? DateTime.now().add(OrderModel.responseWindow),
     );
     final body = [
       serviceLabel,
@@ -70,7 +71,7 @@ class NotificationSender {
         'recipientId': providerId,
         'type': NotificationType.newRequest,
         'orderId': orderId,
-        'title': 'طلب خدمة جديد',
+        'title': scheduledAt == null ? 'طلب خدمة جديد' : 'طلب حجز مجدول جديد',
         'body': body,
         'read': false,
         'createdAt': FieldValue.serverTimestamp(),

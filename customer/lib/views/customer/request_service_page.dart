@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 
 import '../../controllers/order_draft_controller.dart';
 import '../../controllers/location_controller.dart';
@@ -394,6 +395,10 @@ Future<void> _selectDropoffFromMap() async {
                   onSelectFromMap: _selectDropoffFromMap,
                 ),
               ],
+              const SizedBox(height: 14),
+
+              // Select when this provider should arrive, inside the existing service form.
+              _SchedulingSection(controller: _controller),
               const SizedBox(height: 14),
 
               // ---- #23: an optional note ----
@@ -844,6 +849,209 @@ class _Message extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+
+/// Optional scheduling in the existing request flow. The selected appointment
+/// is the requested provider arrival time, not the provider dispatch time.
+class _SchedulingSection extends StatelessWidget {
+  const _SchedulingSection({required this.controller});
+  final OrderDraftController controller;
+
+  static DateTime _firstTimeToday(DateTime now) {
+    // Round up to the next five-minute option (strictly in the future).
+    final next = now.add(const Duration(minutes: 1));
+    final roundedMinute = ((next.minute + 4) ~/ 5) * 5;
+    return DateTime(next.year, next.month, next.day, next.hour, roundedMinute);
+  }
+
+  static bool _sameDay(DateTime a, DateTime b) =>
+      a.year == b.year && a.month == b.month && a.day == b.day;
+
+  static String _appointmentLabel(DateTime value) {
+    final hour = value.hour % 12 == 0 ? 12 : value.hour % 12;
+    final minute = value.minute.toString().padLeft(2, '0');
+    return '$hour:$minute ${value.hour < 12 ? 'صباحًا' : 'مساءً'}';
+  }
+
+  Future<void> _pickAppointment(BuildContext context) async {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final tomorrow = DateTime(now.year, now.month, now.day + 1);
+    final earliestToday = _firstTimeToday(now);
+    final todayEnd = DateTime(now.year, now.month, now.day, 23, 55);
+    final todayAvailable = !earliestToday.isAfter(todayEnd);
+    var chosenDay = todayAvailable ? today : tomorrow;
+    if (controller.scheduledAt != null &&
+        (todayAvailable && _sameDay(controller.scheduledAt!, today) ||
+            _sameDay(controller.scheduledAt!, tomorrow))) {
+      chosenDay = DateTime(controller.scheduledAt!.year,
+          controller.scheduledAt!.month, controller.scheduledAt!.day);
+    }
+
+    DateTime initialForDay(DateTime selectedDay) {
+      final earliest = _sameDay(selectedDay, today)
+          ? earliestToday
+          : DateTime(tomorrow.year, tomorrow.month, tomorrow.day);
+      final saved = controller.scheduledAt;
+      if (saved != null && _sameDay(saved, selectedDay) &&
+          !saved.isBefore(earliest) && saved.minute % 5 == 0) {
+        return saved;
+      }
+      return _sameDay(selectedDay, today)
+          ? earliest
+          : DateTime(tomorrow.year, tomorrow.month, tomorrow.day, 9);
+    }
+
+    var picked = initialForDay(chosenDay);
+    final result = await showModalBottomSheet<DateTime>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+      ),
+      builder: (sheetContext) => StatefulBuilder(
+        builder: (sheetContext, setSheetState) {
+          final start = _sameDay(chosenDay, today)
+              ? earliestToday
+              : DateTime(tomorrow.year, tomorrow.month, tomorrow.day);
+          final end = DateTime(chosenDay.year, chosenDay.month,
+              chosenDay.day, 23, 55);
+          return SafeArea(
+            top: false,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(18, 18, 18, 22),
+              child: Column(mainAxisSize: MainAxisSize.min, children: [
+                const Text('تحديد موعد وصول مزود الخدمة',
+                    style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
+                const SizedBox(height: 6),
+                const Text('اختر اليوم والوقت المناسب لك',
+                    style: TextStyle(color: CustomerColors.secondaryText)),
+                const SizedBox(height: 18),
+                Row(children: [
+                  Expanded(child: OutlinedButton(
+                    onPressed: todayAvailable ? () => setSheetState(() {
+                      chosenDay = today;
+                      picked = initialForDay(today);
+                    }) : null,
+                    style: OutlinedButton.styleFrom(
+                      backgroundColor: _sameDay(chosenDay, today)
+                          ? CustomerColors.fieldFill : null,
+                      side: BorderSide(color: _sameDay(chosenDay, today)
+                          ? CustomerColors.accent : CustomerColors.cardBorder),
+                    ),
+                    child: const Text('اليوم'),
+                  )),
+                  const SizedBox(width: 10),
+                  Expanded(child: OutlinedButton(
+                    onPressed: () => setSheetState(() {
+                      chosenDay = tomorrow;
+                      picked = initialForDay(tomorrow);
+                    }),
+                    style: OutlinedButton.styleFrom(
+                      backgroundColor: _sameDay(chosenDay, tomorrow)
+                          ? CustomerColors.fieldFill : null,
+                      side: BorderSide(color: _sameDay(chosenDay, tomorrow)
+                          ? CustomerColors.accent : CustomerColors.cardBorder),
+                    ),
+                    child: const Text('غدًا'),
+                  )),
+                ]),
+                const SizedBox(height: 12),
+                // Native wheels: hours, minutes (five-minute precision), AM/PM.
+                SizedBox(
+                  height: 190,
+                  child: CupertinoDatePicker(
+                    key: ValueKey(chosenDay),
+                    mode: CupertinoDatePickerMode.time,
+                    use24hFormat: false,
+                    minuteInterval: 5,
+                    initialDateTime: picked,
+                    minimumDate: start,
+                    maximumDate: end,
+                    onDateTimeChanged: (value) => picked = value,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Text('الموعد المطلوب: ${_sameDay(chosenDay, today) ? 'اليوم' : 'غدًا'}'
+                    ' — ${_appointmentLabel(picked)}',
+                    style: const TextStyle(fontWeight: FontWeight.w600)),
+                const SizedBox(height: 16),
+                SizedBox(width: double.infinity, child: FilledButton(
+                  onPressed: () {
+                    final current = DateTime.now();
+                    final endOfTomorrow = DateTime(current.year,
+                        current.month, current.day + 2);
+                    if (!picked.isAfter(current) ||
+                        !picked.isBefore(endOfTomorrow)) {
+                      ScaffoldMessenger.of(sheetContext).showSnackBar(
+                        const SnackBar(content: Text('اختر وقتًا مستقبليًا اليوم أو غدًا')),
+                      );
+                      return;
+                    }
+                    Navigator.of(sheetContext).pop(picked);
+                  },
+                  child: const Text('تأكيد الموعد'),
+                )),
+              ]),
+            ),
+          );
+        },
+      ),
+    );
+    if (result != null) controller.setScheduledAt(result);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final selected = controller.scheduledAt;
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: CustomerColors.background,
+        border: Border.all(color: CustomerColors.cardBorder),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const Text('متى تحتاج وصول مزود الخدمة؟',
+              style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
+          RadioListTile<bool>(
+            title: const Text('طلب الآن'),
+            subtitle: const Text('البحث عن مزود متاح فورًا'),
+            value: false,
+            groupValue: selected != null,
+            onChanged: (_) => controller.setScheduledAt(null),
+          ),
+          RadioListTile<bool>(
+            title: const Text('جدولة الطلب'),
+            subtitle: const Text('حجز مسبق لوصول المزود اليوم أو غدًا'),
+            value: true,
+            groupValue: selected != null,
+            onChanged: (_) => _pickAppointment(context),
+          ),
+          if (selected != null) ...[
+            const Divider(),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const Text('موعد الوصول المطلوب'),
+              subtitle: Text('${selected.day}/${selected.month}/${selected.year}'
+                  ' — ${_appointmentLabel(selected)}'),
+              trailing: TextButton(
+                onPressed: () => _pickAppointment(context),
+                child: const Text('تغيير'),
+              ),
+            ),
+            const Text('يتأكد الحجز بعد قبول مزود الخدمة.',
+                style: TextStyle(fontSize: 12,
+                    color: CustomerColors.secondaryText)),
+          ],
+        ],
       ),
     );
   }
