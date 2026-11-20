@@ -100,11 +100,8 @@ service cloud.firestore {
       // Takes no inputs; permits owner GPS and availability updates after approval.
       function updateMatching() {
         let changed = request.resource.data.diff(resource.data).affectedKeys();
-        return isProvider() && changesOnly(['currentLocation', 'currentLocationUpdatedAt', 'isAvailable'])
+        return isProvider() && changesOnly(['currentLocation', 'isAvailable'])
           && (!changed.hasAny(['currentLocation']) || request.resource.data.currentLocation is latlng)
-          && (!changed.hasAny(['currentLocationUpdatedAt']) || (
-            changed.hasAny(['currentLocation'])
-            && request.resource.data.currentLocationUpdatedAt == request.time))
           && (!changed.hasAny(['isAvailable']) || (request.resource.data.isAvailable is bool
             && (!request.resource.data.isAvailable || request.resource.data.currentLocation is latlng)));
       }
