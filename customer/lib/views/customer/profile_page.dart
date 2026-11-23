@@ -10,6 +10,7 @@ import 'vehicle_form_page.dart';
 import 'vehicles_page.dart';
 import '../../widgets/app_snackbar.dart';
 import 'my_complaints_page.dart';
+import 'help_center_page.dart';
 
 /// VIEW: customer profile (user story #5) + entry points to edit (#6),
 /// vehicles (#7–#10) and logout (#3).
@@ -204,6 +205,24 @@ class _ProfilePageState extends State<ProfilePage> {
                               vehicles: _controller.vehicles,
                               onTapVehicle: (vehicle) => _openVehicleForm(vehicle),
                               onAdd: () => _openVehicleForm(),
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          _SectionCard(
+                            child: _ActionRow(
+                              icon: Icons.help_outline_rounded,
+                              label: 'مركز المساعدة',
+                              showDivider: false,
+                              onTap: () => Navigator.of(context).push(
+                                MaterialPageRoute<void>(
+                                  builder: (_) => HelpCenterPage(
+                                    customerEmail: customer.email,
+                                    customerName:
+                                        '${customer.firstName} ${customer.lastName}'
+                                            .trim(),
+                                  ),
+                                ),
+                              ),
                             ),
                           ),
                           const SizedBox(height: 12),

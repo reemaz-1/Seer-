@@ -4,6 +4,7 @@ import 'edit_profile_screen.dart';
 import 'edit_vehicle_screen.dart';
 import 'edit_services_screen.dart';
 import 'my_complaints_page.dart';
+import 'provider_help_center_page.dart';
 import '../services/auth_service.dart';
 import '../widgets/logout_button.dart';
 import '../widgets/plate_number_view.dart';
@@ -176,6 +177,9 @@ class _ProviderProfileScreenState extends State<ProviderProfileScreen>{
 
               const SizedBox(height: 12),
               _buildComplaintsCard(),
+
+              const SizedBox(height: 12),
+              _buildHelpCenterCard(data),
 
               const SizedBox(height: 12),
               _buildAccountCard(),
@@ -456,6 +460,40 @@ Widget _buildComplaintsCard(){
     ),
   );
 }//end _buildComplaintsCard
+
+  Widget _buildHelpCenterCard(ServiceProviderData provider) {
+    return Material(
+      color: AppColors.card,
+      clipBehavior: Clip.antiAlias,
+      shape: RoundedRectangleBorder(
+        side: const BorderSide(color: AppColors.cardBorder),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: ListTile(
+        leading: const Icon(Icons.help_outline_rounded, color: AppColors.navy),
+        title: const Text(
+          'مركز المساعدة',
+          style: TextStyle(
+            color: AppColors.navy,
+            fontSize: 15,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        trailing: const Icon(
+          Icons.chevron_right,
+          color: AppColors.secondaryText,
+        ),
+        onTap: () => Navigator.of(context).push(
+          MaterialPageRoute<void>(
+            builder: (_) => ProviderHelpCenterPage(
+              providerEmail: provider.email,
+              providerName: '${provider.firstName} ${provider.lastName}'.trim(),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 
 Widget _buildAccountCard(){
   return Material(
