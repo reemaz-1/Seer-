@@ -2,7 +2,7 @@ const {readFileSync} = require('node:fs');
 const {test, before, after, beforeEach} = require('node:test');
 const assert = require('node:assert/strict');
 const {initializeTestEnvironment, assertSucceeds, assertFails} = require('@firebase/rules-unit-testing');
-const {doc, getDoc, setDoc, updateDoc, writeBatch, runTransaction, serverTimestamp, Timestamp, deleteField} = require('firebase/firestore');
+const {collection, getDocs, doc, getDoc, setDoc, updateDoc, writeBatch, runTransaction, serverTimestamp, Timestamp, deleteField} = require('firebase/firestore');
 let env;
 const projectId = 'demo-seer-shams';
 before(async () => { env = await initializeTestEnvironment({projectId, firestore: {
@@ -205,4 +205,31 @@ test('provider cancellation notice requires the actual cancellation transaction'
   await assertSucceeds(batch.commit());
   await assertFails(setDoc(ref, notice));
   await assertFails(setDoc(doc(db, 'notifications/random-cancel'), notice));
+});
+
+
+// Dashboard US#82–85: trusted admins may aggregate existing collections only.
+test('dashboard admin can list customers, providers, orders and complaints', async () => {
+  await env.withSecurityRulesDisabled(ctx => setDoc(doc(ctx.firestore(), 'admins/a1'), {role: 'admin'}));
+  const db = env.authenticatedContext('a1').firestore();
+  for (const path of ['customers', 'providers', 'orders', 'complaints']) {
+    await assertSucceeds(getDocs(collection(db, path)));
+  }
+  const orders = await getDocs(collection(db, 'orders'));
+  assert.equal(orders.size, 2);
+});
+test('dashboard access does not permit admin to rewrite or create orders', async () => {
+  await env.withSecurityRulesDisabled(ctx => setDoc(doc(ctx.firestore(), 'admins/a1'), {role: 'admin'}));
+  const db = env.authenticatedContext('a1').firestore();
+  await assertFails(updateDoc(doc(db, 'orders/o1'), {estimatedPrice: 0}));
+  await assertFails(setDoc(doc(db, 'orders/forged'), {customerId: 'c1', status: 'completed'}));
+});
+test('dashboard order listing is denied to guests, customers and providers', async () => {
+  for (const db of [env.unauthenticatedContext().firestore(), customer(), provider(),
+    env.authenticatedContext('pretender', {role: 'admin'}).firestore()]) {
+    await assertFails(getDocs(collection(db, 'orders')));
+  }
+});
+test('users cannot create their own dashboard admin role', async () => {
+  await assertFails(setDoc(doc(customer(), 'admins/c1'), {role: 'admin'}));
 });
