@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 
+import 'package:firebase_auth/firebase_auth.dart';
+import '../controllers/order_chat_controller.dart';
+import '../models/order_message.dart';
+import 'order_chat_page.dart';
 import '../controllers/address_controller.dart';
 import '../controllers/complaint_controller.dart';
 import '../controllers/order_history_controller.dart';
@@ -44,6 +48,12 @@ class PastOrderDetailsPage extends StatelessWidget {
         backgroundColor: CustomerColors.background,
         foregroundColor: CustomerColors.primaryText,
         actions: [
+          if (OrderChatController.accessFor(order) != ChatAccess.hidden)
+            IconButton(
+              tooltip: 'المحادثة',
+              icon: const Icon(Icons.chat_bubble_outline_rounded),
+              onPressed: () => _openChat(context),
+            ),
           // Complaint button, pinned in the top bar like the customer app.
           Padding(
             padding: const EdgeInsetsDirectional.only(end: 12),
@@ -117,6 +127,26 @@ class PastOrderDetailsPage extends StatelessWidget {
       ),
     ),
   );
+
+  /// Opens the chat of this finished order, read only.
+  void _openChat(BuildContext context) {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => OrderChatPage(
+          controller: OrderChatController(
+            orderId: order.id,
+            uid: FirebaseAuth.instance.currentUser?.uid ?? '',
+            senderType: MessageSender.provider,
+          ),
+          order: order,
+          title: order.customerName.trim().isEmpty
+              ? 'العميل'
+              : order.customerName.trim(),
+          phone: order.customerPhone,
+        ),
+      ),
+    );
+  }
 
   Widget _header() => Row(
     children: [

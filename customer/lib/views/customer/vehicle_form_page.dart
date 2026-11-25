@@ -4,6 +4,7 @@ import '../../widgets/blur_validated.dart';
 import '../../controllers/vehicle_controller.dart';
 import '../../theme/app_colors.dart'; 
 import '../../models/lookup_model.dart';
+import '../../models/service_catalog.dart';
 import '../../models/vehicle.dart';
 import '../../widgets/plate_number_field.dart';
 import '../../widgets/app_snackbar.dart';
@@ -42,6 +43,10 @@ class _VehicleFormPageState extends State<VehicleFormPage> {
   String? _color;
   final _colorOther = TextEditingController();
   int? _year;
+
+  /// 'standard' (sedan / small) or 'large' (SUV): sets the car wash price.
+  String? _bodyType;
+  String? _bodyTypeError;
 
   late final (String, String) _initialPlate = widget.vehicle == null
       ? ('', '')
@@ -83,6 +88,7 @@ class _VehicleFormPageState extends State<VehicleFormPage> {
       _color = color.$1;
       _colorOther.text = color.$2;
       _year = _years.contains(vehicle.year) ? vehicle.year : null;
+      _bodyType = vehicle.bodyType;
 
       final model = _split(vehicle.model, _modelOptions);
       _model = model.$1;
@@ -121,7 +127,9 @@ class _VehicleFormPageState extends State<VehicleFormPage> {
     setState(() => _plateError = plateError);
 
     final formOk = _formKey.currentState!.validate();
-    if (!formOk || plateError != null) return;
+    setState(() => _bodyTypeError =
+        _bodyType == null ? 'اختر نوع المركبة' : null);
+    if (!formOk || plateError != null || _bodyType == null) return;
 
     final vehicle = Vehicle(
       id: widget.vehicle?.id ?? '', // empty id = new vehicle
@@ -137,6 +145,7 @@ class _VehicleFormPageState extends State<VehicleFormPage> {
         digits: plate.digits,
         letters: plate.englishLetters,
       ),
+      bodyType: _bodyType,
     );
 
     final error = await _controller.saveVehicle(vehicle);
@@ -309,6 +318,47 @@ class _VehicleFormPageState extends State<VehicleFormPage> {
             enabled: !saving,
           ),
         ],
+        const SizedBox(height: 16),
+
+        const _FieldLabel('نوع المركبة'),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            for (final size in VehicleSize.all)
+              ChoiceChip(
+                label: Text(size.label),
+                selected: _bodyType == size.id,
+                showCheckmark: false,
+                selectedColor: const Color(0xFFEAF1FC),
+                backgroundColor: Colors.white,
+                side: BorderSide(
+                  color: _bodyType == size.id
+                      ? CustomerColors.accent
+                      : CustomerColors.cardBorder,
+                ),
+                labelStyle: TextStyle(
+                  fontWeight:
+                      _bodyType == size.id ? FontWeight.w700 : FontWeight.w500,
+                  color: CustomerColors.primaryText,
+                ),
+                onSelected: saving
+                    ? null
+                    : (_) => setState(() {
+                          _bodyType = size.id;
+                          _bodyTypeError = null;
+                        }),
+              ),
+          ],
+        ),
+        if (_bodyTypeError != null)
+          Padding(
+            padding: const EdgeInsets.only(top: 8, right: 14, left: 14),
+            child: Text(
+              _bodyTypeError!,
+              style: const TextStyle(fontSize: 12, color: Color(0xFFBA1A1A)),
+            ),
+          ),
         const SizedBox(height: 16),
 
         const _FieldLabel('لوحة المركبة'),

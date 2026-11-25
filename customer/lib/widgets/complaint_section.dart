@@ -214,19 +214,25 @@ class _ComplaintStatusCard extends StatelessWidget {
   static const _title = 'شكوى على هذا الطلب';
   static const _pendingLabel = 'قيد المراجعة';
   static const _resolvedLabel = 'تمت المعالجة';
+  static const _compensatedLabel = 'تم التعويض';
 
   @override
   Widget build(BuildContext context) {
     final resolved = complaint.status == ComplaintStatus.resolved;
-    final label = resolved ? _resolvedLabel : _pendingLabel;
+    final label = !resolved
+        ? _pendingLabel
+        : complaint.freeWashGranted
+        ? _compensatedLabel
+        : _resolvedLabel;
     final tint = resolved ? const Color(0xFFE6F4EA) : const Color(0xFFFFF4DB);
 
+    // Same white bordered style as the other cards on the order page.
     return Container(
-      margin: const EdgeInsets.only(top: 12),
-      padding: const EdgeInsets.all(14),
+      margin: const EdgeInsets.only(top: 16),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: CustomerColors.fieldFill,
-        borderRadius: BorderRadius.circular(14),
+        color: CustomerColors.background,
+        borderRadius: BorderRadius.circular(18),
         border: Border.all(color: CustomerColors.cardBorder),
       ),
       child: Column(
@@ -234,6 +240,19 @@ class _ComplaintStatusCard extends StatelessWidget {
         children: [
           Row(
             children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(color: tint, shape: BoxShape.circle),
+                child: Icon(
+                  Icons.report_outlined,
+                  size: 20,
+                  color: resolved
+                      ? AppStatusColors.success
+                      : const Color(0xFF8A5B00),
+                ),
+              ),
+              const SizedBox(width: 10),
               const Expanded(
                 child: Text(
                   _title,

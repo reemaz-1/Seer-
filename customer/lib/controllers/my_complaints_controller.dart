@@ -54,9 +54,11 @@ class MyComplaintsController {
   }
 
   /// Returns the short order number: first 8 characters, upper case, with #.
+  /// It is wrapped as left-to-right text, so in Arabic lines the # stays
+  /// before the number instead of jumping to the end.
   static String orderReference(String orderId) {
     final short = orderId.length > 8 ? orderId.substring(0, 8) : orderId;
-    return '#${short.toUpperCase()}';
+    return '\u2066#${short.toUpperCase()}\u2069';
   }
 
   /// Formats a price with two decimals and the currency.

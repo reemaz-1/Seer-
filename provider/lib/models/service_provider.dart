@@ -5,7 +5,9 @@ const Map<String, List<String>> allServiceBranches = {
   'الوقود': ['٩١', '٩٥'],
   'الإطارات': ['نفخ', 'تصليح', 'تبديل احتياطي', 'تركيب جديد'],
   'السطحة': ['عادية', 'هيدروليك'],
-  'الغسيل': ['خارجي', 'داخلي', 'داخلي وخارجي'],
+  // The provider only says it offers car washes; the customer picks exterior,
+  // interior or both when ordering.
+  'الغسيل': ['غسيل'],
 };
 
 /// Vehicle types that cannot physically tow another vehicle. Providers with
@@ -32,9 +34,11 @@ const Map<String, String> _serviceOptionToBranch = {
   'newTire'     : 'تركيب جديد',
   'regular'     : 'عادية',
   'hydraulic'   : 'هيدروليك',
-  'washExterior': 'خارجي',
-  'washInterior': 'داخلي',
-  'washFull'    : 'داخلي وخارجي',
+  'wash'        : 'غسيل',
+  // Older providers saved three separate options; they all count as "offers car wash".
+  'washExterior': 'غسيل',
+  'washInterior': 'غسيل',
+  'washFull'    : 'غسيل',
 };
 
 Set<String> activeBranchesFromServicesOffered(dynamic servicesOffered){
@@ -91,9 +95,7 @@ const Map<String, Map<String, dynamic>> _serviceCategoryDefinitions = {
   'carwash': {
     'label': 'غسيل السيارة',
     'options': [
-      {'id': 'washExterior', 'label': 'غسيل خارجي', 'branch': 'خارجي'},
-      {'id': 'washInterior', 'label': 'غسيل داخلي', 'branch': 'داخلي'},
-      {'id': 'washFull', 'label': 'غسيل داخلي وخارجي', 'branch': 'داخلي وخارجي'},
+      {'id': 'wash', 'label': 'غسيل السيارات', 'branch': 'غسيل'},
     ],
   },
 };

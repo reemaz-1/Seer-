@@ -23,8 +23,10 @@ class CurrentOrderController {
   final ProviderOrderModel _model;
   final FirebaseAuth _auth;
 
-  /// The steps shown in the progress bar, in order.
+  /// The steps shown in the progress bar, in order. It starts at
+  /// "accepted" so the provider sees the order was taken.
   static const List<String> progressSteps = [
+    OrderStatus.accepted,
     OrderStatus.onTheWay,
     OrderStatus.arrived,
     OrderStatus.inProgress,
@@ -63,8 +65,8 @@ class CurrentOrderController {
 
   static OrderStep? stepFor(String status) => _steps[status];
 
-  /// How far along the progress bar the order is: -1 before the first
-  /// step (just accepted), then 0 to 3.
+  /// How far along the progress bar the order is: 0 when just accepted,
+  /// up to 4 when completed, or -1 for any other status.
   static int progressIndex(String status) => progressSteps.indexOf(status);
 
   /// The live current order of the signed-in provider; null when none.

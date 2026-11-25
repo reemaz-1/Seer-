@@ -11,6 +11,7 @@ class ComplaintsController {
 
   static const _pendingLabel = 'قيد المراجعة';
   static const _resolvedLabel = 'تمت المعالجة';
+  static const _compensatedLabel = 'تم التعويض';
 
   /// Arabic names of the order statuses, as the customer app shows them.
   static const _orderStatusLabels = {
@@ -39,6 +40,7 @@ class ComplaintsController {
 static const _staleError = 'هذه الشكوى عولجت مسبقاً أو لم تعد موجودة.';
   static const _resolveFailedError =
       'تعذّر تحديث حالة الشكوى. تحقق من الاتصال وحاول مرة أخرى.';
+  static const _notCustomerError = 'التعويض متاح لشكاوى العملاء فقط.';
 
   /// Story #55: follows one complaint live.
   Stream<Complaint?> watchComplaint(String id) => _model.watchById(id);
@@ -58,11 +60,29 @@ static const _staleError = 'هذه الشكوى عولجت مسبقاً أو ل�
     }
   }
 
+  /// Stories #64, #65: resolves a customer complaint and gives the customer
+  /// a free car cleaning.
+  ///
+  /// Parameters: [id] is the complaint document id.
+  /// Returns: null when it worked, or a message to show the admin.
+  Future<String?> compensateComplaint(String id) async {
+    try {
+      await _model.markCompensated(id);
+      return null;
+    } on StateError catch (e) {
+      return e.message == 'not a customer' ? _notCustomerError : _staleError;
+    } catch (_) {
+      return _resolveFailedError;
+    }
+  }
+
   /// Returns the Arabic label of a complaint status.
   ///
   /// Parameters: [status] is a [ComplaintStatus] value.
-  static String statusLabel(String status) =>
-      status == ComplaintStatus.resolved ? _resolvedLabel : _pendingLabel;
+  static String statusLabel(String status, {bool compensated = false}) =>
+      status != ComplaintStatus.resolved
+          ? _pendingLabel
+          : (compensated ? _compensatedLabel : _resolvedLabel);
 
   /// Returns the Arabic label of an order status (unknown values are shown
   /// as they are).
@@ -90,7 +110,7 @@ static const _staleError = 'هذه الشكوى عولجت مسبقاً أو ل�
   /// Returns: the first 8 characters in upper case, prefixed by #.
   static String orderReference(String orderId) {
     final short = orderId.length > 8 ? orderId.substring(0, 8) : orderId;
-    return '#${short.toUpperCase()}';
+    return '\u2066#${short.toUpperCase()}\u2069';
   }
 
   /// Formats a price with two decimals and the currency.

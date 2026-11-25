@@ -6,6 +6,8 @@ class OrderStatus {
   /// Prevents instantiation; takes no inputs and creates no public object.
   OrderStatus._();
 
+  static const scheduledPending = 'scheduledPending';
+  static const scheduledAccepted = 'scheduledAccepted';
   static const pending = 'pending'; // waiting for a provider (#18)
   static const accepted = 'accepted'; // a provider accepted it (#39)
   static const onTheWay = 'onTheWay';
@@ -49,6 +51,9 @@ class ServiceOrder {
     required this.status,
     this.customerName = '',
     this.customerPhone = '',
+    this.providerPhone = '',
+    this.chatUnreadCustomer = 0,
+    this.chatUnreadProvider = 0,
     this.finalPrice,
     this.createdAt,
     this.acceptedAt,
@@ -61,6 +66,8 @@ class ServiceOrder {
     this.expiresAt,
     this.completedAt,
     this.cancelledAt,
+    this.usedFreeWash = false,
+    this.scheduledAt,
   });
 
   final String id;
@@ -69,6 +76,17 @@ class ServiceOrder {
   /// Copied from the customer's profile so the provider can see and call them.
   final String customerName;
   final String customerPhone;
+
+  /// Copied from the provider's profile when they accept, so the customer can call them.
+  final String providerPhone;
+
+  /// Chat messages the customer has not read yet. It is counted on the order,
+  /// so the app can show a dot without opening the chat.
+  final int chatUnreadCustomer;
+
+  /// Chat messages the provider has not read yet.
+  final int chatUnreadProvider;
+
 
   // Vehicle (#14)
   final String vehicleId;
@@ -131,6 +149,13 @@ class ServiceOrder {
   /// Set by the customer app when the customer cancels the order (#20).
   final DateTime? cancelledAt;
 
+  /// True when the customer paid for this car wash with a free wash from the
+  /// loyalty card or a complaint compensation (#67).
+  final bool usedFreeWash;
+  /// Requested provider arrival time (local selection stored as Firestore timestamp).
+  final DateTime? scheduledAt;
+  bool get isScheduled => scheduledAt != null;
+
   /// Parses document [id] and Firestore [map]; returns a typed order snapshot.
   factory ServiceOrder.fromMap(String id, Map<String, dynamic> map) {
     return ServiceOrder(
@@ -138,6 +163,9 @@ class ServiceOrder {
       customerId: (map['customerId'] ?? '') as String,
       customerName: (map['customerName'] ?? '') as String,
       customerPhone: (map['customerPhone'] ?? '') as String,
+      providerPhone: (map['providerPhone'] ?? '') as String,
+      chatUnreadCustomer: ((map['chatUnreadCustomer'] ?? 0) as num).toInt(),
+      chatUnreadProvider: ((map['chatUnreadProvider'] ?? 0) as num).toInt(),
       vehicleId: (map['vehicleId'] ?? '') as String,
       vehicleTitle: (map['vehicleTitle'] ?? '') as String,
       vehicleColor: (map['vehicleColor'] ?? '').toString(),
@@ -165,6 +193,8 @@ class ServiceOrder {
       expiresAt: (map['expiresAt'] as Timestamp?)?.toDate(),
       completedAt: (map['completedAt'] as Timestamp?)?.toDate(),
       cancelledAt: (map['cancelledAt'] as Timestamp?)?.toDate(),
+      usedFreeWash: map['usedFreeWash'] == true,
+      scheduledAt: (map['scheduledAt'] as Timestamp?)?.toDate(),
     );
   }
 
@@ -175,6 +205,7 @@ class ServiceOrder {
       'customerId': customerId,
       'customerName': customerName,
       'customerPhone': customerPhone,
+      'providerPhone': providerPhone,
       'vehicleId': vehicleId,
       'vehicleTitle': vehicleTitle,
       'vehicleColor': vehicleColor,
@@ -195,6 +226,9 @@ class ServiceOrder {
       'candidateProviderIds': candidateProviderIds,
       'rejectedBy': rejectedBy,
       'paymentConfirmed': paymentConfirmed,
+      // Written only when used, so older orders and rules stay unchanged.
+      if (usedFreeWash) 'usedFreeWash': true,
+      if (scheduledAt != null) 'scheduledAt': Timestamp.fromDate(scheduledAt!),
     };
   }
 }
@@ -222,7 +256,8 @@ class OrderModel {
     final ref = await _orders.add({
       ...order.toMap(),
       'createdAt': FieldValue.serverTimestamp(),
-      'expiresAt': Timestamp.fromDate(DateTime.now().add(responseWindow)),
+      if (!order.isScheduled)
+        'expiresAt': Timestamp.fromDate(DateTime.now().add(responseWindow)),
       'paymentConfirmed': false,
     });
     return ref.id;

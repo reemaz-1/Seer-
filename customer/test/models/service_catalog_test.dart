@@ -21,11 +21,30 @@ void main() {
   });
 
   group('car size', () {
-    test('a large car adds the extra, a standard car does not', () {
+    test('each car size has its own car wash price', () {
       final prices = ServicePrices.fallback();
-      expect(prices.sizeExtraFor(VehicleSize.standard.id), 0);
-      expect(prices.sizeExtraFor(null), 0);
-      expect(prices.sizeExtraFor(VehicleSize.large.id), prices.largeVehicleExtra);
+      expect(prices.priceFor('washExterior', sizeId: VehicleSize.standard.id), 30);
+      expect(prices.priceFor('washExterior'), 30);
+      expect(prices.priceFor('washInterior', sizeId: VehicleSize.large.id), 35);
+      expect(prices.priceFor('washFull', sizeId: VehicleSize.standard.id), 50);
+      expect(prices.priceFor('washFull', sizeId: VehicleSize.large.id), 60);
+    });
+
+    test('services not priced by size ignore the size', () {
+      final prices = ServicePrices.fallback();
+      expect(
+        prices.priceFor('activation', sizeId: VehicleSize.large.id),
+        prices.basePriceFor('activation'),
+      );
+    });
+
+    test('a car wash for the full wash is cheaper than both parts apart', () {
+      final prices = ServicePrices.fallback();
+      for (final size in VehicleSize.all) {
+        final apart = prices.priceFor('washExterior', sizeId: size.id)! +
+            prices.priceFor('washInterior', sizeId: size.id)!;
+        expect(prices.priceFor('washFull', sizeId: size.id)!, lessThan(apart));
+      }
     });
 
     test('ids and labels are unique', () {

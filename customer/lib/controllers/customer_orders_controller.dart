@@ -38,6 +38,8 @@ class CustomerOrdersController extends ChangeNotifier {
 
   /// Statuses of orders that are still open (waiting or being served).
   static const currentStatuses = {
+    OrderStatus.scheduledPending,
+    OrderStatus.scheduledAccepted,
     OrderStatus.pending,
     OrderStatus.accepted,
     OrderStatus.onTheWay,
@@ -166,8 +168,10 @@ class CustomerOrdersController extends ChangeNotifier {
     final now = DateTime.now();
     DateTime? nextExpiry;
     for (final order in orders) {
-      final expiresAt = order.expiresAt;
-      if (order.status != OrderStatus.pending || expiresAt == null) continue;
+      final expiresAt = order.status == OrderStatus.scheduledPending
+          ? order.scheduledAt : order.expiresAt;
+      if (!const [OrderStatus.pending, OrderStatus.scheduledPending]
+              .contains(order.status) || expiresAt == null) continue;
       if (CustomerOrdersModel.isExpired(order, now)) {
         _autoCancel(order.id);
       } else if (nextExpiry == null || expiresAt.isBefore(nextExpiry)) {

@@ -34,11 +34,13 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
       _controller.watchComplaint(widget.complaintId);
 
   bool _isResolving = false;
+  bool _isCompensating = false;
 
   static const _title = 'تفاصيل الشكوى';
   static const _missing = 'هذه الشكوى لم تعد موجودة';
   static const _loadError = 'تعذّر تحميل الشكوى. حاول مرة أخرى لاحقاً.';
   static const _resolvedMessage = 'تم تحديد الشكوى كمعالجة';
+  static const _compensatedMessage = 'تم تعويض العميل بخدمة تنظيف مجانية';
 
   /// Asks the admin to confirm, then marks the complaint as resolved.
   ///
@@ -57,6 +59,129 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
     } else {
       showAppMessage(context, _resolvedMessage, isError: false);
     }
+  }
+
+  /// Asks the admin to confirm, then resolves the complaint and gives the
+  /// customer a free car cleaning (#64, #65).
+  ///
+  /// Parameters: none. Returns: nothing.
+  Future<void> _compensate() async {
+    final confirmed = await _confirmCompensate();
+    if (!confirmed || !mounted) return;
+
+    setState(() => _isCompensating = true);
+    final error = await _controller.compensateComplaint(widget.complaintId);
+    if (!mounted) return;
+    setState(() => _isCompensating = false);
+
+    if (error != null) {
+      showAppMessage(context, error);
+    } else {
+      showAppMessage(context, _compensatedMessage, isError: false);
+    }
+  }
+
+  /// Shows the compensation confirmation dialog.
+  ///
+  /// Parameters: none. Returns: true when the admin confirmed.
+  Future<bool> _confirmCompensate() async {
+    const title = 'تعويض العميل؟';
+    const message =
+        'سيحصل العميل على خدمة تنظيف سيارة مجانية، وتُحدَّد الشكوى كمعالجة.';
+    const cancel = 'إلغاء';
+    const confirm = 'تعويض';
+
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: Dialog(
+          backgroundColor: Colors.white,
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 380),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 24, 20, 20),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 52,
+                    height: 52,
+                    decoration: const BoxDecoration(
+                      color: _ActionBar.compensateTint,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.local_car_wash,
+                      color: _ActionBar.compensateColor,
+                      size: 28,
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  const Text(
+                    title,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 17,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.primaryText,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  const Text(
+                    message,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: AppColors.secondaryText,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () => Navigator.pop(dialogContext, false),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: AppColors.secondaryText,
+                            side: const BorderSide(
+                              color: AppColors.cardBorder,
+                              width: 1.5,
+                            ),
+                            minimumSize: const Size.fromHeight(46),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: const Text(cancel),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: FilledButton(
+                          onPressed: () => Navigator.pop(dialogContext, true),
+                          style: FilledButton.styleFrom(
+                            backgroundColor: _ActionBar.compensateColor,
+                            minimumSize: const Size.fromHeight(46),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: const Text(confirm),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    return result ?? false;
   }
 
   /// Shows the confirmation dialog.
@@ -205,8 +330,10 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
                 ? null
                 : _ActionBar(
                     complaint: complaint,
-                    isResolving: _isResolving,
+                    isResolving: _isResolving || _isCompensating,
                     onResolve: _resolve,
+                    isCompensating: _isCompensating,
+                    onCompensate: _compensate,
                   ),
           );
         },
@@ -410,7 +537,10 @@ class _SummaryHeader extends StatelessWidget {
             ],
           ),
         ),
-        _StatusChip(status: complaint.status),
+        _StatusChip(
+          status: complaint.status,
+          compensated: complaint.freeWashGranted,
+        ),
       ],
     );
   }
@@ -418,9 +548,10 @@ class _SummaryHeader extends StatelessWidget {
 
 /// Coloured label with the complaint status.
 class _StatusChip extends StatelessWidget {
-  const _StatusChip({required this.status});
+  const _StatusChip({required this.status, this.compensated = false});
 
   final String status;
+  final bool compensated;
 
   @override
   Widget build(BuildContext context) {
@@ -432,7 +563,7 @@ class _StatusChip extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
       ),
       child: Text(
-        ComplaintsController.statusLabel(status),
+        ComplaintsController.statusLabel(status, compensated: compensated),
         style: TextStyle(
           fontSize: 13,
           fontWeight: FontWeight.w700,
@@ -679,20 +810,39 @@ class _ActionBar extends StatelessWidget {
     required this.complaint,
     required this.isResolving,
     required this.onResolve,
+    this.isCompensating = false,
+    this.onCompensate,
   });
 
   final Complaint complaint;
   final bool isResolving;
   final VoidCallback onResolve;
 
+  /// True while the compensation is being saved (#64).
+  final bool isCompensating;
+
+  /// Gives the customer a free car cleaning (#64, #65); null hides the button.
+  final VoidCallback? onCompensate;
+
   static const _pendingTitle = 'هذه الشكوى قيد المراجعة';
   static const _pendingHint = 'راجع بيانات الطلب والمزوّد، ثم حدّدها كمعالجة';
   static const _resolvedTitle = 'تمت معالجة هذه الشكوى';
   static const _buttonLabel = 'تحديد كمعالجة';
+  static const _compensatedTitle = 'تمت معالجة الشكوى وتعويض العميل';
+  static const _compensateLabel = 'تقديم تعويض';
+
+  /// Colours of the compensation button and its dialog (#64).
+  static const compensateColor = Color(0xFF1C63D6);
+  static const compensateTint = Color(0xFFE8F0FC);
 
   @override
   Widget build(BuildContext context) {
     final resolved = complaint.status == ComplaintStatus.resolved;
+    // Only a customer can be compensated, and only once.
+    final canCompensate = !resolved &&
+        !complaint.freeWashGranted &&
+        complaint.complainantType == ComplainantType.customer &&
+        onCompensate != null;
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 22),
@@ -737,7 +887,11 @@ class _ActionBar extends StatelessWidget {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
-                        resolved ? _resolvedTitle : _pendingTitle,
+                        resolved
+                            ? (complaint.freeWashGranted
+                                ? _compensatedTitle
+                                : _resolvedTitle)
+                            : _pendingTitle,
                         style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.w800,
@@ -762,8 +916,41 @@ class _ActionBar extends StatelessWidget {
                     ],
                   ),
                 ),
-                if (!resolved) ...[
+                if (canCompensate) ...[
                   const SizedBox(width: 20),
+                  OutlinedButton.icon(
+                    onPressed: isResolving ? null : onCompensate,
+                    icon: isCompensating
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2.5,
+                              color: compensateColor,
+                            ),
+                          )
+                        : const Icon(Icons.local_car_wash, size: 22),
+                    label: const Text(_compensateLabel),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: compensateColor,
+                      side: const BorderSide(
+                        color: compensateColor,
+                        width: 1.5,
+                      ),
+                      minimumSize: const Size(0, 58),
+                      padding: const EdgeInsets.symmetric(horizontal: 28),
+                      textStyle: const TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.w700,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                    ),
+                  ),
+                ],
+                if (!resolved) ...[
+                  const SizedBox(width: 12),
                   FilledButton.icon(
                     onPressed: isResolving ? null : onResolve,
                     icon: isResolving

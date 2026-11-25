@@ -45,8 +45,8 @@ class ServiceCategory {
   /// One short line on the home page saying what the service covers.
   final String description;
 
-  /// True when the price depends on the size of the car (car wash), so the
-  /// request page asks for it and adds [ServicePrices.largeVehicleExtra].
+  /// True when the price depends on the size of the car (car wash). The size
+  /// comes from the vehicle's body type, and each size has its own price.
   final bool priceBySize;
 }
 
@@ -86,6 +86,24 @@ class VehicleSize {
     for (final size in all) {
       if (size.id == id) return size;
     }
+    return null;
+  }
+}
+
+/// Car wash: the customer ticks exterior, interior, or both. The provider only
+/// says it offers car washes, so the choice is made on the customer's side.
+class CarWash {
+  CarWash._();
+
+  static const exteriorId = 'washExterior';
+  static const interiorId = 'washInterior';
+  static const fullId = 'washFull';
+
+  /// The option id for the ticked parts, null when nothing is ticked.
+  static String? optionFor({required bool exterior, required bool interior}) {
+    if (exterior && interior) return fullId;
+    if (exterior) return exteriorId;
+    if (interior) return interiorId;
     return null;
   }
 }

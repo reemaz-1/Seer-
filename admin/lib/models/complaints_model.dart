@@ -85,6 +85,35 @@ class ComplaintsModel {
     });
   }
 
+  /// Resolves a customer complaint and gives the customer a free car
+  /// cleaning (#64, #65).
+  ///
+  /// Parameters: [id] is the complaint document id.
+  /// Throws [StateError] if the complaint is missing, already resolved or
+  /// compensated, or was not sent by a customer.
+  Future<void> markCompensated(String id) {
+    final ref = _complaints.doc(id);
+    // A transaction, so the same complaint is never compensated twice.
+    return _firestore.runTransaction((transaction) async {
+      final doc = await transaction.get(ref);
+      final data = doc.data();
+      if (data == null) throw StateError('missing');
+      if (data['complainantType'] != ComplainantType.customer) {
+        throw StateError('not a customer');
+      }
+      if (data['status'] == ComplaintStatus.resolved ||
+          data['freeWashGranted'] == true) {
+        throw StateError('already resolved');
+      }
+      transaction.update(ref, {
+        'status': ComplaintStatus.resolved,
+        'resolvedAt': FieldValue.serverTimestamp(),
+        'freeWashGranted': true,
+        'compensatedAt': FieldValue.serverTimestamp(),
+      });
+    });
+  }
+
   /// Compares two complaints by creation time, newest first.
   /// A complaint without a time yet is placed first.
   static int _newestFirst(Complaint a, Complaint b) {
