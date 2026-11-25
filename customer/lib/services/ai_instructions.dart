@@ -25,7 +25,7 @@ class AiInstructions {
     'hydraulic': 'السيارة لا تتحرك وعجلاتها لا تدور (بعد حادث مثلًا)، أو منخفضة جدًا.',
     'washExterior': 'العميل يريد غسل هيكل السيارة من الخارج فقط.',
     'washInterior': 'العميل يريد تنظيف داخل السيارة فقط (المقاعد والأرضية).',
-    'washFull': 'العميل يريد تنظيف السيارة من الداخل والخارج معًا.',
+    'washFull': 'العميل يريد الداخل والخارج معًا (يختارهما معًا في التطبيق بسعر أقل من الاثنين منفصلين).',
   };
 
   /// [state] is written by the app before every message (AiToolHandler
@@ -68,7 +68,8 @@ class AiInstructions {
 خدمات سير (هذه فقط، ولا تخترع غيرها):
 $catalog
 - الوقود: لا تخمّن نوع البنزين. إذا لم يذكره العميل فاسأله، وأخبره أنه مكتوب عادة على غطاء خزان الوقود.
-- غسيل السيارة: اسأل العميل عن حجم سيارته قبل عرض الملخص: «سيدان / صغيرة» أم «دفع رباعي / كبيرة»، ولا تخمّنه من اسم السيارة. ثم مرّره في vehicleSize بالقيمة standard أو large. السعر يختلف حسب الحجم والتطبيق هو من يحسبه.
+- غسيل السيارة: اختر washExterior إذا أراد الخارج فقط، وwashInterior للداخل فقط، وwashFull إذا أرادهما معًا. إذا لم يوضح فاسأله بجملة واحدة: «خارجي، داخلي، أم الاثنين؟».
+- نوع المركبة (سيدان أو دفع رباعي) يحدد سعر الغسيل، وهو مكتوب بجانب كل مركبة في قائمة مركبات العميل. إذا كان مكتوبًا فلا تسأل عنه ولا تمرّر vehicleSize. وإذا كان «غير محدد» فاسأل العميل: «سيدان / صغيرة» أم «دفع رباعي / كبيرة»، ولا تخمّنه من اسم السيارة، ثم مرّره في vehicleSize بالقيمة standard أو large. السعر يحسبه التطبيق.
 - إذا كانت المشكلة خارج هذه الخدمات (عطل في المحرك، مفتاح داخل السيارة...) فقل ذلك بوضوح، وإذا كانت السيارة لا يمكن قيادتها فاقترح السطحة.
 
 ${_vehicleSection(vehicles, activeVehicleId)}
@@ -110,9 +111,10 @@ ${state.isEmpty ? '- لا يوجد ملخص طلب ينتظر التأكيد.' :
     final list = StringBuffer();
     for (final v in vehicles) {
       final color = v.color.trim().isEmpty ? '' : '، اللون: ${v.color}';
+      final type = '، النوع: ${v.size?.shortLabel ?? 'غير محدد'}';
       final active = v.id == activeVehicleId ? ' ← المركبة الحالية' : '';
       // No plate numbers: Gemini doesn't need them to tell the cars apart.
-      list.writeln('- ${v.brand} ${v.model} ${v.year}$color (vehicleId: ${v.id})$active');
+      list.writeln('- ${v.brand} ${v.model} ${v.year}$color$type (vehicleId: ${v.id})$active');
     }
 
     return '''

@@ -1,5 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import 'service_catalog.dart';
+
 /// MODEL: a customer's vehicle.
 ///
 /// The plate is stored in the same two fields the provider app uses, in the
@@ -13,6 +15,10 @@ class Vehicle {
   final String plateNumberArabic;
   final String plateNumberLatin;
 
+  /// 'standard' (sedan / small) or 'large' (SUV / big): the car wash price
+  /// depends on it. null on vehicles saved before this field existed.
+  final String? bodyType;
+
   const Vehicle({
     required this.id,
     required this.brand,
@@ -21,9 +27,13 @@ class Vehicle {
     required this.color,
     required this.plateNumberArabic,
     required this.plateNumberLatin,
+    this.bodyType,
   });
 
   String get title => '$brand $model $year';
+
+  /// The car size for services priced by size, null when not chosen yet.
+  VehicleSize? get size => VehicleSize.byId(bodyType);
 
   /// The Arabic plate for display: the letters spaced out, then the digits,
   /// as on the real plate ("2026 سىر" -> "س ى ر 2026"). The stored value
@@ -43,6 +53,7 @@ class Vehicle {
     String? color,
     String? plateNumberArabic,
     String? plateNumberLatin,
+    String? bodyType,
   }) {
     return Vehicle(
       id: id ?? this.id,
@@ -52,6 +63,7 @@ class Vehicle {
       color: color ?? this.color,
       plateNumberArabic: plateNumberArabic ?? this.plateNumberArabic,
       plateNumberLatin: plateNumberLatin ?? this.plateNumberLatin,
+      bodyType: bodyType ?? this.bodyType,
     );
   }
 
@@ -64,6 +76,7 @@ class Vehicle {
       color: (map['color'] ?? '') as String,
       plateNumberArabic: (map['plateNumberArabic'] ?? '') as String,
       plateNumberLatin: (map['plateNumberLatin'] ?? '') as String,
+      bodyType: map['bodyType'] as String?,
     );
   }
 
@@ -75,6 +88,7 @@ class Vehicle {
       'color': color,
       'plateNumberArabic': plateNumberArabic,
       'plateNumberLatin': plateNumberLatin,
+      if (bodyType != null) 'bodyType': bodyType,
     };
   }
 }

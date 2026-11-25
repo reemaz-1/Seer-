@@ -20,7 +20,6 @@ class ServicePrices {
     required this.byOption,
     required this.towingPerKm,
     required this.isFallback,
-    this.largeVehicleExtra = kFallbackLargeVehicleExtra,
   });
 
   /// Service option id -> base price in Saudi riyals.
@@ -30,10 +29,6 @@ class ServicePrices {
   final num towingPerKm;
 
   final bool isFallback;
-
-  /// Added to a size-based service (car wash) for a large car (SUV...), in
-  /// riyals. Stored as `carwashLargeExtra` in the same Firestore document.
-  final num largeVehicleExtra;
 
   factory ServicePrices.fallback() {
     return const ServicePrices(
@@ -47,9 +42,15 @@ class ServicePrices {
   /// showing a wrong number.
   num? basePriceFor(String optionId) => byOption[optionId];
 
-  /// The extra for a car size: 0 for a standard car or when no size is set.
-  num sizeExtraFor(String? sizeId) =>
-      sizeId == VehicleSize.large.id ? largeVehicleExtra : 0;
+  /// The price of an option for a car size. The car wash keeps one price per
+  /// size: "washExterior" for a sedan and "washExteriorLarge" for an SUV.
+  num? priceFor(String optionId, {String? sizeId}) {
+    if (sizeId == VehicleSize.large.id) {
+      final large = byOption['${optionId}Large'];
+      if (large != null) return large;
+    }
+    return byOption[optionId];
+  }
 }
 
 /// TODO: the team and the supervisor must confirm these numbers. They are
@@ -65,14 +66,15 @@ const Map<String, num> kFallbackServicePrices = {
   'newTire': 200,      // إطار جديد
   'regular': 150,      // سطحة عادية
   'hydraulic': 250,    // سطحة هيدروليكية
-  'washExterior': 99,  // غسيل خارجي (سيدان)
-  'washInterior': 149, // غسيل داخلي (سيدان)
-  'washFull': 189,     // غسيل داخلي وخارجي (سيدان)
+  // Car wash, sedan / small car.
+  'washExterior': 30,       // غسيل خارجي
+  'washInterior': 30,       // غسيل داخلي
+  'washFull': 50,           // غسيل داخلي وخارجي
+  // Car wash, SUV / large car.
+  'washExteriorLarge': 35,
+  'washInteriorLarge': 35,
+  'washFullLarge': 60,
 };
-
-/// Extra for a large car (SUV...) on the car wash. Placeholder from market
-/// prices in Riyadh (about 30-40 riyals); the team must confirm it.
-const num kFallbackLargeVehicleExtra = 30;
 
 const num kFallbackTowingPerKm = 3;
 
@@ -103,13 +105,18 @@ class PricingModel {
         });
       }
       if (byOption.isEmpty) return ServicePrices.fallback();
+      // A large-car price missing from Firestore falls back to the built-in
+      // one, so an SUV never sees "to be decided".
+      for (final entry in kFallbackServicePrices.entries) {
+        if (entry.key.endsWith('Large')) {
+          byOption.putIfAbsent(entry.key, () => entry.value);
+        }
+      }
 
       final result = ServicePrices(
         byOption: byOption,
         towingPerKm: (data?['towingPerKm'] as num?) ?? kFallbackTowingPerKm,
         isFallback: false,
-        largeVehicleExtra:
-            (data?['carwashLargeExtra'] as num?) ?? kFallbackLargeVehicleExtra,
       );
       _cached = result;
       return result;

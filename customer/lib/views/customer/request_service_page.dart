@@ -321,7 +321,6 @@ Future<void> _selectDropoffFromMap() async {
 
   static const _freeLabel = 'مجاني';
   static const _freeTotalLabel = 'مجانًا';
-  static const _noExtraLabel = 'بدون زيادة';
 
   Widget _form(ServiceCategory? category) {
     final options = category?.options ?? const <ServiceOption>[];
@@ -334,51 +333,52 @@ Future<void> _selectDropoffFromMap() async {
             padding: const EdgeInsets.all(18),
             children: [
               // ---- #13: which option inside this service ----
-              const _SectionTitle('نوع الخدمة'),
-              for (final option in options)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 10),
-                  child: _OptionCard(
-                    label: option.label,
-                    price: formatPrice(_controller.priceOf(option.id)),
-                    // A free car cleaning keeps the real price, crossed out.
-                    freeLabel: _controller.isFreeWash ? _freeLabel : null,
-                    selected: _controller.selectedOptionId == option.id,
-                    onTap: () => _controller.selectOption(option.id),
-                  ),
-                ),
-              const SizedBox(height: 14),
-
-              // ---- car wash: the price depends on the size of the car ----
               if (_controller.needsVehicleSize) ...[
-                const _SectionTitle('حجم السيارة'),
-                for (final size in VehicleSize.all)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 10),
-                    child: _OptionCard(
-                      label: size.label,
-                      // A free car cleaning has no size extra either: the
-                      // large car extra is crossed out, and both say free.
-                      price: size.id == VehicleSize.large.id
-                          ? '+ ${formatPrice(_controller.prices.largeVehicleExtra)}'
-                          : _controller.isFreeWash
-                          ? ''
-                          : _noExtraLabel,
-                      freeLabel: _controller.isFreeWash ? _freeLabel : null,
-                      selected: _controller.vehicleSizeId == size.id,
-                      onTap: () => _controller.selectVehicleSize(size.id),
-                    ),
-                  ),
-                const Padding(
-                  padding: EdgeInsets.only(bottom: 14),
+                // Car wash: tick exterior, interior, or both.
+                const _SectionTitle('نوع الغسيل'),
+                _OptionCard(
+                  label: 'غسيل خارجي',
+                  price: formatPrice(_controller.priceOf(CarWash.exteriorId)),
+                  // A free car cleaning keeps the real price, crossed out.
+                  freeLabel: _controller.isFreeWash ? _freeLabel : null,
+                  selected: _controller.washExterior,
+                  multi: true,
+                  onTap: () => _controller.toggleWashPart(exterior: true),
+                ),
+                const SizedBox(height: 10),
+                _OptionCard(
+                  label: 'غسيل داخلي',
+                  price: formatPrice(_controller.priceOf(CarWash.interiorId)),
+                  freeLabel: _controller.isFreeWash ? _freeLabel : null,
+                  selected: _controller.washInterior,
+                  multi: true,
+                  onTap: () => _controller.toggleWashPart(exterior: false),
+                ),
+                Padding(
+                  padding: const EdgeInsets.only(top: 8, bottom: 14),
                   child: Text(
-                    'اختر الحجم المناسب لمركبتك، وقد يتغير السعر إذا لم يطابق.',
-                    style: TextStyle(
+                    'اختر الاثنين معًا لغسيل داخلي وخارجي بسعر '
+                    '${formatPrice(_controller.priceOf(CarWash.fullId))}.',
+                    style: const TextStyle(
                       fontSize: 12,
                       color: CustomerColors.secondaryText,
                     ),
                   ),
                 ),
+              ] else ...[
+                const _SectionTitle('نوع الخدمة'),
+                for (final option in options)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: _OptionCard(
+                      label: option.label,
+                      price: formatPrice(_controller.priceOf(option.id)),
+                      freeLabel: _controller.isFreeWash ? _freeLabel : null,
+                      selected: _controller.selectedOptionId == option.id,
+                      onTap: () => _controller.selectOption(option.id),
+                    ),
+                  ),
+                const SizedBox(height: 14),
               ],
 
               // ---- #14: which vehicle ----
@@ -388,11 +388,38 @@ Future<void> _selectDropoffFromMap() async {
                 title: vehicle?.title ?? '',
                 subtitle: vehicle == null
                     ? ''
-                    : 'لوحة ${vehicle.plateDisplay}',
+                    : 'لوحة ${vehicle.plateDisplay}'
+                        '${_controller.needsVehicleSize && vehicle.size != null ? ' · ${vehicle.size!.shortLabel}' : ''}',
                 actionLabel: _controller.vehicles.length > 1 ? 'تغيير' : null,
                 onAction: _changeVehicle,
               ),
               const SizedBox(height: 14),
+
+              // Car wash: a vehicle saved before the type existed has none, so
+              // the customer says it once and it is saved on the vehicle.
+              if (_controller.needsBodyTypeChoice) ...[
+                const _SectionTitle('نوع المركبة'),
+                for (final size in VehicleSize.all)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: _OptionCard(
+                      label: size.label,
+                      price: '',
+                      selected: _controller.vehicleSizeId == size.id,
+                      onTap: () => _controller.chooseBodyType(size.id),
+                    ),
+                  ),
+                const Padding(
+                  padding: EdgeInsets.only(bottom: 14),
+                  child: Text(
+                    'يحدد نوع المركبة سعر الغسيل، ونحفظه في بيانات مركبتك.',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: CustomerColors.secondaryText,
+                    ),
+                  ),
+                ),
+              ],
 
               // ---- #15 / #16: not built yet ----
               const _SectionTitle('الموقع'),
@@ -557,10 +584,14 @@ class _OptionCard extends StatelessWidget {
     this.freeLabel,
     required this.selected,
     required this.onTap,
+    this.multi = false,
   });
 
   final String label;
   final String price;
+
+  /// True for a tick box (several can be chosen) instead of a round button.
+  final bool multi;
 
   /// Shown in blue after the crossed-out [price] when the service is free.
   final String? freeLabel;
@@ -586,7 +617,11 @@ class _OptionCard extends StatelessWidget {
           child: Row(
             children: [
               Icon(
-                selected ? Icons.radio_button_checked : Icons.radio_button_off,
+                multi
+                    ? (selected ? Icons.check_box : Icons.check_box_outline_blank)
+                    : selected
+                        ? Icons.radio_button_checked
+                        : Icons.radio_button_off,
                 color: selected
                     ? CustomerColors.accent
                     : CustomerColors.secondaryText,

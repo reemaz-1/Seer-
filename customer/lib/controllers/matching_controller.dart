@@ -56,6 +56,11 @@ class MatchingController {
     if (category is! Map) return false;
     final options = category['options'];
     if (options is! List) return false;
+    // Car wash: the provider only says it offers car washes. The customer
+    // picks exterior / interior / both, so any enabled option matches.
+    if (categoryId == 'carwash') {
+      return options.any((o) => o is Map && o['enabled'] == true);
+    }
     return options.any(
       (o) => o is Map && o['id'] == optionId && o['enabled'] == true,
     );

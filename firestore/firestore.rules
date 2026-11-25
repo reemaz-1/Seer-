@@ -74,7 +74,9 @@ service cloud.firestore {
         // Takes no inputs; validates exactly the fields written by Vehicle.toMap.
         function validVehicle() {
           let v = request.resource.data;
-          return v.keys().hasOnly(['brand', 'model', 'year', 'color', 'plateNumberArabic', 'plateNumberLatin'])
+          return v.keys().hasOnly(['brand', 'model', 'year', 'color', 'plateNumberArabic', 'plateNumberLatin', 'bodyType'])
+            // bodyType (sedan / SUV) sets the car wash price; older vehicles have none.
+            && (!('bodyType' in v) || v.bodyType in ['standard', 'large'])
             && v.brand is string && v.model is string && v.year is int
             && v.color is string && v.plateNumberArabic is string && v.plateNumberLatin is string;
         }
