@@ -8,6 +8,8 @@ import '../../models/order.dart';
 import '../../services/ai_assistant.dart';
 import '../../models/pricing_model.dart';
 import '../../models/service_catalog.dart';
+import '../../controllers/saved_locations_controller.dart';
+import '../../models/saved_location.dart';
 import '../../widgets/vehicle_picker_sheet.dart';
 import 'order_review_page.dart';
 import 'vehicle_form_page.dart';
@@ -106,6 +108,7 @@ class RequestServicePage extends StatefulWidget {
 }
 
 class _RequestServicePageState extends State<RequestServicePage> {
+  late final _places = SavedLocationsController(uid: widget.uid);
   late final _controller = OrderDraftController(
     uid: widget.uid,
     categoryId: widget.categoryId,
@@ -142,17 +145,25 @@ class _RequestServicePageState extends State<RequestServicePage> {
     }
     _controller.loadVehicles();
     _controller.loadPrices();
+    _places.addListener(_onPlacesChanged);
+    _places.load();
   }
 
   @override
   void dispose() {
     _note.dispose();
     _locationController.dispose();
+    _places.removeListener(_onPlacesChanged);
+    _places.dispose();
     _controller.dispose();
     super.dispose();
   }
 
   // ---------------- Actions ----------------
+
+  void _onPlacesChanged() {
+    if (mounted) setState(() {});
+  }
 
   Future<void> _changeVehicle() async {
     final picked = await showVehiclePicker(
@@ -216,6 +227,7 @@ class _RequestServicePageState extends State<RequestServicePage> {
     MaterialPageRoute(
 builder: (_) => LocationPickerPage(
   title: 'تحديد موقع المركبة',
+  places: _places,
   initialSelectedLocation: _controller.pickupLocation == null
       ? null
       : LatLng(
@@ -245,6 +257,7 @@ Future<void> _selectDropoffFromMap() async {
     MaterialPageRoute(
    builder: (_) => LocationPickerPage(
   title: 'تحديد موقع التوصيل',
+  places: _places,
   initialSelectedLocation: _controller.dropoffLocation == null
       ? null
       : LatLng(
@@ -268,6 +281,22 @@ Future<void> _selectDropoffFromMap() async {
 
 }
 
+
+  /// Saved-place shortcuts above a location row.
+  Widget _savedBar({required bool forDropoff}) {
+    return _SavedLocationsBar(
+      places: _places,
+      current:
+          forDropoff ? _controller.dropoffLocation : _controller.pickupLocation,
+      onUse: (place) {
+        if (forDropoff) {
+          _controller.setDropoffLocation(place.location);
+        } else {
+          _controller.setPickupLocation(place.location);
+        }
+      },
+    );
+  }
 
   // ---------------- UI ----------------
 
@@ -424,6 +453,7 @@ Future<void> _selectDropoffFromMap() async {
               // ---- #15 / #16: not built yet ----
               const _SectionTitle('الموقع'),
 
+  _savedBar(forDropoff: false),
   _MapLocationRow(
   title: 'موقع المركبة الحالي',
   isSelected: _controller.pickupLocation != null,
@@ -432,6 +462,7 @@ Future<void> _selectDropoffFromMap() async {
               if (_controller.needsDropoff) ...[
                 const SizedBox(height: 10),
 
+                _savedBar(forDropoff: true),
                 _MapLocationRow(
                   title: 'موقع التوصيل',
                   isSelected: _controller.dropoffLocation != null,
@@ -759,6 +790,86 @@ class _Row extends StatelessWidget {
                 ),
               ),
             ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Shortcuts for the customer's saved places, shown above a location row.
+///
+/// One tap on a place fills this location. Saving a place is done inside the
+/// map screen, and deleting or renaming on the profile page, so a stray tap
+/// here cannot remove one. The same places serve the pickup and the towing
+/// destination.
+class _SavedLocationsBar extends StatelessWidget {
+  const _SavedLocationsBar({
+    required this.places,
+    required this.current,
+    required this.onUse,
+  });
+
+  final SavedLocationsController places;
+
+  /// The location currently picked for this row, if any.
+  final GeoPoint? current;
+
+  final void Function(SavedLocation place) onUse;
+
+  static IconData _iconOf(String kind) {
+    if (kind == SavedLocation.home) return Icons.home_outlined;
+    if (kind == SavedLocation.work) return Icons.work_outline;
+    return Icons.place_outlined;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final saved = places.places;
+    if (saved.isEmpty) return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'أماكنك المحفوظة',
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: CustomerColors.secondaryText,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final place in saved)
+                ChoiceChip(
+                  avatar: Icon(
+                    _iconOf(place.kind),
+                    size: 18,
+                    color: CustomerColors.accent,
+                  ),
+                  label: Text(place.label),
+                  selected: place.isSameAs(current),
+                  showCheckmark: false,
+                  selectedColor: const Color(0xFFEAF1FC),
+                  backgroundColor: Colors.white,
+                  side: BorderSide(
+                    color: place.isSameAs(current)
+                        ? CustomerColors.accent
+                        : CustomerColors.cardBorder,
+                  ),
+                  labelStyle: const TextStyle(
+                    fontWeight: FontWeight.w600,
+                    color: CustomerColors.primaryText,
+                  ),
+                  onSelected: (_) => onUse(place),
+                ),
+            ],
+          ),
         ],
       ),
     );

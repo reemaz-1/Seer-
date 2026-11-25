@@ -111,7 +111,7 @@ void clearDropoffLocation() {
   dropoffLocation = null;
   notifyListeners();
 }
- 
+
   /// Fills this draft from an earlier order, used by reorder (#21).
   ///
   /// Copies the service option, the note and both locations. The vehicle is

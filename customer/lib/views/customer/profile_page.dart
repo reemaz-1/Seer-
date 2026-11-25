@@ -10,6 +10,7 @@ import 'vehicle_form_page.dart';
 import 'vehicles_page.dart';
 import '../../widgets/app_snackbar.dart';
 import 'my_complaints_page.dart';
+import 'saved_locations_page.dart';
 
 /// VIEW: customer profile (user story #5) + entry points to edit (#6),
 /// vehicles (#7–#10) and logout (#3).
@@ -84,6 +85,13 @@ class _ProfilePageState extends State<ProfilePage> {
       MaterialPageRoute(builder: (_) => VehiclesPage(uid: widget.uid)),
     );
     _controller.refreshVehicles(widget.uid);
+  }
+
+  /// Opens the home / work places this customer saved.
+  void _openSavedLocations() {
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => SavedLocationsPage(uid: widget.uid)),
+    );
   }
 
   /// Opens the list of complaints this customer sent.
@@ -204,6 +212,15 @@ class _ProfilePageState extends State<ProfilePage> {
                               vehicles: _controller.vehicles,
                               onTapVehicle: (vehicle) => _openVehicleForm(vehicle),
                               onAdd: () => _openVehicleForm(),
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          _SectionCard(
+                            child: _ActionRow(
+                              icon: Icons.place_outlined,
+                              label: 'أماكني المحفوظة',
+                              showDivider: false,
+                              onTap: _openSavedLocations,
                             ),
                           ),
                           const SizedBox(height: 12),

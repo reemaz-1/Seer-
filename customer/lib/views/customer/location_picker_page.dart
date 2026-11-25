@@ -1,21 +1,32 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
 import 'package:latlong2/latlong.dart';
 
+import '../../controllers/saved_locations_controller.dart';
+import '../../widgets/app_snackbar.dart';
+import '../../widgets/save_place_sheet.dart';
+
 class LocationPickerPage extends StatefulWidget {
   const LocationPickerPage({
     super.key,
     required this.title,
     this.initialSelectedLocation,
+    this.places,
   });
 
   final String title;
   final LatLng? initialSelectedLocation;
+
+  /// The customer's saved places. When given, a "save this place" button
+  /// appears next to the confirm button, so a place can be saved while it is
+  /// picked.
+  final SavedLocationsController? places;
 
   @override
   State<LocationPickerPage> createState() => _LocationPickerPageState();
@@ -46,6 +57,42 @@ class _LocationPickerPageState extends State<LocationPickerPage> {
     super.initState();
     _selectedLocation = widget.initialSelectedLocation;
     _fetchCurrentLocation();
+  }
+
+  /// Saves the selected spot under a name the customer picks. Saving a spot
+  /// that already has a name renames it, so one spot never has two names.
+  Future<void> _savePlace() async {
+    final controller = widget.places;
+    final selected = _selectedLocation;
+    if (controller == null || selected == null) return;
+    final point = GeoPoint(selected.latitude, selected.longitude);
+    final existing = controller.placeAt(point);
+
+    final choice = await showSavePlaceSheet(
+      context,
+      savedPlaces: controller.places,
+      current: existing,
+    );
+    if (choice == null || !mounted) return;
+
+    // The list already changes; confirm now, and speak again only if it fails.
+    final result = controller.save(
+      kind: choice.kind,
+      name: choice.name,
+      point: point,
+      replaceId: existing?.kind == choice.kind ? existing?.id : null,
+    );
+    final label = choice.kind == 'other' ? choice.name! : (choice.kind == 'home' ? 'المنزل' : 'العمل');
+    showAppMessage(
+      context,
+      existing == null ? 'تم حفظ الموقع كـ $label' : 'تم تحديث الاسم إلى $label',
+      type: AppMessageType.success,
+    );
+    final error = await result;
+    if (error != null && mounted) {
+      showAppMessage(context, error, type: AppMessageType.warning);
+    }
+    if (mounted) setState(() {});
   }
 
   Future<void> _fetchCurrentLocation() async {
@@ -419,34 +466,69 @@ class _LocationPickerPageState extends State<LocationPickerPage> {
             ),
           ),
 
-          // Existing confirmation button.
+          // Save and confirm buttons.
           Positioned(
             bottom: 24,
             left: 20,
             right: 20,
             child: SafeArea(
-              child: ElevatedButton(
-                onPressed: _selectedLocation == null
-                    ? null
-                    : () => Navigator.pop(context, _selectedLocation),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF2E7D32),
-                  foregroundColor: Colors.white,
-                  disabledBackgroundColor: Colors.grey.shade300,
-                  disabledForegroundColor: Colors.grey.shade600,
-                  minimumSize: const Size(double.infinity, 54),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  if (widget.places != null) ...[
+                    _saveButton(),
+                    const SizedBox(height: 10),
+                  ],
+                  ElevatedButton(
+                    onPressed: _selectedLocation == null
+                        ? null
+                        : () => Navigator.pop(context, _selectedLocation),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF2E7D32),
+                      foregroundColor: Colors.white,
+                      disabledBackgroundColor: Colors.grey.shade300,
+                      disabledForegroundColor: Colors.grey.shade600,
+                      minimumSize: const Size(double.infinity, 54),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                    ),
+                    child: const Text(
+                      'تأكيد الموقع',
+                      style:
+                          TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    ),
                   ),
-                ),
-                child: const Text(
-                  'تأكيد الموقع',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                ),
+                ],
               ),
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  /// "Save this place", or "rename" when the spot already has a name.
+  Widget _saveButton() {
+    final selected = _selectedLocation;
+    final existing = selected == null
+        ? null
+        : widget.places!.placeAt(GeoPoint(selected.latitude, selected.longitude));
+    return OutlinedButton.icon(
+      onPressed: selected == null ? null : _savePlace,
+      style: OutlinedButton.styleFrom(
+        backgroundColor: Colors.white,
+        minimumSize: const Size(double.infinity, 48),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      ),
+      icon: Icon(
+        existing == null ? Icons.bookmark_add_outlined : Icons.bookmark,
+        size: 20,
+      ),
+      label: Text(
+        existing == null ? 'حفظ هذا المكان' : 'محفوظ باسم ${existing.label} · تغيير',
+        style: const TextStyle(fontWeight: FontWeight.w700),
       ),
     );
   }

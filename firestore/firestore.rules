@@ -83,6 +83,28 @@ service cloud.firestore {
         allow read, delete: if owns(uid);
         allow create, update: if owns(uid) && validVehicle();
       }
+      match /savedLocations/{placeId} {
+        // Saved places: one home, one work (document id = kind), and any
+        // number of named places ('other') with the customer's own name.
+        function validHomeOrWork() {
+          return request.resource.data.kind in ['home', 'work']
+            && request.resource.data.kind == placeId
+            && request.resource.data.keys().hasOnly(['kind', 'location', 'updatedAt']);
+        }
+        function validOther() {
+          return request.resource.data.kind == 'other'
+            && !(placeId in ['home', 'work'])
+            && request.resource.data.keys().hasOnly(['kind', 'name', 'location', 'updatedAt'])
+            && request.resource.data.name is string
+            && request.resource.data.name.size() >= 1
+            && request.resource.data.name.size() <= 20;
+        }
+        allow read, delete: if owns(uid);
+        allow create, update: if owns(uid)
+          && (validHomeOrWork() || validOther())
+          && request.resource.data.location is latlng
+          && request.resource.data.updatedAt == request.time;
+      }
     }
     match /providers/{uid} {
       // Takes no inputs; returns profile fields editable by their owner.
