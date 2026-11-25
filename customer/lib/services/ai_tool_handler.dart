@@ -133,8 +133,9 @@ class AiToolHandler {
           'vehicleSize': Schema.enumString(
             enumValues: [for (final v in VehicleSize.all) v.id],
             description: 'The size of the car: "standard" (sedan / small) or '
-                '"large" (SUV / big). Required for the car wash (carwash): '
-                'ask the customer, never guess it from the car name.',
+                '"large" (SUV / big). Only for the car wash (carwash), and '
+                'only when the vehicle list says its type is not set: ask '
+                'the customer, never guess it from the car name.',
           ),
           'note': Schema.string(
             description: 'A short Arabic description of the problem for the '
@@ -217,11 +218,9 @@ class AiToolHandler {
                 'السابق لأنه كان لسيارة أخرى.');
   }
 
-  /// Base price plus the size extra, or null when the option has no price.
+  /// The option's price for the car size, or null when it has no price.
   num? _priceWithSize(ServicePrices prices, String optionId, VehicleSize? size) {
-    final base = prices.basePriceFor(optionId);
-    if (base == null) return null;
-    return base + prices.sizeExtraFor(size?.id);
+    return prices.priceFor(optionId, sizeId: size?.id);
   }
 
   Future<AiToolOutcome> _showSummary(Map<String, Object?> args, int turn) async {
@@ -246,11 +245,13 @@ class AiToolHandler {
       );
     }
 
-    // Car wash: the price depends on the car size, which only the customer
-    // knows. Ask instead of guessing, so the card never shows a wrong price.
+    // Car wash: the price depends on the car size. It comes from the type
+    // saved on the vehicle; only an older vehicle without one needs the
+    // customer's answer. Ask instead of guessing, so the card never shows a
+    // wrong price.
     final rawSize = args['vehicleSize'];
     final VehicleSize? size = category.priceBySize
-        ? VehicleSize.byId(rawSize is String ? rawSize : null)
+        ? (vehicle.size ?? VehicleSize.byId(rawSize is String ? rawSize : null))
         : null;
     if (category.priceBySize && size == null) {
       return AiToolOutcome.error(

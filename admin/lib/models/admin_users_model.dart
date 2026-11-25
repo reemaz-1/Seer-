@@ -54,7 +54,8 @@ class AdminOpenOrder {
   final String providerId;
   bool get blocksSuspension =>
       const ['onTheWay', 'arrived', 'inProgress'].contains(status);
-  bool get cancellable => const ['pending', 'accepted'].contains(status);
+  bool get cancellable => const ['pending', 'accepted',
+    'scheduledPending', 'scheduledAccepted'].contains(status);
 }
 
 class AdminSuspensionBlocked implements Exception {
@@ -88,7 +89,8 @@ class AdminUsersModel {
         ? orders.where('customerId', isEqualTo: user.id)
         : orders.where('providerId', isEqualTo: user.id);
     final snapshot = await query.get();
-    const open = {'pending', 'accepted', 'onTheWay', 'arrived', 'inProgress'};
+    const open = {'pending', 'accepted', 'scheduledPending',
+      'scheduledAccepted', 'onTheWay', 'arrived', 'inProgress'};
     final now = DateTime.now();
     return snapshot.docs.where((d) {
       final data = d.data();
@@ -142,7 +144,8 @@ class AdminUsersModel {
       final linkedProviders = <String, DocumentSnapshot<Map<String, dynamic>>>{};
       for (final snap in orders) {
         final data = snap.data();
-        if (data == null || data['status'] != 'accepted') continue;
+        if (data == null ||
+            !const ['accepted', 'scheduledAccepted'].contains(data['status'])) continue;
         final providerId = (data['providerId'] ?? '').toString();
         if (providerId.isNotEmpty && !linkedProviders.containsKey(providerId)) {
           linkedProviders[providerId] = await tx.get(db.collection('providers').doc(providerId));
@@ -161,9 +164,15 @@ class AdminUsersModel {
         final data = snap.data();
         if (data == null) continue;
         final status = (data['status'] ?? '').toString();
-        if (!const ['pending', 'accepted'].contains(status)) continue;
+        if (!const ['pending', 'accepted', 'scheduledPending',
+          'scheduledAccepted'].contains(status)) continue;
         final providerId = (data['providerId'] ?? '').toString();
         final linked = linkedProviders[providerId];
+        if (linked != null && linked.exists && data['scheduledAt'] is Timestamp) {
+          tx.update(linked.reference, {
+            'scheduledReservationTimes': FieldValue.arrayRemove([data['scheduledAt']]),
+          });
+        }
         if (linked != null && linked.data()?['activeOrderId'] == snap.id) {
           // Never leave the provider locked to an administratively cancelled order.
           tx.update(linked.reference, {'activeOrderId': FieldValue.delete()});

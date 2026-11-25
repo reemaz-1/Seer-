@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 /// Kept identical in both apps; tool/check_order_notification_contract.py checks parity.
 class OrderStatusNotification {
   static const messages = <String, String>{
+    'scheduledAccepted': 'تم قبول حجزك المجدول من مزود الخدمة',
     'accepted': 'تم قبول طلبك',
     'onTheWay': 'مقدم الخدمة في الطريق إليك',
     'arrived': 'وصل مقدم الخدمة إلى موقعك',

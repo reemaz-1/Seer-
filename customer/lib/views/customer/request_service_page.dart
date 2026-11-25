@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 
 import '../../controllers/order_draft_controller.dart';
 import '../../controllers/location_controller.dart';
@@ -7,14 +8,14 @@ import '../../models/order.dart';
 import '../../services/ai_assistant.dart';
 import '../../models/pricing_model.dart';
 import '../../models/service_catalog.dart';
+import '../../controllers/saved_locations_controller.dart';
+import '../../models/saved_location.dart';
 import '../../widgets/vehicle_picker_sheet.dart';
 import 'order_review_page.dart';
 import 'vehicle_form_page.dart';
 import 'location_picker_page.dart';
-
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:latlong2/latlong.dart';
-
 import '../../widgets/app_snackbar.dart';
 
 /// VIEW: build a service request.
@@ -28,6 +29,7 @@ class RequestServicePage extends StatefulWidget {
     required this.uid,
     required this.categoryId,
     this.preferredVehicleId,
+    this.useFreeWash = false,
     this.reorderFrom,
     this.suggestion,
   });
@@ -39,6 +41,9 @@ class RequestServicePage extends StatefulWidget {
 
   /// The vehicle shown on the home page, pre-selected here.
   final String? preferredVehicleId;
+
+  /// True when opened from the loyalty card to use a free car cleaning (#67).
+  final bool useFreeWash;
 
   /// The rejected or auto-cancelled order this request is copied from, or
   /// null for a brand-new request (#21).
@@ -103,10 +108,12 @@ class RequestServicePage extends StatefulWidget {
 }
 
 class _RequestServicePageState extends State<RequestServicePage> {
+  late final _places = SavedLocationsController(uid: widget.uid);
   late final _controller = OrderDraftController(
     uid: widget.uid,
     categoryId: widget.categoryId,
     preferredVehicleId: widget.preferredVehicleId,
+    useFreeWash: widget.useFreeWash,
   );
 
   // Handles GPS/map location separately from the order-building controller.
@@ -138,17 +145,25 @@ class _RequestServicePageState extends State<RequestServicePage> {
     }
     _controller.loadVehicles();
     _controller.loadPrices();
+    _places.addListener(_onPlacesChanged);
+    _places.load();
   }
 
   @override
   void dispose() {
     _note.dispose();
     _locationController.dispose();
+    _places.removeListener(_onPlacesChanged);
+    _places.dispose();
     _controller.dispose();
     super.dispose();
   }
 
   // ---------------- Actions ----------------
+
+  void _onPlacesChanged() {
+    if (mounted) setState(() {});
+  }
 
   Future<void> _changeVehicle() async {
     final picked = await showVehiclePicker(
@@ -192,10 +207,8 @@ class _RequestServicePageState extends State<RequestServicePage> {
     if (widget.suggestion != null) {
       final orderId = _controller.createdOrderId;
       if (orderId == null || orderId.isEmpty) {
-        _showMessage(
-          'تعذر فتح الطلب الجديد. تحقق من قائمة الطلبات.',
-          type: AppMessageType.warning,
-        );
+        _showMessage('تعذر فتح الطلب الجديد. تحقق من قائمة الطلبات.',
+            type: AppMessageType.warning);
         return;
       }
       Navigator.of(context).pop(orderId);
@@ -204,67 +217,86 @@ class _RequestServicePageState extends State<RequestServicePage> {
     }
   }
 
-  void _showMessage(
-    String text, {
-    AppMessageType type = AppMessageType.success,
-  }) {
+  void _showMessage(String text, {AppMessageType type = AppMessageType.success}) {
     showAppMessage(context, text, type: type);
   }
 
   /// Opens the shared map screen to select the vehicle's pickup location.
-  Future<void> _selectPickupFromMap() async {
-    final LatLng? selectedLocation = await Navigator.of(context).push<LatLng>(
-      MaterialPageRoute(
-        builder: (_) => LocationPickerPage(
-          title: 'تحديد موقع المركبة',
-          categoryId: widget.categoryId,
-          optionId: _controller.selectedOptionId,
-          initialSelectedLocation: _controller.pickupLocation == null
-              ? null
-              : LatLng(
-                  _controller.pickupLocation!.latitude,
-                  _controller.pickupLocation!.longitude,
-                ),
+ Future<void> _selectPickupFromMap() async {
+  final LatLng? selectedLocation = await Navigator.of(context).push<LatLng>(
+    MaterialPageRoute(
+builder: (_) => LocationPickerPage(
+  title: 'تحديد موقع المركبة',
+  places: _places,
+  categoryId: widget.categoryId,
+  optionId: _controller.selectedOptionId,
+  initialSelectedLocation: _controller.pickupLocation == null
+      ? null
+      : LatLng(
+          _controller.pickupLocation!.latitude,
+          _controller.pickupLocation!.longitude,
         ),
-      ),
-    );
+),
+    ),
+  );
 
-    if (!mounted || selectedLocation == null) return;
-    debugPrint(
-      '📍 PICKUP LOCATION: Latitude = ${selectedLocation.latitude}, '
-      'Longitude = ${selectedLocation.longitude}',
-    );
+  if (!mounted || selectedLocation == null) return;
+  debugPrint(
+  '📍 PICKUP LOCATION: Latitude = ${selectedLocation.latitude}, '
+  'Longitude = ${selectedLocation.longitude}',
+);
 
-    _controller.setPickupLocation(
-      GeoPoint(selectedLocation.latitude, selectedLocation.longitude),
-    );
-  }
+  _controller.setPickupLocation(
+    GeoPoint(selectedLocation.latitude, selectedLocation.longitude),
+  );
 
-  /// Opens the shared map screen to select the towing destination.
-  Future<void> _selectDropoffFromMap() async {
-    final LatLng? selectedLocation = await Navigator.of(context).push<LatLng>(
-      MaterialPageRoute(
-        builder: (_) => LocationPickerPage(
-          title: 'تحديد موقع التوصيل',
-          initialSelectedLocation: _controller.dropoffLocation == null
-              ? null
-              : LatLng(
-                  _controller.dropoffLocation!.latitude,
-                  _controller.dropoffLocation!.longitude,
-                ),
+}
+
+
+/// Opens the shared map screen to select the towing destination.
+Future<void> _selectDropoffFromMap() async {
+  final LatLng? selectedLocation = await Navigator.of(context).push<LatLng>(
+    MaterialPageRoute(
+   builder: (_) => LocationPickerPage(
+  title: 'تحديد موقع التوصيل',
+  places: _places,
+  initialSelectedLocation: _controller.dropoffLocation == null
+      ? null
+      : LatLng(
+          _controller.dropoffLocation!.latitude,
+          _controller.dropoffLocation!.longitude,
         ),
-      ),
-    );
+),
+    ),
+  );
 
-    if (!mounted || selectedLocation == null) return;
+  if (!mounted || selectedLocation == null) return;
 
-    debugPrint(
-      '📍 DROPOFF LOCATION: Latitude = ${selectedLocation.latitude}, '
-      'Longitude = ${selectedLocation.longitude}',
-    );
+  debugPrint(
+    '📍 DROPOFF LOCATION: Latitude = ${selectedLocation.latitude}, '
+    'Longitude = ${selectedLocation.longitude}',
+  );
 
-    _controller.setDropoffLocation(
-      GeoPoint(selectedLocation.latitude, selectedLocation.longitude),
+  _controller.setDropoffLocation(
+    GeoPoint(selectedLocation.latitude, selectedLocation.longitude),
+  );
+
+}
+
+
+  /// Saved-place shortcuts above a location row.
+  Widget _savedBar({required bool forDropoff}) {
+    return _SavedLocationsBar(
+      places: _places,
+      current:
+          forDropoff ? _controller.dropoffLocation : _controller.pickupLocation,
+      onUse: (place) {
+        if (forDropoff) {
+          _controller.setDropoffLocation(place.location);
+        } else {
+          _controller.setPickupLocation(place.location);
+        }
+      },
     );
   }
 
@@ -318,6 +350,9 @@ class _RequestServicePageState extends State<RequestServicePage> {
     );
   }
 
+  static const _freeLabel = 'مجاني';
+  static const _freeTotalLabel = 'مجانًا';
+
   Widget _form(ServiceCategory? category) {
     final options = category?.options ?? const <ServiceOption>[];
     final vehicle = _controller.selectedVehicle;
@@ -329,44 +364,52 @@ class _RequestServicePageState extends State<RequestServicePage> {
             padding: const EdgeInsets.all(18),
             children: [
               // ---- #13: which option inside this service ----
-              const _SectionTitle('نوع الخدمة'),
-              for (final option in options)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 10),
-                  child: _OptionCard(
-                    label: option.label,
-                    price: formatPrice(_controller.priceOf(option.id)),
-                    selected: _controller.selectedOptionId == option.id,
-                    onTap: () => _controller.selectOption(option.id),
-                  ),
-                ),
-              const SizedBox(height: 14),
-
-              // ---- car wash: the price depends on the size of the car ----
               if (_controller.needsVehicleSize) ...[
-                const _SectionTitle('حجم السيارة'),
-                for (final size in VehicleSize.all)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 10),
-                    child: _OptionCard(
-                      label: size.label,
-                      price: size.id == VehicleSize.large.id
-                          ? '+ ${formatPrice(_controller.prices.largeVehicleExtra)}'
-                          : 'بدون زيادة',
-                      selected: _controller.vehicleSizeId == size.id,
-                      onTap: () => _controller.selectVehicleSize(size.id),
-                    ),
-                  ),
-                const Padding(
-                  padding: EdgeInsets.only(bottom: 14),
+                // Car wash: tick exterior, interior, or both.
+                const _SectionTitle('نوع الغسيل'),
+                _OptionCard(
+                  label: 'غسيل خارجي',
+                  price: formatPrice(_controller.priceOf(CarWash.exteriorId)),
+                  // A free car cleaning keeps the real price, crossed out.
+                  freeLabel: _controller.isFreeWash ? _freeLabel : null,
+                  selected: _controller.washExterior,
+                  multi: true,
+                  onTap: () => _controller.toggleWashPart(exterior: true),
+                ),
+                const SizedBox(height: 10),
+                _OptionCard(
+                  label: 'غسيل داخلي',
+                  price: formatPrice(_controller.priceOf(CarWash.interiorId)),
+                  freeLabel: _controller.isFreeWash ? _freeLabel : null,
+                  selected: _controller.washInterior,
+                  multi: true,
+                  onTap: () => _controller.toggleWashPart(exterior: false),
+                ),
+                Padding(
+                  padding: const EdgeInsets.only(top: 8, bottom: 14),
                   child: Text(
-                    'اختر الحجم المناسب لمركبتك، وقد يتغير السعر إذا لم يطابق.',
-                    style: TextStyle(
+                    'اختر الاثنين معًا لغسيل داخلي وخارجي بسعر '
+                    '${formatPrice(_controller.priceOf(CarWash.fullId))}.',
+                    style: const TextStyle(
                       fontSize: 12,
                       color: CustomerColors.secondaryText,
                     ),
                   ),
                 ),
+              ] else ...[
+                const _SectionTitle('نوع الخدمة'),
+                for (final option in options)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: _OptionCard(
+                      label: option.label,
+                      price: formatPrice(_controller.priceOf(option.id)),
+                      freeLabel: _controller.isFreeWash ? _freeLabel : null,
+                      selected: _controller.selectedOptionId == option.id,
+                      onTap: () => _controller.selectOption(option.id),
+                    ),
+                  ),
+                const SizedBox(height: 14),
               ],
 
               // ---- #14: which vehicle ----
@@ -376,29 +419,62 @@ class _RequestServicePageState extends State<RequestServicePage> {
                 title: vehicle?.title ?? '',
                 subtitle: vehicle == null
                     ? ''
-                    : 'لوحة ${vehicle.plateNumberArabic}',
+                    : 'لوحة ${vehicle.plateDisplay}'
+                        '${_controller.needsVehicleSize && vehicle.size != null ? ' · ${vehicle.size!.shortLabel}' : ''}',
                 actionLabel: _controller.vehicles.length > 1 ? 'تغيير' : null,
                 onAction: _changeVehicle,
               ),
               const SizedBox(height: 14),
 
+              // Car wash: a vehicle saved before the type existed has none, so
+              // the customer says it once and it is saved on the vehicle.
+              if (_controller.needsBodyTypeChoice) ...[
+                const _SectionTitle('نوع المركبة'),
+                for (final size in VehicleSize.all)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: _OptionCard(
+                      label: size.label,
+                      price: '',
+                      selected: _controller.vehicleSizeId == size.id,
+                      onTap: () => _controller.chooseBodyType(size.id),
+                    ),
+                  ),
+                const Padding(
+                  padding: EdgeInsets.only(bottom: 14),
+                  child: Text(
+                    'يحدد نوع المركبة سعر الغسيل، ونحفظه في بيانات مركبتك.',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: CustomerColors.secondaryText,
+                    ),
+                  ),
+                ),
+              ],
+
               // ---- #15 / #16: not built yet ----
               const _SectionTitle('الموقع'),
 
-              _MapLocationRow(
-                title: 'موقع المركبة الحالي',
-                isSelected: _controller.pickupLocation != null,
-                onSelectFromMap: _selectPickupFromMap,
-              ),
+  _savedBar(forDropoff: false),
+  _MapLocationRow(
+  title: 'موقع المركبة الحالي',
+  isSelected: _controller.pickupLocation != null,
+  onSelectFromMap: _selectPickupFromMap,
+),
               if (_controller.needsDropoff) ...[
                 const SizedBox(height: 10),
 
+                _savedBar(forDropoff: true),
                 _MapLocationRow(
                   title: 'موقع التوصيل',
                   isSelected: _controller.dropoffLocation != null,
                   onSelectFromMap: _selectDropoffFromMap,
                 ),
               ],
+              const SizedBox(height: 14),
+
+              // Select when this provider should arrive, inside the existing service form.
+              _SchedulingSection(controller: _controller),
               const SizedBox(height: 14),
 
               // ---- #23: an optional note ----
@@ -459,7 +535,9 @@ class _RequestServicePageState extends State<RequestServicePage> {
                       ),
                       const Spacer(),
                       Text(
-                        formatPrice(_controller.estimatedPrice),
+                        _controller.isFreeWash
+                            ? _freeTotalLabel
+                            : formatPrice(_controller.estimatedPrice),
                         style: const TextStyle(
                           fontSize: 17,
                           fontWeight: FontWeight.w800,
@@ -536,12 +614,20 @@ class _OptionCard extends StatelessWidget {
   const _OptionCard({
     required this.label,
     required this.price,
+    this.freeLabel,
     required this.selected,
     required this.onTap,
+    this.multi = false,
   });
 
   final String label;
   final String price;
+
+  /// True for a tick box (several can be chosen) instead of a round button.
+  final bool multi;
+
+  /// Shown in blue after the crossed-out [price] when the service is free.
+  final String? freeLabel;
   final bool selected;
   final VoidCallback onTap;
 
@@ -564,7 +650,11 @@ class _OptionCard extends StatelessWidget {
           child: Row(
             children: [
               Icon(
-                selected ? Icons.radio_button_checked : Icons.radio_button_off,
+                multi
+                    ? (selected ? Icons.check_box : Icons.check_box_outline_blank)
+                    : selected
+                        ? Icons.radio_button_checked
+                        : Icons.radio_button_off,
                 color: selected
                     ? CustomerColors.accent
                     : CustomerColors.secondaryText,
@@ -582,16 +672,41 @@ class _OptionCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 8),
-              Text(
-                price,
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
-                  color: selected
-                      ? CustomerColors.accent
-                      : CustomerColors.secondaryText,
+              if (freeLabel == null)
+                Text(
+                  price,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: selected
+                        ? CustomerColors.accent
+                        : CustomerColors.secondaryText,
+                  ),
+                )
+              else ...[
+                // The real price, grey and crossed out, then the free label.
+                if (price.isNotEmpty) ...[
+                Text(
+                  price,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                    color: CustomerColors.secondaryText,
+                    decoration: TextDecoration.lineThrough,
+                    decorationColor: CustomerColors.secondaryText,
+                  ),
                 ),
-              ),
+                const SizedBox(width: 8),
+                ],
+                Text(
+                  freeLabel!,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: CustomerColors.accent,
+                  ),
+                ),
+              ],
             ],
           ),
         ),
@@ -677,6 +792,86 @@ class _Row extends StatelessWidget {
                 ),
               ),
             ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Shortcuts for the customer's saved places, shown above a location row.
+///
+/// One tap on a place fills this location. Saving a place is done inside the
+/// map screen, and deleting or renaming on the profile page, so a stray tap
+/// here cannot remove one. The same places serve the pickup and the towing
+/// destination.
+class _SavedLocationsBar extends StatelessWidget {
+  const _SavedLocationsBar({
+    required this.places,
+    required this.current,
+    required this.onUse,
+  });
+
+  final SavedLocationsController places;
+
+  /// The location currently picked for this row, if any.
+  final GeoPoint? current;
+
+  final void Function(SavedLocation place) onUse;
+
+  static IconData _iconOf(String kind) {
+    if (kind == SavedLocation.home) return Icons.home_outlined;
+    if (kind == SavedLocation.work) return Icons.work_outline;
+    return Icons.place_outlined;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final saved = places.places;
+    if (saved.isEmpty) return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'أماكنك المحفوظة',
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: CustomerColors.secondaryText,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final place in saved)
+                ChoiceChip(
+                  avatar: Icon(
+                    _iconOf(place.kind),
+                    size: 18,
+                    color: CustomerColors.accent,
+                  ),
+                  label: Text(place.label),
+                  selected: place.isSameAs(current),
+                  showCheckmark: false,
+                  selectedColor: const Color(0xFFEAF1FC),
+                  backgroundColor: Colors.white,
+                  side: BorderSide(
+                    color: place.isSameAs(current)
+                        ? CustomerColors.accent
+                        : CustomerColors.cardBorder,
+                  ),
+                  labelStyle: const TextStyle(
+                    fontWeight: FontWeight.w600,
+                    color: CustomerColors.primaryText,
+                  ),
+                  onSelected: (_) => onUse(place),
+                ),
+            ],
+          ),
         ],
       ),
     );
@@ -849,6 +1044,209 @@ class _Message extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+
+/// Optional scheduling in the existing request flow. The selected appointment
+/// is the requested provider arrival time, not the provider dispatch time.
+class _SchedulingSection extends StatelessWidget {
+  const _SchedulingSection({required this.controller});
+  final OrderDraftController controller;
+
+  static DateTime _firstTimeToday(DateTime now) {
+    // Round up to the next five-minute option (strictly in the future).
+    final next = now.add(const Duration(minutes: 1));
+    final roundedMinute = ((next.minute + 4) ~/ 5) * 5;
+    return DateTime(next.year, next.month, next.day, next.hour, roundedMinute);
+  }
+
+  static bool _sameDay(DateTime a, DateTime b) =>
+      a.year == b.year && a.month == b.month && a.day == b.day;
+
+  static String _appointmentLabel(DateTime value) {
+    final hour = value.hour % 12 == 0 ? 12 : value.hour % 12;
+    final minute = value.minute.toString().padLeft(2, '0');
+    return '$hour:$minute ${value.hour < 12 ? 'صباحًا' : 'مساءً'}';
+  }
+
+  Future<void> _pickAppointment(BuildContext context) async {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final tomorrow = DateTime(now.year, now.month, now.day + 1);
+    final earliestToday = _firstTimeToday(now);
+    final todayEnd = DateTime(now.year, now.month, now.day, 23, 55);
+    final todayAvailable = !earliestToday.isAfter(todayEnd);
+    var chosenDay = todayAvailable ? today : tomorrow;
+    if (controller.scheduledAt != null &&
+        (todayAvailable && _sameDay(controller.scheduledAt!, today) ||
+            _sameDay(controller.scheduledAt!, tomorrow))) {
+      chosenDay = DateTime(controller.scheduledAt!.year,
+          controller.scheduledAt!.month, controller.scheduledAt!.day);
+    }
+
+    DateTime initialForDay(DateTime selectedDay) {
+      final earliest = _sameDay(selectedDay, today)
+          ? earliestToday
+          : DateTime(tomorrow.year, tomorrow.month, tomorrow.day);
+      final saved = controller.scheduledAt;
+      if (saved != null && _sameDay(saved, selectedDay) &&
+          !saved.isBefore(earliest) && saved.minute % 5 == 0) {
+        return saved;
+      }
+      return _sameDay(selectedDay, today)
+          ? earliest
+          : DateTime(tomorrow.year, tomorrow.month, tomorrow.day, 9);
+    }
+
+    var picked = initialForDay(chosenDay);
+    final result = await showModalBottomSheet<DateTime>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+      ),
+      builder: (sheetContext) => StatefulBuilder(
+        builder: (sheetContext, setSheetState) {
+          final start = _sameDay(chosenDay, today)
+              ? earliestToday
+              : DateTime(tomorrow.year, tomorrow.month, tomorrow.day);
+          final end = DateTime(chosenDay.year, chosenDay.month,
+              chosenDay.day, 23, 55);
+          return SafeArea(
+            top: false,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(18, 18, 18, 22),
+              child: Column(mainAxisSize: MainAxisSize.min, children: [
+                const Text('تحديد موعد وصول مزود الخدمة',
+                    style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
+                const SizedBox(height: 6),
+                const Text('اختر اليوم والوقت المناسب لك',
+                    style: TextStyle(color: CustomerColors.secondaryText)),
+                const SizedBox(height: 18),
+                Row(children: [
+                  Expanded(child: OutlinedButton(
+                    onPressed: todayAvailable ? () => setSheetState(() {
+                      chosenDay = today;
+                      picked = initialForDay(today);
+                    }) : null,
+                    style: OutlinedButton.styleFrom(
+                      backgroundColor: _sameDay(chosenDay, today)
+                          ? CustomerColors.fieldFill : null,
+                      side: BorderSide(color: _sameDay(chosenDay, today)
+                          ? CustomerColors.accent : CustomerColors.cardBorder),
+                    ),
+                    child: const Text('اليوم'),
+                  )),
+                  const SizedBox(width: 10),
+                  Expanded(child: OutlinedButton(
+                    onPressed: () => setSheetState(() {
+                      chosenDay = tomorrow;
+                      picked = initialForDay(tomorrow);
+                    }),
+                    style: OutlinedButton.styleFrom(
+                      backgroundColor: _sameDay(chosenDay, tomorrow)
+                          ? CustomerColors.fieldFill : null,
+                      side: BorderSide(color: _sameDay(chosenDay, tomorrow)
+                          ? CustomerColors.accent : CustomerColors.cardBorder),
+                    ),
+                    child: const Text('غدًا'),
+                  )),
+                ]),
+                const SizedBox(height: 12),
+                // Native wheels: hours, minutes (five-minute precision), AM/PM.
+                SizedBox(
+                  height: 190,
+                  child: CupertinoDatePicker(
+                    key: ValueKey(chosenDay),
+                    mode: CupertinoDatePickerMode.time,
+                    use24hFormat: false,
+                    minuteInterval: 5,
+                    initialDateTime: picked,
+                    minimumDate: start,
+                    maximumDate: end,
+                    onDateTimeChanged: (value) => picked = value,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Text('الموعد المطلوب: ${_sameDay(chosenDay, today) ? 'اليوم' : 'غدًا'}'
+                    ' — ${_appointmentLabel(picked)}',
+                    style: const TextStyle(fontWeight: FontWeight.w600)),
+                const SizedBox(height: 16),
+                SizedBox(width: double.infinity, child: FilledButton(
+                  onPressed: () {
+                    final current = DateTime.now();
+                    final endOfTomorrow = DateTime(current.year,
+                        current.month, current.day + 2);
+                    if (!picked.isAfter(current) ||
+                        !picked.isBefore(endOfTomorrow)) {
+                      ScaffoldMessenger.of(sheetContext).showSnackBar(
+                        const SnackBar(content: Text('اختر وقتًا مستقبليًا اليوم أو غدًا')),
+                      );
+                      return;
+                    }
+                    Navigator.of(sheetContext).pop(picked);
+                  },
+                  child: const Text('تأكيد الموعد'),
+                )),
+              ]),
+            ),
+          );
+        },
+      ),
+    );
+    if (result != null) controller.setScheduledAt(result);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final selected = controller.scheduledAt;
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: CustomerColors.background,
+        border: Border.all(color: CustomerColors.cardBorder),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const Text('متى تحتاج وصول مزود الخدمة؟',
+              style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
+          RadioListTile<bool>(
+            title: const Text('طلب الآن'),
+            subtitle: const Text('البحث عن مزود متاح فورًا'),
+            value: false,
+            groupValue: selected != null,
+            onChanged: (_) => controller.setScheduledAt(null),
+          ),
+          RadioListTile<bool>(
+            title: const Text('جدولة الطلب'),
+            subtitle: const Text('حجز مسبق لوصول المزود اليوم أو غدًا'),
+            value: true,
+            groupValue: selected != null,
+            onChanged: (_) => _pickAppointment(context),
+          ),
+          if (selected != null) ...[
+            const Divider(),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const Text('موعد الوصول المطلوب'),
+              subtitle: Text('${selected.day}/${selected.month}/${selected.year}'
+                  ' — ${_appointmentLabel(selected)}'),
+              trailing: TextButton(
+                onPressed: () => _pickAppointment(context),
+                child: const Text('تغيير'),
+              ),
+            ),
+            const Text('يتأكد الحجز بعد قبول مزود الخدمة.',
+                style: TextStyle(fontSize: 12,
+                    color: CustomerColors.secondaryText)),
+          ],
+        ],
       ),
     );
   }

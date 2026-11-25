@@ -12,6 +12,9 @@ import '../theme/order_colors.dart';
 import '../widgets/order_display.dart';
 import '../widgets/plate_number_view.dart';
 import '../widgets/app_snackbar.dart';
+import '../controllers/order_chat_controller.dart';
+import '../models/order_message.dart';
+import 'order_chat_page.dart';
 import 'route_to_customer_page.dart';
 
 /// The order the provider is working on now (#42, #43), with the button
@@ -117,6 +120,11 @@ class _ProviderCurrentOrderState extends State<ProviderCurrentOrder> {
                   ),
                   const Divider(height: 22, color: AppColors.cardBorder),
                   _phoneRow(order.customerPhone),
+                  if (OrderChatController.accessFor(order) !=
+                      ChatAccess.hidden) ...[
+                    const Divider(height: 22, color: AppColors.cardBorder),
+                    _chatRow(order),
+                  ],
                 ],
               ),
               const SizedBox(height: 12),
@@ -448,6 +456,53 @@ class _ProviderCurrentOrderState extends State<ProviderCurrentOrder> {
           style: TextButton.styleFrom(foregroundColor: AppColors.blue),
         ),
       ],
+    );
+  }
+  /// Builds the row that opens the chat with the customer.
+  Widget _chatRow(ServiceOrder order) {
+    return Row(
+      children: [
+        const Icon(
+          Icons.chat_bubble_outline_rounded,
+          size: 20,
+          color: AppColors.secondaryText,
+        ),
+        const SizedBox(width: 10),
+        const Expanded(
+          child: Text(
+            'محادثة مع العميل',
+            style: TextStyle(fontSize: 14, color: AppColors.navy),
+          ),
+        ),
+        TextButton.icon(
+          onPressed: () => _openChat(order),
+          icon: Badge(
+            isLabelVisible: order.chatUnreadProvider > 0,
+            label: Text('${order.chatUnreadProvider}'),
+            child: const Icon(Icons.chat, size: 18),
+          ),
+          label: const Text('فتح'),
+          style: TextButton.styleFrom(foregroundColor: AppColors.blue),
+        ),
+      ],
+    );
+  }
+
+  /// Opens the chat page of [order].
+  void _openChat(ServiceOrder order) {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => OrderChatPage(
+          controller: OrderChatController(
+            orderId: order.id,
+            uid: _complaints.uid,
+            senderType: MessageSender.provider,
+          ),
+          order: order,
+          title: order.customerName.isEmpty ? 'العميل' : order.customerName,
+          phone: order.customerPhone,
+        ),
+      ),
     );
   }
 

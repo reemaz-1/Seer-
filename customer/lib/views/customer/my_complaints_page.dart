@@ -264,7 +264,10 @@ class _ComplaintCard extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(width: 8),
-                    ComplaintStatusBadge(resolved: resolved),
+                    ComplaintStatusBadge(
+                      resolved: resolved,
+                      compensated: complaint.freeWashGranted,
+                    ),
                   ],
                 ),
                 const SizedBox(height: 12),

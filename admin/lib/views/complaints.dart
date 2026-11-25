@@ -235,7 +235,11 @@ class _ComplaintCard extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(width: 12),
-                  _StatusBadge(resolved: resolved, status: complaint.status),
+                  _StatusBadge(
+                resolved: resolved,
+                status: complaint.status,
+                compensated: complaint.freeWashGranted,
+              ),
                 ],
               ),
               const SizedBox(height: 6),
@@ -268,10 +272,15 @@ class _ComplaintCard extends StatelessWidget {
 
 /// Small coloured label showing the complaint status.
 class _StatusBadge extends StatelessWidget {
-  const _StatusBadge({required this.resolved, required this.status});
+  const _StatusBadge({
+    required this.resolved,
+    required this.status,
+    this.compensated = false,
+  });
 
   final bool resolved;
   final String status;
+  final bool compensated;
 
   @override
   Widget build(BuildContext context) {
@@ -282,7 +291,7 @@ class _StatusBadge extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
       ),
       child: Text(
-        ComplaintsController.statusLabel(status),
+        ComplaintsController.statusLabel(status, compensated: compensated),
         style: TextStyle(
           fontSize: 12,
           fontWeight: FontWeight.w700,

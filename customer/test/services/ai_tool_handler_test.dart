@@ -22,6 +22,18 @@ const camry = Vehicle(
   plateNumberLatin: '1234 ABD',
 );
 
+/// A vehicle that already has its type saved, so the size is never asked.
+const prado = Vehicle(
+  id: 'v-prado',
+  brand: 'تويوتا',
+  model: 'برادو',
+  year: 2021,
+  color: 'أبيض',
+  plateNumberArabic: '5555 ابد',
+  plateNumberLatin: '5555 ABD',
+  bodyType: 'large',
+);
+
 const yukon = Vehicle(
   id: 'v-yukon',
   brand: 'جي إم سي',
@@ -210,26 +222,45 @@ void main() {
       expect(handler.pendingSummary, isNull);
     });
 
-    test('a standard car pays the base price', () async {
+    test('a standard car pays the standard price', () async {
       final outcome = await showWash(size: 'standard');
       expect(outcome.ok, isTrue);
       final prices = ServicePrices.fallback();
       expect(
         handler.pendingSummary!.estimatedPrice,
-        prices.basePriceFor('washFull'),
+        prices.priceFor('washFull', sizeId: 'standard'),
       );
       expect(handler.pendingSummary!.optionLabel, contains('سيدان'));
     });
 
-    test('a large car pays the base price plus the extra', () async {
+    test('a large car pays the large price', () async {
       await showWash(size: 'large');
       final prices = ServicePrices.fallback();
       expect(
         handler.pendingSummary!.estimatedPrice,
-        prices.basePriceFor('washFull')! + prices.largeVehicleExtra,
+        prices.priceFor('washFull', sizeId: 'large'),
       );
       expect(handler.pendingSummary!.optionLabel, contains('دفع رباعي'));
       expect(handler.pendingSummary!.vehicleSizeId, 'large');
+    });
+
+    test('a vehicle with a saved type is not asked for its size', () async {
+      final h = AiToolHandler(
+        actions: actions,
+        vehicles: const [prado],
+        activeVehicleId: prado.id,
+      );
+      final outcome = await h.handle(AiToolHandler.showSummaryName, {
+        'vehicleId': 'v-prado',
+        'categoryId': 'carwash',
+        'optionId': 'washExterior',
+      }, turn: 1);
+      expect(outcome.ok, isTrue);
+      expect(
+        h.pendingSummary!.estimatedPrice,
+        ServicePrices.fallback().priceFor('washExterior', sizeId: 'large'),
+      );
+      expect(h.pendingSummary!.vehicleSizeId, 'large');
     });
 
     test('an unknown size is refused', () async {

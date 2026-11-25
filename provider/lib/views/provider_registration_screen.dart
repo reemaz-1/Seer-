@@ -189,11 +189,7 @@ class _ProviderRegistrationScreenState
     },
     'carwash': {
       'label': 'غسيل السيارة',
-      'options': {
-        'washExterior': 'غسيل خارجي',
-        'washInterior': 'غسيل داخلي',
-        'washFull': 'غسيل داخلي وخارجي',
-      },
+      'options': {'wash': 'غسيل السيارات'},
     },
   };
 

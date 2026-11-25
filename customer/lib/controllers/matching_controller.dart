@@ -19,16 +19,18 @@ class MatchingController {
     required String optionId,
     required double lat,
     required double lng,
+    bool scheduled = false,
   }) async {
-    final snapshot = await _firestore
-        .collection('providers')
-        .where('status', isEqualTo: 'approved')
-        .where('isAvailable', isEqualTo: true)
-        .get();
+    var query = _firestore.collection('providers')
+        .where('status', isEqualTo: 'approved');
+    // Advance bookings are offered even when a provider is currently offline.
+    if (!scheduled) query = query.where('isAvailable', isEqualTo: true);
+    final snapshot = await query.get();
 
     final nearby = <({String id, double km})>[];
     for (final doc in snapshot.docs) {
       final data = doc.data();
+      if (data['isSuspended'] == true) continue;
       if (!offersOption(data['servicesOffered'], categoryId, optionId)) {
         continue;
       }
@@ -54,6 +56,11 @@ class MatchingController {
     if (category is! Map) return false;
     final options = category['options'];
     if (options is! List) return false;
+    // Car wash: the provider only says it offers car washes. The customer
+    // picks exterior / interior / both, so any enabled option matches.
+    if (categoryId == 'carwash') {
+      return options.any((o) => o is Map && o['enabled'] == true);
+    }
     return options.any(
       (o) => o is Map && o['id'] == optionId && o['enabled'] == true,
     );

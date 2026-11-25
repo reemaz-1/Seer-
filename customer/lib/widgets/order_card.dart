@@ -28,6 +28,8 @@ class OrderCard extends StatelessWidget {
   static const _reorderLabel = 'إعادة الطلب';
 
   static const Map<String, String> _hints = {
+    OrderStatus.scheduledPending: 'بانتظار قبول أحد مزودي الخدمة للحجز المجدول',
+    OrderStatus.scheduledAccepted: 'تم قبول الحجز من مزود الخدمة',
     OrderStatus.pending: 'نبحث عن أقرب مزود خدمة متاح لك',
     OrderStatus.rejected: 'اعتذر جميع المزودين عن قبول الطلب.',
     OrderStatus.autoCancelled: 'انتهت مهلة الانتظار دون رد من مزودي الخدمة.',
@@ -118,10 +120,11 @@ class OrderCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 _InfoItem(
-                  icon: Icons.access_time_rounded,
-                  text:
-                      '${OrderFormat.date(order.createdAt)}  ·  '
-                      '${OrderFormat.time(order.createdAt)}',
+                  icon: order.isScheduled
+                      ? Icons.calendar_month_outlined : Icons.access_time_rounded,
+                  text: order.isScheduled
+                      ? 'موعد الوصول: ${OrderFormat.date(order.scheduledAt)} · ${OrderFormat.time(order.scheduledAt)}'
+                      : '${OrderFormat.date(order.createdAt)}  ·  ${OrderFormat.time(order.createdAt)}',
                 ),
                 const SizedBox(height: 4),
                 _InfoItem(
@@ -179,6 +182,10 @@ class OrderCard extends StatelessWidget {
                   ),
                 ),
               ),
+              if (order.chatUnreadCustomer > 0) ...[
+                _UnreadPill(count: order.chatUnreadCustomer),
+                const SizedBox(width: 10),
+              ],
               if (canReorder) _reorderButton() else _detailsLink(),
             ],
           ),
@@ -328,6 +335,40 @@ class _InfoItem extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// Small red pill that tells the customer there are unread chat messages.
+class _UnreadPill extends StatelessWidget {
+  /// Creates the pill; [count] is the number of unread messages.
+  const _UnreadPill({required this.count});
+
+  final int count;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: AppStatusColors.error,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.chat_bubble_rounded, size: 13, color: Colors.white),
+          const SizedBox(width: 5),
+          Text(
+            count == 1 ? 'رسالة جديدة' : '$count رسائل جديدة',
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              color: Colors.white,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

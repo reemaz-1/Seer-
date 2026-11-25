@@ -165,7 +165,7 @@ class _VehicleCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      'لوحة ${vehicle.plateNumberArabic}',
+                      'لوحة ${vehicle.plateDisplay}',
                       style: const TextStyle(fontSize: 13, color: CustomerColors.secondaryText),
                     ),
                   ],

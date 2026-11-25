@@ -36,6 +36,9 @@ class _ServiceProviderMainState extends State<ServiceProviderMain>
   Timer? _trackingOrderRetryTimer;
   int _orderStreamFailures = 0;
 
+  /// Unread chat messages of the current order, shown on the Orders tab.
+  int _chatUnread = 0;  
+
   // In-app notifications (#47): live list, bell badge and banner.
   NotificationController? _notifications;
 
@@ -43,6 +46,10 @@ class _ServiceProviderMainState extends State<ServiceProviderMain>
   /// rebuilt on "available requests" even if another sub-tab was open.
   int _ordersVisit = 0;
   String? _requestedDetailsId;
+
+  /// True when Orders was opened from the bottom bar, so it picks the
+  /// "current" tab if there is an accepted order.
+  bool _ordersFromBar = false;
 
   /// False while the app is in the background or the screen is locked.
   bool _inForeground = true;
@@ -83,6 +90,10 @@ class _ServiceProviderMainState extends State<ServiceProviderMain>
       (order) {
         _orderStreamFailures = 0;
         unawaited(_tracking.syncOrder(order));
+        final unread = order?.chatUnreadProvider ?? 0;
+        if (mounted && unread != _chatUnread) {
+          setState(() => _chatUnread = unread);
+        }
       },
       onError: (Object error) {
         debugPrint('Tracking order watcher error: $error');
@@ -176,6 +187,7 @@ class _ServiceProviderMainState extends State<ServiceProviderMain>
     Navigator.of(context).popUntil((route) => route.isFirst);
     setState(() {
       _requestedDetailsId = null;
+      _ordersFromBar = false;
       selectedIndex = 1;
       _ordersVisit++;
     });
@@ -185,6 +197,7 @@ class _ServiceProviderMainState extends State<ServiceProviderMain>
     if (!mounted) return;
     setState(() {
       _requestedDetailsId = orderId;
+      _ordersFromBar = false;
       selectedIndex = 1;
       _ordersVisit++;
     });
@@ -219,6 +232,7 @@ class _ServiceProviderMainState extends State<ServiceProviderMain>
               key: ValueKey(_ordersVisit),
               authService: widget.authService,
               initialOrderId: _requestedDetailsId,
+              openCurrentIfActive: _ordersFromBar,
             )
           : ProviderProfileScreen(authService: widget.authService),
 
@@ -244,7 +258,7 @@ class _ServiceProviderMainState extends State<ServiceProviderMain>
           ),
         ),
         title: const Text(
-          'سَيْر',
+          'سِير',
           style: TextStyle(
             color: Color(0xFF0E1B33),
             fontSize: 30,
@@ -343,12 +357,30 @@ class _ServiceProviderMainState extends State<ServiceProviderMain>
               onTabChange: (index) {
                 setState(() {
                   selectedIndex = index;
+                  // A request opened earlier from Home is not reopened:
+                  // it may already be taken or expired.
+                  _requestedDetailsId = null;
+                  _ordersFromBar = true;
                 });
               },
-              tabs: const [
-                GButton(icon: Icons.home_rounded, text: 'الرئيسية'),
-                GButton(icon: Icons.receipt_long_rounded, text: 'الطلبات'),
-                GButton(icon: Icons.person_rounded, text: 'الحساب'),
+              tabs: [
+                const GButton(icon: Icons.home_rounded, text: 'الرئيسية'),
+                GButton(
+                  icon: Icons.receipt_long_rounded,
+                  text: 'الطلبات',
+                  // The badge tells there are unread chat messages.
+                  leading: Badge(
+                    isLabelVisible: _chatUnread > 0,
+                    label: Text('$_chatUnread'),
+                    child: Icon(
+                      Icons.receipt_long_rounded,
+                      color: selectedIndex == 1
+                          ? const Color(0xFF1C63D6)
+                          : const Color(0xFF69728C),
+                    ),
+                  ),
+                ),
+                const GButton(icon: Icons.person_rounded, text: 'الحساب'),
               ],
             ),
           ),

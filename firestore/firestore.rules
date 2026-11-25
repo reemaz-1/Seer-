@@ -74,12 +74,36 @@ service cloud.firestore {
         // Takes no inputs; validates exactly the fields written by Vehicle.toMap.
         function validVehicle() {
           let v = request.resource.data;
-          return v.keys().hasOnly(['brand', 'model', 'year', 'color', 'plateNumberArabic', 'plateNumberLatin'])
+          return v.keys().hasOnly(['brand', 'model', 'year', 'color', 'plateNumberArabic', 'plateNumberLatin', 'bodyType'])
+            // bodyType (sedan / SUV) sets the car wash price; older vehicles have none.
+            && (!('bodyType' in v) || v.bodyType in ['standard', 'large'])
             && v.brand is string && v.model is string && v.year is int
             && v.color is string && v.plateNumberArabic is string && v.plateNumberLatin is string;
         }
         allow read, delete: if owns(uid);
         allow create, update: if owns(uid) && validVehicle();
+      }
+      match /savedLocations/{placeId} {
+        // Saved places: one home, one work (document id = kind), and any
+        // number of named places ('other') with the customer's own name.
+        function validHomeOrWork() {
+          return request.resource.data.kind in ['home', 'work']
+            && request.resource.data.kind == placeId
+            && request.resource.data.keys().hasOnly(['kind', 'location', 'updatedAt']);
+        }
+        function validOther() {
+          return request.resource.data.kind == 'other'
+            && !(placeId in ['home', 'work'])
+            && request.resource.data.keys().hasOnly(['kind', 'name', 'location', 'updatedAt'])
+            && request.resource.data.name is string
+            && request.resource.data.name.size() >= 1
+            && request.resource.data.name.size() <= 20;
+        }
+        allow read, delete: if owns(uid);
+        allow create, update: if owns(uid)
+          && (validHomeOrWork() || validOther())
+          && request.resource.data.location is latlng
+          && request.resource.data.updatedAt == request.time;
       }
     }
     match /providers/{uid} {
@@ -178,7 +202,8 @@ service cloud.firestore {
             'vehicleTitle', 'vehiclePlateArabic', 'vehiclePlateLatin', 'serviceCategoryId',
             'serviceCategoryLabel', 'serviceOptionId', 'serviceOptionLabel', 'serviceBranch',
             'note', 'estimatedPrice', 'finalPrice', 'status', 'pickupLocation', 'dropoffLocation',
-            'providerId', 'candidateProviderIds', 'rejectedBy', 'paymentConfirmed', 'createdAt', 'expiresAt'])
+            'providerId', 'candidateProviderIds', 'rejectedBy', 'paymentConfirmed', 'createdAt', 'expiresAt',
+            'usedFreeWash'])
           && o.status == 'pending' && o.providerId == null
           && o.finalPrice == null && o.paymentConfirmed == false
           && o.rejectedBy == [] && o.candidateProviderIds is list && o.candidateProviderIds.size() > 0
@@ -196,6 +221,9 @@ service cloud.firestore {
           && o.serviceOptionLabel is string && o.serviceBranch is string
           && o.serviceCategoryId in ['battery', 'fuel', 'tires', 'towing', 'carwash']
           && (o.estimatedPrice == null || (o.estimatedPrice is number && o.estimatedPrice >= 0))
+          // #67: a free car cleaning is only a car wash, and it costs nothing.
+          && (!('usedFreeWash' in o)
+            || (o.usedFreeWash == true && o.serviceCategoryId == 'carwash' && o.estimatedPrice == 0))
           && exists(/databases/$(database)/documents/customers/$(request.auth.uid)/vehicles/$(o.vehicleId));
       }
       // Takes no inputs; enforces customer cancellation and expiry with server time.

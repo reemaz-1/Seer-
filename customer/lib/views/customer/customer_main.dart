@@ -205,7 +205,7 @@ class _CustomerMainState extends State<CustomerMain>
                 ),
               ],
               title: const Text(
-                'سَيْر',
+                'سِير',
                 style: TextStyle(
                   color: Colors.white,
                   fontSize: 30,
@@ -233,24 +233,55 @@ class _CustomerMainState extends State<CustomerMain>
             padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 20),
             child: Directionality(
               textDirection: TextDirection.rtl,
-              child: GNav(
-                backgroundColor: Colors.transparent,
-                color: const Color(0xFF6B7385),
-                activeColor: const Color(0xFF1C63D6),
-                tabBackgroundColor: const Color(0xFFEAF1FC),
-                padding: const EdgeInsets.all(16),
-                gap: 8,
-                selectedIndex: selectedIndex,
-                onTabChange: (index) {
-                  setState(() {
-                    selectedIndex = index;
-                  });
+              // Rebuilds the tabs when the orders change, so the unread dot
+              // on the Orders tab stays up to date.
+              child: ListenableBuilder(
+                listenable: _activeOrders,
+                builder: (context, _) {
+                  final unread = _activeOrders.orders.fold<int>(
+                    0,
+                    (total, order) => total + order.chatUnreadCustomer,
+                  );
+                  const active = Color(0xFF1C63D6);
+                  const inactive = Color(0xFF6B7385);
+                  return GNav(
+                    backgroundColor: Colors.transparent,
+                    color: inactive,
+                    activeColor: active,
+                    tabBackgroundColor: const Color(0xFFEAF1FC),
+                    padding: const EdgeInsets.all(16),
+                    gap: 8,
+                    selectedIndex: selectedIndex,
+                    onTabChange: (index) {
+                      setState(() {
+                        selectedIndex = index;
+                      });
+                    },
+                    tabs: [
+                      const GButton(
+                        icon: Icons.home_rounded,
+                        text: 'الصفحة الرئيسية',
+                      ),
+                      GButton(
+                        icon: Icons.receipt_long_rounded,
+                        text: 'الطلبات',
+                        // The badge tells there are unread chat messages.
+                        leading: Badge(
+                          isLabelVisible: unread > 0,
+                          label: Text('$unread'),
+                          child: Icon(
+                            Icons.receipt_long_rounded,
+                            color: selectedIndex == 1 ? active : inactive,
+                          ),
+                        ),
+                      ),
+                      const GButton(
+                        icon: Icons.person_rounded,
+                        text: 'الحساب',
+                      ),
+                    ],
+                  );
                 },
-                tabs: const [
-                  GButton(icon: Icons.home_rounded, text: 'الصفحة الرئيسية'),
-                  GButton(icon: Icons.receipt_long_rounded, text: 'الطلبات'),
-                  GButton(icon: Icons.person_rounded, text: 'الحساب'),
-                ],
               ),
             ),
           ),

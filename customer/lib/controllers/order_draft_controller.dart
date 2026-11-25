@@ -19,6 +19,7 @@ class OrderDraftController extends ChangeNotifier {
     required this.uid,
     required this.categoryId,
     this.preferredVehicleId,
+    this.useFreeWash = false,
     VehicleModel? vehicleModel,
     OrderModel? orderModel,
     PricingModel? pricingModel,
@@ -35,6 +36,14 @@ class OrderDraftController extends ChangeNotifier {
  
   /// The vehicle shown on the home page, so the same one is pre-selected here.
   final String? preferredVehicleId;
+
+  /// True when the customer opened this request from the loyalty card to
+  /// use a free car cleaning (#67).
+  final bool useFreeWash;
+
+  /// Takes no inputs; returns true when this order is a free car cleaning.
+  /// Only the car wash service can be free.
+  bool get isFreeWash => useFreeWash && categoryId == 'carwash';
  
   final VehicleModel _vehicleModel;
   final OrderModel _orderModel;
@@ -60,10 +69,22 @@ class OrderDraftController extends ChangeNotifier {
  
   String? selectedOptionId;
 
-  /// 'standard' or 'large'. Only used by services priced by size (car wash).
+  /// 'standard' or 'large'. Only used by services priced by size (car wash),
+  /// and only when the chosen vehicle has no body type saved yet.
   String? vehicleSizeId;
+
+  /// Car wash: which parts the customer ticked. Both ticked = full wash.
+  bool washExterior = false;
+  bool washInterior = false;
   Vehicle? selectedVehicle;
   String note = '';
+
+  /// Null keeps the existing immediate-order flow untouched.
+  DateTime? scheduledAt;
+  void setScheduledAt(DateTime? value) {
+    scheduledAt = value;
+    notifyListeners();
+  }
 
   /// The id of the order once it is created, so its details page can be
   /// opened right after sending it (#20).
@@ -90,7 +111,7 @@ void clearDropoffLocation() {
   dropoffLocation = null;
   notifyListeners();
 }
- 
+
   /// Fills this draft from an earlier order, used by reorder (#21).
   ///
   /// Copies the service option, the note and both locations. The vehicle is
@@ -100,6 +121,7 @@ void clearDropoffLocation() {
   /// Returns: nothing.
   void prefillFromOrder(ServiceOrder order) {
     selectedOptionId = order.serviceOptionId;
+    _syncWashParts();
     note = order.note;
     pickupLocation = order.pickupLocation;
     dropoffLocation = order.dropoffLocation;
@@ -120,6 +142,7 @@ void clearDropoffLocation() {
     String? vehicleSizeId,
   }) {
     selectedOptionId = optionId;
+    _syncWashParts();
     this.vehicleSizeId = vehicleSizeId;
     this.note = note;
     if (pickup != null) pickupLocation = pickup;
@@ -138,12 +161,17 @@ void clearDropoffLocation() {
   /// Car wash: the price depends on the size of the car.
   bool get needsVehicleSize => category?.priceBySize ?? false;
 
-  VehicleSize? get vehicleSize =>
-      needsVehicleSize ? VehicleSize.byId(vehicleSizeId) : null;
+  /// The size comes from the chosen vehicle's body type. A vehicle saved before
+  /// that field existed has none, so the size picked on this page is used.
+  VehicleSize? get vehicleSize => needsVehicleSize
+      ? VehicleSize.byId(selectedVehicle?.bodyType ?? vehicleSizeId)
+      : null;
 
-  /// The extra for the chosen size, in riyals. 0 when it does not apply.
-  num get sizeExtra =>
-      needsVehicleSize ? prices.sizeExtraFor(vehicleSizeId) : 0;
+  /// True when the customer still has to say what type the vehicle is.
+  bool get needsBodyTypeChoice =>
+      needsVehicleSize &&
+      selectedVehicle != null &&
+      selectedVehicle!.bodyType == null;
 
   /// The option name as it is saved in the order and shown on the review
   /// page. The size is part of it ("غسيل خارجي - دفع رباعي"), so the provider
@@ -167,12 +195,14 @@ void clearDropoffLocation() {
   }
  
   /// The price of one option, used in the list of options.
-  num? priceOf(String optionId) => prices.basePriceFor(optionId);
+  num? priceOf(String optionId) =>
+      prices.priceFor(optionId, sizeId: vehicleSize?.id);
  
   /// The fixed price of the chosen option, before any distance fee.
   /// null when this service has no price yet.
-  num? get basePrice =>
-      selectedOptionId == null ? null : prices.basePriceFor(selectedOptionId!);
+  num? get basePrice => selectedOptionId == null
+      ? null
+      : prices.priceFor(selectedOptionId!, sizeId: vehicleSize?.id);
 
   /// Straight-line distance in km between the pickup and the drop-off.
   /// Towing only, and null until both locations are chosen.
@@ -195,12 +225,14 @@ void clearDropoffLocation() {
     return km == null ? null : (km * prices.towingPerKm).round();
   }
 
-  /// What the customer is charged: the base price plus the distance fee and
-  /// the size extra when they apply. null when this service has no price yet.
+  /// What the customer is charged: the base price (per car size for the car
+  /// wash) plus the distance fee when it applies. null when this service has no price yet.
   num? get estimatedPrice {
+    // #67: a free car cleaning costs nothing, whatever the size.
+    if (isFreeWash) return 0;
     final base = basePrice;
     if (base == null) return null;
-    return base + (distanceFee ?? 0) + sizeExtra;
+    return base + (distanceFee ?? 0);
   }
  
   /// Towing also costs per kilometre, which needs the distance from #15/#76,
@@ -237,7 +269,29 @@ void clearDropoffLocation() {
  
   void selectOption(String optionId) {
     selectedOptionId = optionId;
+    _syncWashParts();
     notifyListeners();
+  }
+
+  /// Car wash: ticks or unticks exterior / interior. The option id follows:
+  /// one part gives that wash, both give the full wash.
+  void toggleWashPart({required bool exterior}) {
+    if (exterior) {
+      washExterior = !washExterior;
+    } else {
+      washInterior = !washInterior;
+    }
+    selectedOptionId = CarWash.optionFor(
+      exterior: washExterior,
+      interior: washInterior,
+    );
+    notifyListeners();
+  }
+
+  void _syncWashParts() {
+    final id = selectedOptionId;
+    washExterior = id == CarWash.exteriorId || id == CarWash.fullId;
+    washInterior = id == CarWash.interiorId || id == CarWash.fullId;
   }
  
   void selectVehicleSize(String sizeId) {
@@ -247,7 +301,27 @@ void clearDropoffLocation() {
 
   void selectVehicle(Vehicle vehicle) {
     selectedVehicle = vehicle;
+    // A size picked for the previous vehicle does not carry over.
+    vehicleSizeId = null;
     notifyListeners();
+  }
+
+  /// The chosen vehicle has no body type yet (saved before the field existed):
+  /// the customer picks it here, and it is saved on the vehicle so they are
+  /// not asked again. A failed save never blocks the order.
+  Future<void> chooseBodyType(String sizeId) async {
+    final vehicle = selectedVehicle;
+    if (vehicle == null) return;
+    vehicleSizeId = sizeId;
+    final updated = vehicle.copyWith(bodyType: sizeId);
+    selectedVehicle = updated;
+    vehicles = [for (final v in vehicles) v.id == updated.id ? updated : v];
+    notifyListeners();
+    try {
+      await _vehicleModel.updateVehicle(uid, updated);
+    } catch (e) {
+      debugPrint('saving the vehicle type failed: $e');
+    }
   }
  
   void setNote(String value) {
@@ -256,8 +330,20 @@ void clearDropoffLocation() {
  
 /// Returns null when the draft is ready, or the message to show.
 String? validate() {
-  if (selectedOptionId == null) return 'اختر نوع الخدمة';
-  if (needsVehicleSize && vehicleSize == null) return 'اختر حجم السيارة';
+  if (scheduledAt != null) {
+    final now = DateTime.now();
+    final tomorrow = DateTime(now.year, now.month, now.day + 2);
+    if (!scheduledAt!.isAfter(now) ||
+        !scheduledAt!.isBefore(tomorrow)) {
+      return 'حدد موعدًا مستقبليًا اليوم أو غدًا';
+    }
+  }
+  if (selectedOptionId == null) {
+    return needsVehicleSize ? 'اختر غسيل خارجي أو داخلي' : 'اختر نوع الخدمة';
+  }
+  if (needsVehicleSize && vehicleSize == null) {
+    return 'حدد نوع المركبة: سيدان أو دفع رباعي';
+  }
   if (selectedVehicle == null) return 'اختر المركبة';
 
   // Every service request needs the vehicle's current location (#15).
@@ -293,12 +379,15 @@ String? validate() {
         optionId: option.id,
         lat: pickupLocation!.latitude,
         lng: pickupLocation!.longitude,
+        scheduled: scheduledAt != null,
       );
 
       // #19: nobody nearby, so nothing is saved
       if( candidates.isEmpty){
         noNearbyProviders = true;
-        return 'لا يوجد مزود خدمة متاح بالقرب منك حاليًا';
+        return scheduledAt != null
+            ? 'لا يوجد مزود خدمة مؤهل للحجز في منطقتك'
+            : 'لا يوجد مزود خدمة متاح بالقرب منك حاليًا';
       }
 
 
@@ -319,7 +408,10 @@ String? validate() {
         serviceBranch: option.branch,
         note: note,
         estimatedPrice: estimatedPrice,
-        status: OrderStatus.pending,
+        status: scheduledAt == null
+            ? OrderStatus.pending : OrderStatus.scheduledPending,
+        scheduledAt: scheduledAt,
+        usedFreeWash: isFreeWash,
 
 // Locations belong to this individual order.
 // Non-towing orders intentionally store no drop-off location.
@@ -338,6 +430,7 @@ candidateProviderIds: candidates,
           providerIds: candidates,
           serviceLabel: selectedOptionLabel,
           vehicleTitle: vehicle.title,
+          scheduledAt: scheduledAt,
         );
       } catch (e) {
         debugPrint('notifyNewRequest failed: $e');

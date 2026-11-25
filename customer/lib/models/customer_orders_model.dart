@@ -148,6 +148,8 @@ class CustomerOrdersModel {
   /// Returns: true while the order is waiting for a provider, or accepted
   /// less than [cancelWindow] ago.
   static bool canCancel(ServiceOrder order, DateTime now) {
+    if (order.status == OrderStatus.scheduledPending ||
+        order.status == OrderStatus.scheduledAccepted) return true;
     if (order.status == OrderStatus.pending) return true;
     final left = cancelTimeLeft(order, now);
     return left != null && left > Duration.zero;
@@ -160,6 +162,7 @@ class CustomerOrdersModel {
   /// Returns: the time left (never negative), or null when the order is
   /// not accepted or has no acceptance time.
   static Duration? cancelTimeLeft(ServiceOrder order, DateTime now) {
+    if (order.isScheduled) return null;
     final acceptedAt = order.acceptedAt;
     if (order.status != OrderStatus.accepted || acceptedAt == null) {
       return null;
@@ -194,6 +197,12 @@ class CustomerOrdersModel {
             .collection(_providersCollection)
             .doc(providerId);
         final providerSnapshot = await transaction.get(providerRef);
+        if (order.scheduledAt != null && providerSnapshot.exists) {
+          transaction.update(providerRef, {
+            'scheduledReservationTimes': FieldValue.arrayRemove(
+              [Timestamp.fromDate(order.scheduledAt!)]),
+          });
+        }
         if (providerSnapshot.data()?['activeOrderId'] == orderId) {
           transaction.update(providerRef, {
             'activeOrderId': FieldValue.delete(),
@@ -223,6 +232,9 @@ class CustomerOrdersModel {
   /// Returns: true when the order is still pending and [now] is at or after
   /// its expiresAt time.
   static bool isExpired(ServiceOrder order, DateTime now) {
+    if (order.status == OrderStatus.scheduledPending) {
+      return order.scheduledAt != null && !order.scheduledAt!.isAfter(now);
+    }
     final expiresAt = order.expiresAt;
     return order.status == OrderStatus.pending &&
         expiresAt != null &&

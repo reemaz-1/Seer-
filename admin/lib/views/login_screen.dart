@@ -146,7 +146,14 @@ class _LoginScreenState extends State<LoginScreen> {
     return Container(
       color: AppColors.darkPanel,
       padding: const EdgeInsets.symmetric(horizontal: 36, vertical: 40),
-      child: Column(
+      // Fills the panel when there is room, and scrolls when the window is
+      // too short. It never measures the text ahead of time, so the web
+      // fonts cannot make it overflow.
+      child: LayoutBuilder(
+        builder: (context, constraints) => SingleChildScrollView(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(minHeight: constraints.maxHeight),
+            child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
@@ -208,6 +215,9 @@ class _LoginScreenState extends State<LoginScreen> {
             style: TextStyle(color: Colors.white38, fontSize: 12),
           ),
         ],
+            ),
+          ),
+        ),
       ),
     );
   }

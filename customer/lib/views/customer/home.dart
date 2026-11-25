@@ -7,6 +7,7 @@ import '../../widgets/order_display.dart' show ServiceIcons;
 import 'request_service_page.dart';
 import 'ai_chat_page.dart';
 import '../../widgets/app_snackbar.dart';
+import '../../widgets/loyalty_card.dart';
 
 /// VIEW: the customer home page.
 class Home extends StatelessWidget {
@@ -17,10 +18,18 @@ class Home extends StatelessWidget {
   /// Called after an order is sent, so the main page can open the orders tab.
   final VoidCallback? onOrderSent;
 
-  Future<void> _openService(BuildContext context, String categoryId) async {
+  Future<void> _openService(
+    BuildContext context,
+    String categoryId, {
+    bool useFreeWash = false,
+  }) async {
     final message = await Navigator.of(context).push<String>(
       MaterialPageRoute(
-        builder: (_) => RequestServicePage(uid: uid, categoryId: categoryId),
+        builder: (_) => RequestServicePage(
+          uid: uid,
+          categoryId: categoryId,
+          useFreeWash: useFreeWash,
+        ),
       ),
     );
     if (message == null || !context.mounted) return;
@@ -35,93 +44,89 @@ class Home extends StatelessWidget {
     );
   }
 
+  /// Category id of the car wash service, used by the free wash button.
+  static const _carWashId = 'carwash';
+
   @override
   Widget build(BuildContext context) {
     return ColoredBox(
       color: CustomerColors.background,
-      child: ListView(
-        padding: const EdgeInsets.only(bottom: 24),
+      child: Stack(
         children: [
-          _aiCard(context),
-          const Padding(
-            padding: EdgeInsets.fromLTRB(16, 18, 16, 12),
-            child: Text(
-              'اطلب خدمة',
-              textAlign: TextAlign.right,
-              style: TextStyle(
-                fontSize: 19,
-                fontWeight: FontWeight.w800,
-                color: CustomerColors.primaryText,
+          ListView(
+            // Extra bottom space so the last card is not hidden by the button.
+            padding: const EdgeInsets.only(bottom: 96),
+            children: [
+              // Progress toward the next free car wash (#68, #70).
+              Padding(
+                padding: const EdgeInsets.all(20),
+                child: LoyaltyCard(
+                  uid: uid,
+                  onRequestFreeWash: () =>
+                      _openService(context, _carWashId, useFreeWash: true),
+                ),
               ),
-            ),
+              const Padding(
+                padding: EdgeInsets.fromLTRB(16, 0, 16, 12),
+                child: Text(
+                  'اطلب خدمة',
+                  textAlign: TextAlign.right,
+                  style: TextStyle(
+                    fontSize: 19,
+                    fontWeight: FontWeight.w800,
+                    color: CustomerColors.primaryText,
+                  ),
+                ),
+              ),
+              _ServicesList(onOpen: (id) => _openService(context, id)),
+            ],
           ),
-          _ServicesList(onOpen: (id) => _openService(context, id)),
+          // The AI assistant (#11) as a floating button.
+          PositionedDirectional(
+            end: 16,
+            bottom: 16,
+            child: _aiButton(context),
+          ),
         ],
       ),
     );
   }
 
-  /// The AI assistant card (#11)
-  Widget _aiCard(BuildContext context) {
-    return GestureDetector(
-      onTap: () => _openAiChat(context),
-      child: Container(
-        margin: const EdgeInsets.all(20),
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-        color: CustomerColors.darkPanel,
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          const Text(
-            'مو متأكد وش المشكلة؟',
-            textAlign: TextAlign.right,
-            textDirection: TextDirection.rtl,
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 8),
-          const Text(
-            'صف المشكلة لمساعد Seer الذكي',
-            textAlign: TextAlign.right,
-            textDirection: TextDirection.rtl,
-            style: TextStyle(
-              color: CustomerColors.cardBorder,
-              fontSize: 15,
-            ),
-          ),
-          const SizedBox(height: 18),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            decoration: BoxDecoration(
-              border: Border.all(color: CustomerColors.secondaryText),
-              borderRadius: BorderRadius.circular(12),
-            ),
+  /// Takes context; returns the floating button that opens the AI chat (#11).
+  Widget _aiButton(BuildContext context) {
+    return Material(
+      color: CustomerColors.darkPanel,
+      elevation: 6,
+      shadowColor: const Color(0x590E1B33),
+      shape: const StadiumBorder(),
+      child: InkWell(
+        customBorder: const StadiumBorder(),
+        onTap: () => _openAiChat(context),
+        child: const SizedBox(
+          height: 56,
+          child: Padding(
+            padding: EdgeInsets.symmetric(horizontal: 18),
             child: Row(
-              textDirection: TextDirection.rtl,
+              mainAxisSize: MainAxisSize.min,
               children: [
-                const Expanded(
-                  child: Text(
-                    'صف المشكلة...',
-                    textAlign: TextAlign.right,
-                    textDirection: TextDirection.rtl,
-                    style: TextStyle(color: CustomerColors.cardBorder),
-                  ),
+                Icon(
+                  Icons.auto_awesome_rounded,
+                  size: 26,
+                  color: Color(0xFF8DB6F7),
                 ),
-                IconButton(
-                  icon: const Icon(Icons.arrow_back, color: CustomerColors.accent),
-                  onPressed: () => _openAiChat(context),
+                SizedBox(width: 10),
+                Text(
+                  'اسأل المساعد',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                  ),
                 ),
               ],
             ),
           ),
-        ],
-      ),
+        ),
       ),
     );
   }

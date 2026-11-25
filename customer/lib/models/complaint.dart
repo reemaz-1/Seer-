@@ -41,6 +41,7 @@ class Complaint {
     this.vehicleTitle,
     this.orderPrice,
     this.orderStatus,
+    this.freeWashGranted = false,
   });
 
   /// The Firestore document id.
@@ -94,6 +95,10 @@ class Complaint {
   /// The order status when the complaint was sent.
   final String? orderStatus;
 
+  /// Set to true by the admin's compensation button (#64, #65). The customer
+  /// app only reads it; it adds one free car wash to the loyalty card.
+  final bool freeWashGranted;
+
   /// Parses document [id] and Firestore [map]; returns a typed complaint.
   factory Complaint.fromMap(String id, Map<String, dynamic> map) {
     return Complaint(
@@ -113,6 +118,7 @@ class Complaint {
       vehicleTitle: map['vehicleTitle'] as String?,
       orderPrice: map['orderPrice'] as num?,
       orderStatus: map['orderStatus'] as String?,
+      freeWashGranted: map['freeWashGranted'] == true,
     );
   }
 

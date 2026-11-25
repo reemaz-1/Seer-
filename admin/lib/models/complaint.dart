@@ -34,6 +34,7 @@ class Complaint {
     required this.status,
     this.createdAt,
     this.resolvedAt,
+    this.freeWashGranted = false,
     this.customerName,
     this.customerPhone,
     this.providerName,
@@ -69,6 +70,10 @@ class Complaint {
 
   /// Set by the admin when the complaint is resolved (#55).
   final DateTime? resolvedAt;
+
+  /// True when the admin compensated the customer with a free car cleaning
+  /// (#64, #65). The customer app adds it to the loyalty card.
+  final bool freeWashGranted;
 
   // ---- Order snapshot: copied at submit time so the admin sees the order
   // ---- as it was, even if it changes later. All optional (null = unknown).
@@ -106,6 +111,7 @@ class Complaint {
       status: (map['status'] ?? ComplaintStatus.pending) as String,
       createdAt: (map['createdAt'] as Timestamp?)?.toDate(),
       resolvedAt: (map['resolvedAt'] as Timestamp?)?.toDate(),
+      freeWashGranted: map['freeWashGranted'] == true,
       customerName: map['customerName'] as String?,
       customerPhone: map['customerPhone'] as String?,
       providerName: map['providerName'] as String?,

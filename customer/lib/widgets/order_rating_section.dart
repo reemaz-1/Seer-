@@ -49,10 +49,11 @@ class _OrderRatingSectionState extends State<OrderRatingSection> {
   Widget build(BuildContext context) {
     if (!_controller.canRate(widget.order)) return const SizedBox.shrink();
     return Container(
-      padding: const EdgeInsets.all(16),
+      margin: const EdgeInsets.only(top: 14),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: CustomerColors.fieldFill,
-        borderRadius: BorderRadius.circular(14),
+        color: CustomerColors.background,
+        borderRadius: BorderRadius.circular(20),
         border: Border.all(color: CustomerColors.cardBorder),
       ),
       child: AnimatedBuilder(
@@ -79,14 +80,14 @@ class _OrderRatingSectionState extends State<OrderRatingSection> {
               children: [
                 Text(
                   done ? 'شكرًا لتقييمك!' : 'كيف كانت تجربتك مع مقدم الخدمة؟',
+                  textAlign: TextAlign.center,
                   style: const TextStyle(
-                    fontSize: 15,
+                    fontSize: 17,
                     fontWeight: FontWeight.w700,
                     color: CustomerColors.primaryText,
                   ),
                 ),
-                const SizedBox(height: 14),
-
+                const SizedBox(height: 10),
                 Wrap(
                   alignment: WrapAlignment.center,
                   children: [

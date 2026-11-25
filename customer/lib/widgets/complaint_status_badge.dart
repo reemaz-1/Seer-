@@ -4,12 +4,22 @@ import '../controllers/my_complaints_controller.dart';
 import '../theme/app_colors.dart';
 
 /// A small coloured label that shows the status of a complaint:
-/// amber "under review" or green "resolved", each with an icon.
+/// amber "under review", green "resolved", or green "compensated" when the
+/// admin gave a free car cleaning for it (#65).
 class ComplaintStatusBadge extends StatelessWidget {
-  const ComplaintStatusBadge({super.key, required this.resolved});
+  const ComplaintStatusBadge({
+    super.key,
+    required this.resolved,
+    this.compensated = false,
+  });
 
   /// True when the complaint was resolved by the admin.
   final bool resolved;
+
+  /// True when the admin compensated the customer for it.
+  final bool compensated;
+
+  static const _compensatedLabel = 'تم التعويض';
 
   @override
   Widget build(BuildContext context) {
@@ -27,15 +37,21 @@ class ComplaintStatusBadge extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(
-            resolved ? Icons.check_circle_outline : Icons.hourglass_top_rounded,
+            !resolved
+                ? Icons.hourglass_top_rounded
+                : compensated
+                ? Icons.card_giftcard_rounded
+                : Icons.check_circle_outline,
             size: 14,
             color: color,
           ),
           const SizedBox(width: 4),
           Text(
-            resolved
-                ? MyComplaintsController.resolvedLabel
-                : MyComplaintsController.pendingLabel,
+            !resolved
+                ? MyComplaintsController.pendingLabel
+                : compensated
+                ? _compensatedLabel
+                : MyComplaintsController.resolvedLabel,
             style: TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.w700,

@@ -125,7 +125,7 @@ _buildMenuItem(
                     color: navy,
                     alignment: Alignment.center,
                     child: const Text(
-                      'سَيْر',
+                      'سِير',
                       style: TextStyle(
                         color: Colors.white,
                         fontSize: 30,

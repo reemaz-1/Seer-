@@ -121,6 +121,8 @@ class _StatusCard extends StatelessWidget {
 
   final Complaint complaint;
 
+  static const _compensatedMessage = 'تم تعويضك بخدمة تنظيف سيارة مجانية';
+
   @override
   Widget build(BuildContext context) {
     final resolved = MyComplaintsController.isResolved(complaint);
@@ -190,6 +192,37 @@ class _StatusCard extends StatelessWidget {
               style: const TextStyle(
                 fontSize: 12.5,
                 color: CustomerColors.secondaryText,
+              ),
+            ),
+          ],
+          // The admin compensated this complaint (#65).
+          if (resolved && complaint.freeWashGranted) ...[
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFFE6F4EA),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Row(
+                children: [
+                  Icon(
+                    Icons.card_giftcard_rounded,
+                    size: 20,
+                    color: AppStatusColors.success,
+                  ),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      _compensatedMessage,
+                      style: TextStyle(
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.w700,
+                        color: AppStatusColors.success,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
           ],
