@@ -228,6 +228,8 @@ class _RequestServicePageState extends State<RequestServicePage> {
 builder: (_) => LocationPickerPage(
   title: 'تحديد موقع المركبة',
   places: _places,
+  categoryId: widget.categoryId,
+  optionId: _controller.selectedOptionId,
   initialSelectedLocation: _controller.pickupLocation == null
       ? null
       : LatLng(
@@ -250,7 +252,7 @@ builder: (_) => LocationPickerPage(
 
 }
 
-  
+
 /// Opens the shared map screen to select the towing destination.
 Future<void> _selectDropoffFromMap() async {
   final LatLng? selectedLocation = await Navigator.of(context).push<LatLng>(

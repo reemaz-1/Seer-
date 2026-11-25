@@ -22,7 +22,7 @@ class ProviderLocationService implements ProviderLocationSource {
   final String providerId;
   final ProviderLocationModel _model;
 
-  /// Takes a device [position]; stores only currentLocation and returns its point.
+  /// Takes a device [position]; stores currentLocation with server time and returns its point.
   Future<GeoPoint> _save(Position position) async {
     final point = GeoPoint(position.latitude, position.longitude);
     try {
