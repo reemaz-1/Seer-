@@ -257,7 +257,8 @@ service cloud.firestore {
           && (step('accepted', 'onTheWay', 'onTheWayAt') || step('onTheWay', 'arrived', 'arrivedAt')
             || step('arrived', 'inProgress', 'inProgressAt') || completing());
       }
-      allow read: if owns(resource.data.customerId)
+      // The dashboard reads orders for aggregate statistics; writes remain restricted.
+      allow read: if isAdmin() || owns(resource.data.customerId)
         || (isProvider() && (isCandidate() || resource.data.get('providerId', null) == request.auth.uid));
       allow create: if validCreation();
       allow update: if (mayRespond() && (accepting() || rejecting())) || cancelling() || progressing();
